@@ -2,7 +2,17 @@
 
 use std::str::FromStr;
 
+#[cfg(feature = "proc-macro")]
 extern crate proc_macro;
+
+mod alias {
+    // Span can be converted from proc-macro to proc-macro2, but not the other way,
+    // so prefer proc-macro's
+    #[cfg(feature = "proc-macro")]
+    pub type Span = proc_macro::Span;
+    #[cfg(all(feature = "proc-macro2", not(feature = "proc-macro")))]
+    pub type Span = proc_macro2::Span;
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Suffixed {
@@ -11,7 +21,7 @@ pub enum Suffixed {
 }
 
 #[derive(Clone, PartialEq)]
-pub enum Literal {
+pub enum LiteralValue {
     String(String),
     ByteString(Vec<u8>),
     Character(char),
@@ -30,6 +40,30 @@ pub enum Literal {
     Isize(isize, Suffixed),
     F32(f32, Suffixed),
     F64(f64, Suffixed),
+}
+
+pub struct Literal {
+    value: LiteralValue,
+    span: alias::Span,
+}
+
+impl Literal {
+    #[inline]
+    pub const fn value(&self) -> &LiteralValue {
+        &self.value
+    }
+
+    #[cfg(feature = "proc-macro")]
+    #[inline]
+    pub fn span(&self) -> proc_macro::Span {
+        self.span
+    }
+
+    #[cfg(feature = "proc-macro2")]
+    #[inline]
+    pub fn span2(&self) -> proc_macro2::Span {
+        self.span.into()
+    }
 }
 
 impl FromStr for Literal {
@@ -92,22 +126,25 @@ macro_rules! from_literal_impl {
             F64, f64_suffixed, f64_unsuffixed,
         }
     };
-    (@ [$expr:expr] $($ident:ident, $suffixed:ident, $unsuffixed:ident),* $(,)?) => {
-        match $expr {
-            Literal::String(s) => Self::string(s),
-            Literal::ByteString(s) => Self::byte_string(s),
-            Literal::Character(c) => Self::character(*c),
-            Literal::ByteCharacter(b) => format!("b'\\x{:02x}'", *b).parse().unwrap(),
+    (@ [$expr:expr] $($ident:ident, $suffixed:ident, $unsuffixed:ident),* $(,)?) => {{
+        let expr = $expr;
+        let mut output = match &expr.value {
+            LiteralValue::String(s) => Self::string(s),
+            LiteralValue::ByteString(s) => Self::byte_string(s),
+            LiteralValue::Character(c) => Self::character(*c),
+            LiteralValue::ByteCharacter(b) => format!("b'\\x{:02x}'", b).parse().unwrap(),
             $(
-                Literal::$ident(value, suffixed) => {
+                LiteralValue::$ident(value, suffixed) => {
                     match suffixed {
                         Suffixed::Yes => Self::$suffixed(*value),
                         Suffixed::No => Self::$unsuffixed(*value),
                     }
                 }
             )*
-        }
-    };
+        };
+        output.set_span(expr.span.into());
+        output
+    }};
 }
 
 #[cfg(feature = "proc-macro")]
