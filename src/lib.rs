@@ -97,10 +97,7 @@ macro_rules! from_literal_impl {
             Literal::String(s) => Self::string(s),
             Literal::ByteString(s) => Self::byte_string(s),
             Literal::Character(c) => Self::character(*c),
-            Literal::ByteCharacter(_) => {
-                //Self::byte_character(b), // nightly
-                panic!("ByteCharacter is a nightly feature");
-            }
+            Literal::ByteCharacter(b) => format!("b'\\x{:02x}'", *b).parse().unwrap(),
             $(
                 Literal::$ident(value, suffixed) => {
                     match suffixed {
