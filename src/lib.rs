@@ -4,25 +4,32 @@ use std::str::FromStr;
 
 extern crate proc_macro;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Suffixed {
+    No,
+    Yes,
+}
+
+#[derive(Clone, PartialEq)]
 pub enum Literal {
     String(String),
     ByteString(Vec<u8>),
     Character(char),
     ByteCharacter(u8),
-    U8 { value: u8, suffixed: bool },
-    U16 { value: u16, suffixed: bool },
-    U32 { value: u32, suffixed: bool },
-    U64 { value: u64, suffixed: bool },
-    U128 { value: u128, suffixed: bool },
-    Usize { value: usize, suffixed: bool },
-    I8 { value: i8, suffixed: bool },
-    I16 { value: i16, suffixed: bool },
-    I32 { value: i32, suffixed: bool },
-    I64 { value: i64, suffixed: bool },
-    I128 { value: i128, suffixed: bool },
-    Isize { value: isize, suffixed: bool },
-    F32 { value: f32, suffixed: bool },
-    F64 { value: f64, suffixed: bool },
+    U8(u8, Suffixed),
+    U16(u16, Suffixed),
+    U32(u32, Suffixed),
+    U64(u64, Suffixed),
+    U128(u128, Suffixed),
+    Usize(usize, Suffixed),
+    I8(i8, Suffixed),
+    I16(i16, Suffixed),
+    I32(i32, Suffixed),
+    I64(i64, Suffixed),
+    I128(i128, Suffixed),
+    Isize(isize, Suffixed),
+    F32(f32, Suffixed),
+    F64(f64, Suffixed),
 }
 
 impl FromStr for Literal {
@@ -95,11 +102,10 @@ macro_rules! from_literal_impl {
                 panic!("ByteCharacter is a nightly feature");
             }
             $(
-                Literal::$ident { value, suffixed } => {
-                    if *suffixed {
-                        Self::$suffixed(*value)
-                    } else {
-                        Self::$unsuffixed(*value)
+                Literal::$ident(value, suffixed) => {
+                    match suffixed {
+                        Suffixed::Yes => Self::$suffixed(*value),
+                        Suffixed::No => Self::$unsuffixed(*value),
                     }
                 }
             )*
