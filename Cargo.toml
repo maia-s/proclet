@@ -13,12 +13,14 @@ categories = ["parsing", "development-tools::procedural-macro-helpers"]
 default = ["proc-macro"]
 proc-macro = []
 proc-macro2 = ["dep:proc-macro2"]
+quote = ["dep:quote", "proc-macro2"]
 
 # only used for documentation feature tags
 nightly = []
 
 [dependencies]
 proc-macro2 = { version = "1.0", optional = true }
+quote = { version = "1.0", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

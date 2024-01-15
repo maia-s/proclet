@@ -211,3 +211,12 @@ impl From<&Literal> for proc_macro2::TokenTree {
         proc_macro2::Literal::from(value).into()
     }
 }
+
+#[cfg(feature = "quote")]
+impl quote::ToTokens for Literal {
+    #[inline]
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let tt: proc_macro2::TokenTree = self.into();
+        tt.to_tokens(tokens);
+    }
+}
