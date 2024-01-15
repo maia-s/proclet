@@ -6,6 +6,7 @@ authors = ["Maia S. R."]
 license = "MIT OR Apache-2.0 OR Zlib"
 description = "Make lightweight proc macros"
 repository = "https://github.com/maia-s/microproc"
+documentation = "https://docs.rs/microproc"
 keywords = ["macros", "proc-macro", "lightweight"]
 categories = ["parsing", "development-tools::procedural-macro-helpers"]
 
