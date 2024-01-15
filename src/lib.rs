@@ -179,3 +179,35 @@ impl From<&Literal> for proc_macro2::Literal {
         from_literal_impl!([value])
     }
 }
+
+#[cfg(feature = "proc-macro")]
+impl From<Literal> for proc_macro::TokenTree {
+    #[inline]
+    fn from(value: Literal) -> Self {
+        proc_macro::Literal::from(value).into()
+    }
+}
+
+#[cfg(feature = "proc-macro")]
+impl From<&Literal> for proc_macro::TokenTree {
+    #[inline]
+    fn from(value: &Literal) -> Self {
+        proc_macro::Literal::from(value).into()
+    }
+}
+
+#[cfg(feature = "proc-macro2")]
+impl From<Literal> for proc_macro2::TokenTree {
+    #[inline]
+    fn from(value: Literal) -> Self {
+        proc_macro2::Literal::from(value).into()
+    }
+}
+
+#[cfg(feature = "proc-macro2")]
+impl From<&Literal> for proc_macro2::TokenTree {
+    #[inline]
+    fn from(value: &Literal) -> Self {
+        proc_macro2::Literal::from(value).into()
+    }
+}
