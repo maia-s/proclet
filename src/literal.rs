@@ -2,9 +2,16 @@ use crate::span::{IncompatibleSpanError, Span, WrappedSpan};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Suffixed {
+pub enum IsSuffixed {
     No,
     Yes,
+}
+
+impl From<IsSuffixed> for bool {
+    #[inline]
+    fn from(value: IsSuffixed) -> Self {
+        value == IsSuffixed::Yes
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -13,20 +20,20 @@ pub enum LiteralValue {
     ByteString(Vec<u8>),
     Character(char),
     ByteCharacter(u8),
-    U8(u8, Suffixed),
-    U16(u16, Suffixed),
-    U32(u32, Suffixed),
-    U64(u64, Suffixed),
-    U128(u128, Suffixed),
-    Usize(usize, Suffixed),
-    I8(i8, Suffixed),
-    I16(i16, Suffixed),
-    I32(i32, Suffixed),
-    I64(i64, Suffixed),
-    I128(i128, Suffixed),
-    Isize(isize, Suffixed),
-    F32(f32, Suffixed),
-    F64(f64, Suffixed),
+    U8(u8, IsSuffixed),
+    U16(u16, IsSuffixed),
+    U32(u32, IsSuffixed),
+    U64(u64, IsSuffixed),
+    U128(u128, IsSuffixed),
+    Usize(usize, IsSuffixed),
+    I8(i8, IsSuffixed),
+    I16(i16, IsSuffixed),
+    I32(i32, IsSuffixed),
+    I64(i64, IsSuffixed),
+    I128(i128, IsSuffixed),
+    Isize(isize, IsSuffixed),
+    F32(f32, IsSuffixed),
+    F64(f64, IsSuffixed),
 }
 
 pub struct Literal {
@@ -137,8 +144,8 @@ macro_rules! from_literal_impl {
             $(
                 LiteralValue::$ident(value, suffixed) => {
                     match suffixed {
-                        Suffixed::Yes => Self::$suffixed(*value),
-                        Suffixed::No => Self::$unsuffixed(*value),
+                        IsSuffixed::Yes => Self::$suffixed(*value),
+                        IsSuffixed::No => Self::$unsuffixed(*value),
                     }
                 }
             )*
