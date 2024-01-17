@@ -226,6 +226,38 @@ impl FromStr for LiteralValue {
             }
         }
 
+        fn parse_byte_escape(input: &mut &[u8]) -> Result<u8, LiteralValueParseError> {
+            assert_eq!(input[0], b'\\');
+            if input.len() >= 2 {
+                let escape = input[1];
+                *input = &input[2..];
+                match escape {
+                    b'\'' => Ok(b'\''),
+                    b'\"' => Ok(b'\"'),
+                    b'\\' => Ok(b'\\'),
+                    b'\0' => Ok(b'\0'),
+                    b'n' => Ok(b'\n'),
+                    b'r' => Ok(b'\r'),
+                    b't' => Ok(b'\t'),
+                    _ => Err(LiteralValueParseError::UnrecognizedCharEscape),
+                }
+            } else {
+                Err(LiteralValueParseError::UnrecognizedCharEscape)
+            }
+        }
+
+        fn parse_byte(input: &mut &[u8]) -> Result<u8, LiteralValueParseError> {
+            if !input.is_empty() {
+                if input[0] == b'\\' {
+                    Ok(parse_byte_escape(&mut &input[1..input.len() - 1])?)
+                } else {
+                    Ok(input[0])
+                }
+            } else {
+                Err(LiteralValueParseError::InvalidInput)
+            }
+        }
+
         fn parse_char_escape(
             input: &mut &[u8],
             escapes: Escapes,
@@ -368,7 +400,26 @@ impl FromStr for LiteralValue {
                 Ok(LiteralValue::String(s.to_owned()))
             }
 
-            b'b' => todo!("byte char/byte string/raw byte string"),
+            b'b' => {
+                input = &input[1..];
+                if !input.is_empty() {
+                    match input[0] {
+                        b'\'' => {
+                            if input.len() > 1 && input[input.len() - 1] == b'\'' {
+                                parse_byte(&mut &input[1..input.len() - 1])
+                                    .map(LiteralValue::ByteCharacter)
+                            } else {
+                                Err(LiteralValueParseError::InvalidInput)
+                            }
+                        }
+
+                        _ => todo!("byte char/byte string/raw byte string"),
+                    }
+                } else {
+                    Err(LiteralValueParseError::InvalidInput)
+                }
+            }
+
             b'0'..=b'9' => todo!("i*/u*/f32/f64"),
             _ => todo!(),
         }
