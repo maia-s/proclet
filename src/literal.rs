@@ -2,7 +2,7 @@ use crate::span::{IncompatibleSpanError, Span, WrappedSpan};
 use std::{
     error::Error,
     fmt::{self, Display},
-    str::FromStr,
+    str::{self, FromStr},
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -354,7 +354,20 @@ impl FromStr for LiteralValue {
                 }
             }
 
-            b'r' => todo!("raw string"),
+            b'r' => {
+                let mut s = &s[1..];
+                while let Some(ss) = s.strip_prefix('#') {
+                    s = ss
+                        .strip_suffix('#')
+                        .ok_or(LiteralValueParseError::InvalidInput)?;
+                }
+                let s = s
+                    .strip_prefix('"')
+                    .and_then(|s| s.strip_suffix('"'))
+                    .ok_or(LiteralValueParseError::InvalidInput)?;
+                Ok(LiteralValue::String(s.to_owned()))
+            }
+
             b'b' => todo!("byte char/byte string/raw byte string"),
             b'0'..=b'9' => todo!("i*/u*/f32/f64"),
             _ => todo!(),
