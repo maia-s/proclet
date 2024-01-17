@@ -169,6 +169,14 @@ pub struct Literal {
 
 impl Literal {
     #[inline]
+    pub fn new(value: LiteralValue, span: impl Span) -> Self {
+        Self {
+            value,
+            span: span.into(),
+        }
+    }
+
+    #[inline]
     pub const fn value(&self) -> &LiteralValue {
         &self.value
     }
