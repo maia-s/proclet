@@ -6,13 +6,19 @@ use std::str::FromStr;
 #[cfg(feature = "proc-macro")]
 extern crate proc_macro;
 
-mod alias {
+mod span {
     // Span can be converted from proc-macro to proc-macro2, but not the other way,
     // so prefer proc-macro's
     #[cfg(feature = "proc-macro")]
-    pub type Span = proc_macro::Span;
+    pub type SpanAlias = proc_macro::Span;
     #[cfg(all(feature = "proc-macro2", not(feature = "proc-macro")))]
-    pub type Span = proc_macro2::Span;
+    pub type SpanAlias = proc_macro2::Span;
+
+    pub trait Span: From<SpanAlias> {}
+    #[cfg(feature = "proc-macro")]
+    impl Span for proc_macro::Span {}
+    #[cfg(feature = "proc-macro2")]
+    impl Span for proc_macro2::Span {}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -45,7 +51,7 @@ pub enum LiteralValue {
 
 pub struct Literal {
     value: LiteralValue,
-    span: alias::Span,
+    span: span::SpanAlias,
 }
 
 impl Literal {
@@ -54,15 +60,8 @@ impl Literal {
         &self.value
     }
 
-    #[cfg(feature = "proc-macro")]
     #[inline]
-    pub fn span(&self) -> proc_macro::Span {
-        self.span
-    }
-
-    #[cfg(feature = "proc-macro2")]
-    #[inline]
-    pub fn span2(&self) -> proc_macro2::Span {
+    pub fn span<S: span::Span>(&self) -> S {
         self.span.into()
     }
 }
