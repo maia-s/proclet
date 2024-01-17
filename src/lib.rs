@@ -48,11 +48,17 @@ impl Literal {
         &self.value
     }
 
+    /// Get the associated span of this literal. You can get either a `proc_macro::Span`
+    /// or a `proc_macro2::Span` if the corresponding crate features are enabled.
+    /// This may fail if the span originates from a `proc_macro2::Span` and you're trying
+    /// to get a `proc_macro::Span`.
     #[inline]
     pub fn span<S: Span>(&self) -> Result<S, S::Error> {
         self.span.try_into()
     }
 
+    /// Set the associated span of this literal. You can set either a `proc_macro::Span`
+    /// or a `proc_macro2::Span` if the corresponding crate features are enabled.
     #[inline]
     pub fn set_span(&mut self, span: impl Span) {
         self.span = span.into();
