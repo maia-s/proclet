@@ -1,5 +1,9 @@
 use crate::span::{IncompatibleSpanError, Span, WrappedSpan};
-use std::str::FromStr;
+use std::{
+    error::Error,
+    fmt::{self, Display},
+    str::FromStr,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IsSuffixed {
@@ -11,6 +15,38 @@ impl From<IsSuffixed> for bool {
     #[inline]
     fn from(value: IsSuffixed) -> Self {
         value == IsSuffixed::Yes
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum LiteralValueIntError {
+    WrongType,
+    OutOfRange,
+}
+
+impl Error for LiteralValueIntError {}
+
+impl Display for LiteralValueIntError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::WrongType => "wrong type",
+                Self::OutOfRange => "out of range",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct WrongTypeError;
+
+impl Error for WrongTypeError {}
+
+impl Display for WrongTypeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "wrong type")
     }
 }
 
@@ -34,6 +70,96 @@ pub enum LiteralValue {
     Isize(isize, IsSuffixed),
     F32(f32, IsSuffixed),
     F64(f64, IsSuffixed),
+}
+
+impl LiteralValue {
+    #[inline]
+    pub const fn is_suffixed(&self) -> Option<bool> {
+        match self {
+            Self::U8(_, is)
+            | Self::U16(_, is)
+            | Self::U32(_, is)
+            | Self::U64(_, is)
+            | Self::U128(_, is)
+            | Self::Usize(_, is)
+            | Self::I8(_, is)
+            | Self::I16(_, is)
+            | Self::I32(_, is)
+            | Self::I64(_, is)
+            | Self::I128(_, is)
+            | Self::Isize(_, is)
+            | Self::F32(_, is)
+            | Self::F64(_, is) => Some(matches!(is, IsSuffixed::Yes)),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn uint_value(&self) -> Result<u128, LiteralValueIntError> {
+        match self {
+            Self::U8(value, _) => Ok((*value) as _),
+            Self::U16(value, _) => Ok((*value) as _),
+            Self::U32(value, _) => Ok((*value) as _),
+            Self::U64(value, _) => Ok((*value) as _),
+            Self::U128(value, _) => Ok(*value),
+            Self::Usize(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::I8(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::I16(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::I32(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::I64(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::I128(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::Isize(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            _ => Err(LiteralValueIntError::WrongType),
+        }
+    }
+
+    #[inline]
+    pub fn int_value(&self) -> Result<i128, LiteralValueIntError> {
+        match self {
+            Self::U8(value, _) => Ok((*value) as _),
+            Self::U16(value, _) => Ok((*value) as _),
+            Self::U32(value, _) => Ok((*value) as _),
+            Self::U64(value, _) => Ok((*value) as _),
+            Self::U128(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::Usize(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            Self::I8(value, _) => Ok((*value) as _),
+            Self::I16(value, _) => Ok((*value) as _),
+            Self::I32(value, _) => Ok((*value) as _),
+            Self::I64(value, _) => Ok((*value) as _),
+            Self::I128(value, _) => Ok(*value),
+            Self::Isize(value, _) => (*value)
+                .try_into()
+                .map_err(|_| LiteralValueIntError::OutOfRange),
+            _ => Err(LiteralValueIntError::WrongType),
+        }
+    }
+
+    #[inline]
+    pub fn float_value(&self) -> Result<f64, WrongTypeError> {
+        match self {
+            Self::F32(value, _) => Ok((*value) as _),
+            Self::F64(value, _) => Ok(*value),
+            _ => Err(WrongTypeError),
+        }
+    }
 }
 
 pub struct Literal {
