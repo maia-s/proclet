@@ -50,6 +50,35 @@ impl Display for WrongTypeError {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum LiteralValueParseError {
+    UnrecognizedByteEscape,
+    UnrecognizedCharEscape,
+    InvalidUnicodeEscape,
+    InvalidHexDigit,
+    InvalidOctDigit,
+    InvalidInput,
+}
+
+impl Error for LiteralValueParseError {}
+
+impl Display for LiteralValueParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::UnrecognizedByteEscape => "unrecognized byte escape",
+                Self::UnrecognizedCharEscape => "unrecognized character escape",
+                Self::InvalidUnicodeEscape => "invalid unicode escape",
+                Self::InvalidHexDigit => "invalid hex digit",
+                Self::InvalidOctDigit => "invalid oct digit",
+                Self::InvalidInput => "invalid input",
+            }
+        )
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub enum LiteralValue {
     String(String),
@@ -162,6 +191,130 @@ impl LiteralValue {
     }
 }
 
+impl FromStr for LiteralValue {
+    type Err = LiteralValueParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut input = s.as_bytes();
+
+        fn hex_digit(b: u8) -> Result<u8, LiteralValueParseError> {
+            match b {
+                b'0'..=b'9' => Ok(b - b'0'),
+                b'a'..=b'f' => Ok(b - b'a' + 10),
+                b'A'..=b'F' => Ok(b - b'A' + 10),
+                _ => Err(LiteralValueParseError::InvalidHexDigit),
+            }
+        }
+
+        fn oct_digit(b: u8) -> Result<u8, LiteralValueParseError> {
+            match b {
+                b'0'..=b'7' => Ok(b - b'0'),
+                _ => Err(LiteralValueParseError::InvalidHexDigit),
+            }
+        }
+
+        fn parse_char_escape(input: &mut &[u8]) -> Result<char, LiteralValueParseError> {
+            assert_eq!(input[0], b'\\');
+            if input.len() >= 2 {
+                let escape = input[1];
+                *input = &input[2..];
+                match escape {
+                    b'\'' => Ok('\''),
+                    b'\"' => Ok('\"'),
+                    b'\\' => Ok('\\'),
+                    b'\0' => Ok('\0'),
+                    b'n' => Ok('\n'),
+                    b'r' => Ok('\r'),
+                    b't' => Ok('\t'),
+                    _ => {
+                        if input.len() >= 2 && escape == b'x' {
+                            // \x..
+                            *input = &input[2..];
+                            Ok(char::from(oct_digit(input[2])? << 4 | hex_digit(input[3])?))
+                        } else if input.len() > 2 && escape == b'u' && input[0] == b'{' {
+                            // \u{...}
+                            *input = &input[1..];
+                            let mut value = 0;
+                            while !input.is_empty() && input[0] != b'}' {
+                                *input = &input[1..];
+                                value = value << 8 | hex_digit(input[0])? as u32;
+                            }
+                            if input[0] == b'}' {
+                                *input = &input[1..];
+                                Ok(char::from_u32(value)
+                                    .ok_or(LiteralValueParseError::InvalidUnicodeEscape)?)
+                            } else {
+                                Err(LiteralValueParseError::InvalidInput)
+                            }
+                        } else {
+                            Err(LiteralValueParseError::UnrecognizedCharEscape)
+                        }
+                    }
+                }
+            } else {
+                Err(LiteralValueParseError::UnrecognizedCharEscape)
+            }
+        }
+
+        fn parse_char(
+            input: &mut &[u8],
+            enable_escapes: bool,
+        ) -> Result<char, LiteralValueParseError> {
+            if enable_escapes && !input.is_empty() && input[0] == b'\\' {
+                parse_char_escape(input)
+            } else if !input.is_empty() {
+                // the input is known valid utf-8 so we can skip some checks
+                match input[0] {
+                    0x00..=0x7f => {
+                        *input = &input[1..];
+                        Ok(char::from(input[0]))
+                    }
+                    0xc0..=0xdf => {
+                        let value = ((input[0] & 0x1f) as u32) << 6 | (input[1] & 0x3f) as u32;
+                        *input = &input[2..];
+                        Ok(char::from_u32(value).unwrap())
+                    }
+                    0xe0..=0xef => {
+                        let value = (((input[0] & 0x0f) as u32) << 6 | (input[1] & 0x3f) as u32)
+                            << 6
+                            | (input[2] & 0x3f) as u32;
+                        *input = &input[3..];
+                        Ok(char::from_u32(value).unwrap())
+                    }
+                    0xf0..=0xf7 => {
+                        let value = ((((input[0] & 0x07) as u32) << 6 | (input[1] & 0x3f) as u32)
+                            << 6
+                            | (input[2] & 0x3f) as u32)
+                            << 6
+                            | (input[3] & 0x3f) as u32;
+                        *input = &input[4..];
+                        Ok(char::from_u32(value).unwrap())
+                    }
+                    _ => unreachable!(),
+                }
+            } else {
+                Err(LiteralValueParseError::InvalidInput)
+            }
+        }
+
+        match input[0] {
+            b'\'' => {
+                if input[input.len() - 1] == b'\'' {
+                    parse_char(&mut &input[1..input.len() - 1], true).map(LiteralValue::Character)
+                } else {
+                    Err(LiteralValueParseError::InvalidInput)
+                }
+            }
+
+            b'\"' => todo!("string"),
+            b'r' => todo!("raw string"),
+            b'b' => todo!("byte char/byte string/raw byte string"),
+            b'0'..=b'9' => todo!("i*/u*/f32/f64"),
+            _ => todo!(),
+        }
+    }
+}
+
 pub struct Literal {
     value: LiteralValue,
     span: WrappedSpan,
@@ -200,14 +353,6 @@ impl Literal {
     }
 }
 
-impl FromStr for Literal {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        todo!()
-    }
-}
-
 #[cfg(feature = "proc-macro")]
 impl From<proc_macro::Literal> for Literal {
     #[inline]
@@ -220,9 +365,10 @@ impl From<proc_macro::Literal> for Literal {
 impl From<&proc_macro::Literal> for Literal {
     #[inline]
     fn from(value: &proc_macro::Literal) -> Self {
-        let mut lit = Self::from_str(&value.to_string()).unwrap();
-        lit.span = value.span().into();
-        lit
+        Literal::new(
+            LiteralValue::from_str(&value.to_string()).unwrap(),
+            value.span(),
+        )
     }
 }
 
@@ -238,9 +384,10 @@ impl From<proc_macro2::Literal> for Literal {
 impl From<&proc_macro2::Literal> for Literal {
     #[inline]
     fn from(value: &proc_macro2::Literal) -> Self {
-        let mut lit = Self::from_str(&value.to_string()).unwrap();
-        lit.span = value.span().into();
-        lit
+        Literal::new(
+            LiteralValue::from_str(&value.to_string()).unwrap(),
+            value.span(),
+        )
     }
 }
 
