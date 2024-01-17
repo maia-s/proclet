@@ -7,4 +7,4 @@ extern crate proc_macro;
 mod literal;
 mod span;
 
-pub use literal::{IsSuffixed, Literal, LiteralValue};
+pub use literal::{Literal, LiteralValue, Suffixed};

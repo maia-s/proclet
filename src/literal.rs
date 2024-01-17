@@ -5,37 +5,15 @@ use std::{
     str::{self, FromStr},
 };
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum IsSuffixed {
-    No,
-    Yes,
-}
-
-impl From<IsSuffixed> for bool {
-    #[inline]
-    fn from(value: IsSuffixed) -> Self {
-        value == IsSuffixed::Yes
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
-pub enum LiteralValueIntError {
-    WrongType,
-    OutOfRange,
-}
+pub struct OutOfRangeError;
 
-impl Error for LiteralValueIntError {}
+impl Error for OutOfRangeError {}
 
-impl Display for LiteralValueIntError {
+impl Display for OutOfRangeError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::WrongType => "wrong type",
-                Self::OutOfRange => "out of range",
-            }
-        )
+        write!(f, "out of range")
     }
 }
 
@@ -45,6 +23,7 @@ pub struct WrongTypeError;
 impl Error for WrongTypeError {}
 
 impl Display for WrongTypeError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "wrong type")
     }
@@ -66,6 +45,7 @@ pub enum LiteralValueParseError {
 impl Error for LiteralValueParseError {}
 
 impl Display for LiteralValueParseError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -86,113 +66,77 @@ impl Display for LiteralValueParseError {
 }
 
 #[derive(Clone, PartialEq)]
+pub enum Suffixed {
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    I128(i128),
+    Isize(isize),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+    Usize(usize),
+    F32(f32),
+    F64(f64),
+}
+
+#[derive(Clone, PartialEq)]
 pub enum LiteralValue {
     String(String),
     ByteString(Vec<u8>),
     Character(char),
     ByteCharacter(u8),
-    U8(u8, IsSuffixed),
-    U16(u16, IsSuffixed),
-    U32(u32, IsSuffixed),
-    U64(u64, IsSuffixed),
-    U128(u128, IsSuffixed),
-    Usize(usize, IsSuffixed),
-    I8(i8, IsSuffixed),
-    I16(i16, IsSuffixed),
-    I32(i32, IsSuffixed),
-    I64(i64, IsSuffixed),
-    I128(i128, IsSuffixed),
-    Isize(isize, IsSuffixed),
-    F32(f32, IsSuffixed),
-    F64(f64, IsSuffixed),
+    Int(u128),
+    Float(f64),
+    Suffixed(Suffixed),
 }
 
 impl LiteralValue {
     #[inline]
-    pub const fn is_suffixed(&self) -> Option<bool> {
-        match self {
-            Self::U8(_, is)
-            | Self::U16(_, is)
-            | Self::U32(_, is)
-            | Self::U64(_, is)
-            | Self::U128(_, is)
-            | Self::Usize(_, is)
-            | Self::I8(_, is)
-            | Self::I16(_, is)
-            | Self::I32(_, is)
-            | Self::I64(_, is)
-            | Self::I128(_, is)
-            | Self::Isize(_, is)
-            | Self::F32(_, is)
-            | Self::F64(_, is) => Some(matches!(is, IsSuffixed::Yes)),
-            _ => None,
-        }
+    pub const fn is_suffixed(&self) -> bool {
+        matches!(self, Self::Suffixed(_))
     }
 
     #[inline]
-    pub fn uint_value(&self) -> Result<u128, LiteralValueIntError> {
-        match self {
-            Self::U8(value, _) => Ok((*value) as _),
-            Self::U16(value, _) => Ok((*value) as _),
-            Self::U32(value, _) => Ok((*value) as _),
-            Self::U64(value, _) => Ok((*value) as _),
-            Self::U128(value, _) => Ok(*value),
-            Self::Usize(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::I8(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::I16(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::I32(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::I64(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::I128(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::Isize(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            _ => Err(LiteralValueIntError::WrongType),
-        }
+    pub fn to_unsuffixed(&self) -> Result<Self, OutOfRangeError> {
+        self.clone().into_unsuffixed()
     }
 
     #[inline]
-    pub fn int_value(&self) -> Result<i128, LiteralValueIntError> {
+    pub fn into_unsuffixed(self) -> Result<Self, OutOfRangeError> {
         match self {
-            Self::U8(value, _) => Ok((*value) as _),
-            Self::U16(value, _) => Ok((*value) as _),
-            Self::U32(value, _) => Ok((*value) as _),
-            Self::U64(value, _) => Ok((*value) as _),
-            Self::U128(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::Usize(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            Self::I8(value, _) => Ok((*value) as _),
-            Self::I16(value, _) => Ok((*value) as _),
-            Self::I32(value, _) => Ok((*value) as _),
-            Self::I64(value, _) => Ok((*value) as _),
-            Self::I128(value, _) => Ok(*value),
-            Self::Isize(value, _) => (*value)
-                .try_into()
-                .map_err(|_| LiteralValueIntError::OutOfRange),
-            _ => Err(LiteralValueIntError::WrongType),
-        }
-    }
-
-    #[inline]
-    pub fn float_value(&self) -> Result<f64, WrongTypeError> {
-        match self {
-            Self::F32(value, _) => Ok((*value) as _),
-            Self::F64(value, _) => Ok(*value),
-            _ => Err(WrongTypeError),
+            Self::Suffixed(s) => match s {
+                Suffixed::I8(value) => {
+                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
+                }
+                Suffixed::I16(value) => {
+                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
+                }
+                Suffixed::I32(value) => {
+                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
+                }
+                Suffixed::I64(value) => {
+                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
+                }
+                Suffixed::I128(value) => {
+                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
+                }
+                Suffixed::Isize(value) => {
+                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
+                }
+                Suffixed::U8(value) => Ok(Self::Int(value as _)),
+                Suffixed::U16(value) => Ok(Self::Int(value as _)),
+                Suffixed::U32(value) => Ok(Self::Int(value as _)),
+                Suffixed::U64(value) => Ok(Self::Int(value as _)),
+                Suffixed::U128(value) => Ok(Self::Int(value)),
+                Suffixed::Usize(value) => Ok(Self::Int(value as _)),
+                Suffixed::F32(value) => Ok(Self::Float(value as _)),
+                Suffixed::F64(value) => Ok(Self::Float(value)),
+            },
+            other => Ok(other),
         }
     }
 }
@@ -244,31 +188,14 @@ impl FromStr for LiteralValue {
                 ($($s:literal => $t:ident $(as $as:ident)?),* $(,)?) => {
                     match suffix {
                         $(
-                            $s => Ok(LiteralValue::$t(
+                            $s => Ok(LiteralValue::Suffixed(Suffixed::$t(
                                 (value $(as $as)?)
                                     .try_into()
                                     .map_err(|_| LiteralValueParseError::ValueOutOfRange)?,
-                                IsSuffixed::Yes,
-                            )),
+                            ))),
                         )*
 
-                        b"" => {
-                            if value <= u32::MAX as u128 {
-                                if value <= u8::MAX as u128 {
-                                    Ok(LiteralValue::U8(value as u8, IsSuffixed::No))
-                                } else if value <= u16::MAX as u128 {
-                                    Ok(LiteralValue::U16(value as u16, IsSuffixed::No))
-                                } else {
-                                    Ok(LiteralValue::U32(value as u32, IsSuffixed::No))
-                                }
-                            } else {
-                                if value <= u64::MAX as u128 {
-                                    Ok(LiteralValue::U64(value as u64, IsSuffixed::No))
-                                } else {
-                                    Ok(LiteralValue::U128(value, IsSuffixed::No))
-                                }
-                            }
-                        }
+                        b"" => Ok(LiteralValue::Int(value)),
 
                         _ => unreachable!(),
                     }
@@ -716,38 +643,33 @@ macro_rules! from_literal_impl {
     (@ [$($expr:tt)*]$([fallible:$fallible:literal])?$([infallible:$infallible:literal])?) => {
         from_literal_impl! {
             @ [$($expr)*]$([fallible:$fallible])?$([infallible:$infallible])?
-            U8, u8_suffixed, u8_unsuffixed,
-            U16, u16_suffixed, u16_unsuffixed,
-            U32, u32_suffixed, u32_unsuffixed,
-            U64, u64_suffixed, u64_unsuffixed,
-            U128, u128_suffixed, u128_unsuffixed,
-            Usize, usize_suffixed, usize_unsuffixed,
-            I8, i8_suffixed, i8_unsuffixed,
-            I16, i16_suffixed, i16_unsuffixed,
-            I32, i32_suffixed, i32_unsuffixed,
-            I64, i64_suffixed, i64_unsuffixed,
-            I128, i128_suffixed, i128_unsuffixed,
-            Isize, isize_suffixed, isize_unsuffixed,
-            F32, f32_suffixed, f32_unsuffixed,
-            F64, f64_suffixed, f64_unsuffixed,
+            I8, i8_suffixed,
+            I16, i16_suffixed,
+            I32, i32_suffixed,
+            I64, i64_suffixed,
+            I128, i128_suffixed,
+            Isize, isize_suffixed,
+            U8, u8_suffixed,
+            U16, u16_suffixed,
+            U32, u32_suffixed,
+            U64, u64_suffixed,
+            U128, u128_suffixed,
+            Usize, usize_suffixed,
+            F32, f32_suffixed,
+            F64, f64_suffixed,
         }
     };
 
-    (@ [$expr:expr]$([fallible:$fallible:literal])?$([infallible:$infallible:literal])? $($ident:ident, $suffixed:ident, $unsuffixed:ident),* $(,)?) => {{
+    (@ [$expr:expr]$([fallible:$fallible:literal])?$([infallible:$infallible:literal])? $($ident:ident, $suffixed:ident),* $(,)?) => {{
         let expr = $expr;
         let mut output = match &expr.value {
             LiteralValue::String(s) => Self::string(s),
             LiteralValue::ByteString(s) => Self::byte_string(s),
             LiteralValue::Character(c) => Self::character(*c),
-            LiteralValue::ByteCharacter(b) => format!("b'\\x{:02x}'", b).parse().unwrap(),
-            $(
-                LiteralValue::$ident(value, suffixed) => {
-                    match suffixed {
-                        IsSuffixed::Yes => Self::$suffixed(*value),
-                        IsSuffixed::No => Self::$unsuffixed(*value),
-                    }
-                }
-            )*
+            LiteralValue::ByteCharacter(b) => format!("b'\\x{b:02x}'").parse().unwrap(),
+            LiteralValue::Int(value) => Self::u128_unsuffixed(*value),
+            LiteralValue::Float(value) => Self::f64_unsuffixed(*value),
+            $( LiteralValue::Suffixed(Suffixed::$ident(value)) => Self::$suffixed(*value), )*
         };
         $(
             let _ = $fallible;
