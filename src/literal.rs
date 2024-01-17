@@ -426,7 +426,25 @@ impl FromStr for LiteralValue {
                             }
                         }
 
-                        _ => todo!("byte char/byte string/raw byte string"),
+                        b'r' => {
+                            input = &input[2..];
+                            while input.len() > 1
+                                && input[0] == b'#'
+                                && input[input.len() - 1] == b'#'
+                            {
+                                input = &input[1..input.len() - 1];
+                            }
+                            if input.len() > 1 && input[0] == b'"' && input[input.len() - 1] == b'"'
+                            {
+                                Ok(LiteralValue::ByteString(
+                                    input[1..input.len() - 1].to_owned(),
+                                ))
+                            } else {
+                                Err(LiteralValueParseError::InvalidInput)
+                            }
+                        }
+
+                        _ => Err(LiteralValueParseError::InvalidInput),
                     }
                 } else {
                     Err(LiteralValueParseError::InvalidInput)
