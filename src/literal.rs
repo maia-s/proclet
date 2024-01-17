@@ -55,9 +55,12 @@ pub enum LiteralValueParseError {
     UnrecognizedByteEscape,
     UnrecognizedCharEscape,
     InvalidUnicodeEscape,
-    InvalidHexDigit,
+    InvalidBinDigit,
     InvalidOctDigit,
+    InvalidDecDigit,
+    InvalidHexDigit,
     InvalidInput,
+    ValueOutOfRange,
 }
 
 impl Error for LiteralValueParseError {}
@@ -71,9 +74,12 @@ impl Display for LiteralValueParseError {
                 Self::UnrecognizedByteEscape => "unrecognized byte escape",
                 Self::UnrecognizedCharEscape => "unrecognized character escape",
                 Self::InvalidUnicodeEscape => "invalid unicode escape",
+                Self::InvalidBinDigit => "invalid binary digit",
+                Self::InvalidOctDigit => "invalid octal digit",
+                Self::InvalidDecDigit => "invalid decimal digit",
                 Self::InvalidHexDigit => "invalid hex digit",
-                Self::InvalidOctDigit => "invalid oct digit",
                 Self::InvalidInput => "invalid input",
+                Self::ValueOutOfRange => "value out of range",
             }
         )
     }
@@ -203,6 +209,20 @@ impl FromStr for LiteralValue {
             String,
         }
 
+        fn bin_digit(b: u8) -> Result<u8, LiteralValueParseError> {
+            match b {
+                b'0'..=b'1' => Ok(b - b'0'),
+                _ => Err(LiteralValueParseError::InvalidBinDigit),
+            }
+        }
+
+        fn oct_digit(b: u8) -> Result<u8, LiteralValueParseError> {
+            match b {
+                b'0'..=b'7' => Ok(b - b'0'),
+                _ => Err(LiteralValueParseError::InvalidHexDigit),
+            }
+        }
+
         fn hex_digit(b: u8) -> Result<u8, LiteralValueParseError> {
             match b {
                 b'0'..=b'9' => Ok(b - b'0'),
@@ -212,11 +232,112 @@ impl FromStr for LiteralValue {
             }
         }
 
-        fn oct_digit(b: u8) -> Result<u8, LiteralValueParseError> {
+        fn dec_digit(b: u8) -> Result<u8, LiteralValueParseError> {
             match b {
-                b'0'..=b'7' => Ok(b - b'0'),
-                _ => Err(LiteralValueParseError::InvalidHexDigit),
+                b'0'..=b'9' => Ok(b - b'0'),
+                _ => Err(LiteralValueParseError::InvalidDecDigit),
             }
+        }
+
+        fn from_int(value: u128, suffix: &[u8]) -> Result<LiteralValue, LiteralValueParseError> {
+            macro_rules! make {
+                ($($s:literal => $t:ident $(as $as:ident)?),* $(,)?) => {
+                    match suffix {
+                        $(
+                            $s => Ok(LiteralValue::$t(
+                                (value $(as $as)?)
+                                    .try_into()
+                                    .map_err(|_| LiteralValueParseError::ValueOutOfRange)?,
+                                IsSuffixed::Yes,
+                            )),
+                        )*
+
+                        b"" => {
+                            if value <= u32::MAX as u128 {
+                                if value <= u8::MAX as u128 {
+                                    Ok(LiteralValue::U8(value as u8, IsSuffixed::No))
+                                } else if value <= u16::MAX as u128 {
+                                    Ok(LiteralValue::U16(value as u16, IsSuffixed::No))
+                                } else {
+                                    Ok(LiteralValue::U32(value as u32, IsSuffixed::No))
+                                }
+                            } else {
+                                if value <= u64::MAX as u128 {
+                                    Ok(LiteralValue::U64(value as u64, IsSuffixed::No))
+                                } else {
+                                    Ok(LiteralValue::U128(value, IsSuffixed::No))
+                                }
+                            }
+                        }
+
+                        _ => unreachable!(),
+                    }
+                };
+            }
+            make! {
+                b"u8" => U8,
+                b"u16" => U16,
+                b"u32" => U32,
+                b"u64" => U64,
+                b"u128" => U128,
+                b"usize" => Usize,
+                b"i8" => I8,
+                b"i16" => I16,
+                b"i32" => I32,
+                b"i64" => I64,
+                b"i128" => I128,
+                b"isize" => Isize,
+                b"f32" => F32 as f32,
+                b"f64" => F64 as f64,
+            }
+        }
+
+        fn parse_suffix<'a>(input: &mut &'a [u8], include_float: bool) -> &'a [u8] {
+            if input.len() >= 2 {
+                let suffix = &input[input.len() - 2..];
+                match suffix {
+                    b"u8" | b"i8" => {
+                        *input = &input[..input.len() - 2];
+                        return suffix;
+                    }
+                    _ => (),
+                }
+                if input.len() >= 3 {
+                    let suffix = &input[input.len() - 3..];
+                    match suffix {
+                        b"u16" | b"u32" | b"u64" | b"i16" | b"i32" | b"i64" => {
+                            *input = &input[..input.len() - 3];
+                            return suffix;
+                        }
+                        b"f32" | b"f64" if include_float => {
+                            *input = &input[..input.len() - 3];
+                            return suffix;
+                        }
+                        _ => (),
+                    }
+                    if input.len() >= 4 {
+                        let suffix = &input[input.len() - 4..];
+                        match suffix {
+                            b"u128" | b"i128" => {
+                                *input = &input[..input.len() - 4];
+                                return suffix;
+                            }
+                            _ => (),
+                        }
+                        if input.len() >= 5 {
+                            let suffix = &input[input.len() - 5..];
+                            match suffix {
+                                b"usize" | b"isize" => {
+                                    *input = &input[..input.len() - 5];
+                                    return suffix;
+                                }
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+            }
+            &input[0..0]
         }
 
         fn parse_byte_escape(input: &mut &[u8]) -> Result<u8, LiteralValueParseError> {
@@ -444,8 +565,70 @@ impl FromStr for LiteralValue {
                 }
             }
 
-            b'0'..=b'9' => todo!("i*/u*/f32/f64"),
-            _ => todo!(),
+            b'0'..=b'9' => {
+                if input[0] == b'0' && input.len() > 1 {
+                    match input[1] {
+                        b'b' | b'B' => {
+                            let suffix = parse_suffix(&mut &input[2..], true);
+                            if !input.is_empty() {
+                                let mut value: u128 = bin_digit(input[0])?.into();
+                                for &digit in &input[1..] {
+                                    if digit != b'_' {
+                                        value = value
+                                            .checked_shl(1)
+                                            .ok_or(LiteralValueParseError::ValueOutOfRange)?
+                                            | bin_digit(digit)? as u128;
+                                    }
+                                }
+                                return from_int(value, suffix);
+                            } else {
+                                return Err(LiteralValueParseError::InvalidInput);
+                            }
+                        }
+
+                        b'o' | b'O' => {
+                            let suffix = parse_suffix(&mut &input[2..], true);
+                            if !input.is_empty() {
+                                let mut value: u128 = oct_digit(input[2])?.into();
+                                for &digit in &input[3..] {
+                                    if digit != b'_' {
+                                        value = value
+                                            .checked_shl(3)
+                                            .ok_or(LiteralValueParseError::ValueOutOfRange)?
+                                            | oct_digit(digit)? as u128;
+                                    }
+                                }
+                                return from_int(value, suffix);
+                            } else {
+                                return Err(LiteralValueParseError::InvalidInput);
+                            }
+                        }
+
+                        b'x' | b'X' => {
+                            let suffix = parse_suffix(&mut &input[2..], false);
+                            if !input.is_empty() {
+                                let mut value: u128 = hex_digit(input[2])?.into();
+                                for &digit in &input[3..] {
+                                    if digit != b'_' {
+                                        value = value
+                                            .checked_shl(4)
+                                            .ok_or(LiteralValueParseError::ValueOutOfRange)?
+                                            | hex_digit(digit)? as u128;
+                                    }
+                                }
+                                return from_int(value, suffix);
+                            } else {
+                                return Err(LiteralValueParseError::InvalidInput);
+                            }
+                        }
+
+                        _ => (),
+                    }
+                }
+                todo!("i*/u*/f32/f64")
+            }
+
+            _ => Err(LiteralValueParseError::InvalidInput),
         }
     }
 }
