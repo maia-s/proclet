@@ -51,6 +51,8 @@ impl Literal {
 
     /// Set the associated span of this literal. You can set either a `proc_macro::Span`
     /// or a `proc_macro2::Span` if the corresponding crate features are enabled.
+    /// `proc_macro::Span` is compatible with both `proc-macro` and `proc-macro2`, but
+    /// `proc_macro2::Span` can't be used with types from `proc-macro`.
     #[inline]
     pub fn set_span(&mut self, span: impl Span) {
         self.span = span.into();
