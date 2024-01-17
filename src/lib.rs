@@ -1,90 +1,13 @@
 #![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 
+use crate::span::{Span, WrappedSpan};
 use std::str::FromStr;
 
 #[cfg(feature = "proc-macro")]
 extern crate proc_macro;
 
-mod span {
-    use std::error::Error;
-    use std::fmt::{Debug, Display};
-
-    #[derive(Clone, Copy)]
-    pub struct IncompatibleSpanError;
-
-    impl Error for IncompatibleSpanError {}
-
-    impl Display for IncompatibleSpanError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "Can't convert proc_macro2::Span to proc_macro::Span")
-        }
-    }
-
-    impl Debug for IncompatibleSpanError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            Display::fmt(self, f)
-        }
-    }
-
-    #[derive(Clone, Copy)]
-    pub enum Span {
-        #[cfg(feature = "proc-macro")]
-        PM1(proc_macro::Span),
-        #[cfg(feature = "proc-macro2")]
-        PM2(proc_macro2::Span),
-    }
-
-    #[cfg(feature = "proc-macro")]
-    impl From<proc_macro::Span> for Span {
-        #[inline]
-        fn from(value: proc_macro::Span) -> Self {
-            Self::PM1(value)
-        }
-    }
-
-    #[cfg(feature = "proc-macro2")]
-    impl From<proc_macro2::Span> for Span {
-        #[inline]
-        fn from(value: proc_macro2::Span) -> Self {
-            Self::PM2(value)
-        }
-    }
-
-    #[cfg(feature = "proc-macro")]
-    impl TryFrom<Span> for proc_macro::Span {
-        type Error = IncompatibleSpanError;
-
-        #[inline]
-        fn try_from(value: Span) -> Result<Self, Self::Error> {
-            match value {
-                Span::PM1(span) => Ok(span),
-
-                #[cfg(feature = "proc-macro2")]
-                Span::PM2(_) => Err(IncompatibleSpanError),
-            }
-        }
-    }
-
-    #[cfg(feature = "proc-macro2")]
-    impl From<Span> for proc_macro2::Span {
-        #[inline]
-        fn from(value: Span) -> Self {
-            match value {
-                Span::PM2(span) => span,
-
-                #[cfg(feature = "proc-macro")]
-                Span::PM1(span) => span.into(),
-            }
-        }
-    }
-
-    pub trait SpanImpl: Into<Span> + TryFrom<Span> {}
-    #[cfg(feature = "proc-macro")]
-    impl SpanImpl for proc_macro::Span {}
-    #[cfg(feature = "proc-macro2")]
-    impl SpanImpl for proc_macro2::Span {}
-}
+mod span;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Suffixed {
@@ -116,7 +39,7 @@ pub enum LiteralValue {
 
 pub struct Literal {
     value: LiteralValue,
-    span: span::Span,
+    span: WrappedSpan,
 }
 
 impl Literal {
@@ -126,12 +49,12 @@ impl Literal {
     }
 
     #[inline]
-    pub fn span<S: span::SpanImpl>(&self) -> Result<S, S::Error> {
+    pub fn span<S: Span>(&self) -> Result<S, S::Error> {
         self.span.try_into()
     }
 
     #[inline]
-    pub fn set_span(&mut self, span: impl span::SpanImpl) {
+    pub fn set_span(&mut self, span: impl Span) {
         self.span = span.into();
     }
 }
