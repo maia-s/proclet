@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 
-use crate::span::{Span, WrappedSpan};
+use span::{IncompatibleSpanError, Span, WrappedSpan};
 use std::str::FromStr;
 
 #[cfg(feature = "proc-macro")]
@@ -110,9 +110,12 @@ impl From<&proc_macro2::Literal> for Literal {
 }
 
 macro_rules! from_literal_impl {
-    ([$($expr:tt)*]) => {
+    ([$($expr:tt)*][fallible]) => { from_literal_impl!(@ [$($expr)*][fallible:1]) };
+    ([$($expr:tt)*][infallible]) => { from_literal_impl!(@ [$($expr)*][infallible:1]) };
+
+    (@ [$($expr:tt)*]$([fallible:$fallible:literal])?$([infallible:$infallible:literal])?) => {
         from_literal_impl! {
-            @ [$($expr)*]
+            @ [$($expr)*]$([fallible:$fallible])?$([infallible:$infallible])?
             U8, u8_suffixed, u8_unsuffixed,
             U16, u16_suffixed, u16_unsuffixed,
             U32, u32_suffixed, u32_unsuffixed,
@@ -129,7 +132,8 @@ macro_rules! from_literal_impl {
             F64, f64_suffixed, f64_unsuffixed,
         }
     };
-    (@ [$expr:expr] $($ident:ident, $suffixed:ident, $unsuffixed:ident),* $(,)?) => {{
+
+    (@ [$expr:expr]$([fallible:$fallible:literal])?$([infallible:$infallible:literal])? $($ident:ident, $suffixed:ident, $unsuffixed:ident),* $(,)?) => {{
         let expr = $expr;
         let mut output = match &expr.value {
             LiteralValue::String(s) => Self::string(s),
@@ -145,24 +149,36 @@ macro_rules! from_literal_impl {
                 }
             )*
         };
-        output.set_span(expr.span().unwrap());
-        output
+        $(
+            let _ = $fallible;
+            output.set_span(expr.span()?);
+            Ok(output)
+        )?
+        $(
+            let _ = $infallible;
+            output.set_span(expr.span().unwrap());
+            output
+        )?
     }};
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<Literal> for proc_macro::Literal {
+impl TryFrom<Literal> for proc_macro::Literal {
+    type Error = IncompatibleSpanError;
+
     #[inline]
-    fn from(value: Literal) -> Self {
-        Self::from(&value)
+    fn try_from(value: Literal) -> Result<Self, Self::Error> {
+        Self::try_from(&value)
     }
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<&Literal> for proc_macro::Literal {
+impl TryFrom<&Literal> for proc_macro::Literal {
+    type Error = IncompatibleSpanError;
+
     #[inline]
-    fn from(value: &Literal) -> Self {
-        from_literal_impl!([value])
+    fn try_from(value: &Literal) -> Result<Self, Self::Error> {
+        from_literal_impl!([value][fallible])
     }
 }
 
@@ -178,23 +194,27 @@ impl From<Literal> for proc_macro2::Literal {
 impl From<&Literal> for proc_macro2::Literal {
     #[inline]
     fn from(value: &Literal) -> Self {
-        from_literal_impl!([value])
+        from_literal_impl!([value][infallible])
     }
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<Literal> for proc_macro::TokenTree {
+impl TryFrom<Literal> for proc_macro::TokenTree {
+    type Error = IncompatibleSpanError;
+
     #[inline]
-    fn from(value: Literal) -> Self {
-        proc_macro::Literal::from(value).into()
+    fn try_from(value: Literal) -> Result<Self, IncompatibleSpanError> {
+        proc_macro::Literal::try_from(value).map(|x| x.into())
     }
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<&Literal> for proc_macro::TokenTree {
+impl TryFrom<&Literal> for proc_macro::TokenTree {
+    type Error = IncompatibleSpanError;
+
     #[inline]
-    fn from(value: &Literal) -> Self {
-        proc_macro::Literal::from(value).into()
+    fn try_from(value: &Literal) -> Result<Self, IncompatibleSpanError> {
+        proc_macro::Literal::try_from(value).map(|x| x.into())
     }
 }
 
