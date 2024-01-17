@@ -129,6 +129,11 @@ impl Literal {
     pub fn span<S: span::SpanImpl>(&self) -> Result<S, S::Error> {
         self.span.try_into()
     }
+
+    #[inline]
+    pub fn set_span(&mut self, span: impl span::SpanImpl) {
+        self.span = span.into();
+    }
 }
 
 impl FromStr for Literal {
