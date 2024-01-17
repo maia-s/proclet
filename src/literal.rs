@@ -413,6 +413,19 @@ impl FromStr for LiteralValue {
                             }
                         }
 
+                        b'\"' => {
+                            if input.len() > 1 && input[input.len() - 1] == b'\"' {
+                                input = &input[1..input.len() - 1];
+                                let mut s = Vec::new();
+                                while !input.is_empty() {
+                                    s.push(parse_byte(&mut input)?);
+                                }
+                                Ok(LiteralValue::ByteString(s))
+                            } else {
+                                Err(LiteralValueParseError::InvalidInput)
+                            }
+                        }
+
                         _ => todo!("byte char/byte string/raw byte string"),
                     }
                 } else {
