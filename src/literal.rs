@@ -199,15 +199,8 @@ impl FromStr for LiteralValue {
 
         #[derive(Clone, Copy)]
         enum Escapes {
-            Off,
             Char,
             String,
-        }
-
-        impl Escapes {
-            const fn enabled(&self) -> bool {
-                !matches!(self, Self::Off)
-            }
         }
 
         fn hex_digit(b: u8) -> Result<u8, LiteralValueParseError> {
@@ -313,7 +306,7 @@ impl FromStr for LiteralValue {
             input: &mut &[u8],
             escapes: Escapes,
         ) -> Result<Option<char>, LiteralValueParseError> {
-            if escapes.enabled() && !input.is_empty() && input[0] == b'\\' {
+            if !input.is_empty() && input[0] == b'\\' {
                 if let Some(c) = parse_char_escape(input, escapes)? {
                     Ok(Some(c))
                 } else if matches!(escapes, Escapes::String) {
