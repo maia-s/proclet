@@ -364,9 +364,9 @@ impl FromStr for LiteralValue {
             } else if !input.is_empty() {
                 // the input is known valid utf-8 so we can skip some checks
                 match input[0] {
-                    0x00..=0x7f => {
+                    value @ 0x00..=0x7f => {
                         *input = &input[1..];
-                        Ok(Some(char::from(input[0])))
+                        Ok(Some(char::from(value)))
                     }
                     0xc0..=0xdf => {
                         let value = ((input[0] & 0x1f) as u32) << 6 | (input[1] & 0x3f) as u32;
