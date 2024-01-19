@@ -60,6 +60,8 @@ mod tests {
 
             !"
         );
+        check!(r"raw string");
+        check!(r#""raw string\n""#);
 
         check!(b'a');
         check!(b'\'');
@@ -79,6 +81,8 @@ mod tests {
 
             !"
         );
+        check!(br"raw byte string");
+        check!(br#""raw byte string\n""#);
 
         check!(127_i8);
         check!(32767_i16);

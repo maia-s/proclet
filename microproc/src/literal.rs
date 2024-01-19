@@ -486,7 +486,7 @@ impl FromStr for LiteralValue {
                         }
 
                         b'r' => {
-                            input = &input[2..];
+                            input = &input[1..];
                             while input.len() > 1
                                 && input[0] == b'#'
                                 && input[input.len() - 1] == b'#'
