@@ -323,34 +323,30 @@ impl FromStr for LiteralValue {
                     b'r' => Ok(Some('\r')),
                     b't' => Ok(Some('\t')),
                     b'\n' if matches!(escapes, Escapes::String) => Ok(None),
-                    _ => {
-                        if input.len() >= 2 && escape == b'x' {
-                            // \x..
-                            *input = &input[2..];
-                            Ok(Some(char::from(
-                                oct_digit(input[2])? << 4 | hex_digit(input[3])?,
-                            )))
-                        } else if input.len() > 2 && escape == b'u' && input[0] == b'{' {
-                            // \u{...}
+                    b'x' if input.len() >= 2 => {
+                        let value = oct_digit(input[0])? << 4 | hex_digit(input[1])?;
+                        *input = &input[2..];
+                        Ok(Some(char::from(value)))
+                    }
+                    b'u' if input.len() > 2 && input[0] == b'{' => {
+                        // \u{...}
+                        *input = &input[1..];
+                        let mut value = 0;
+                        while !input.is_empty() && input[0] != b'}' {
                             *input = &input[1..];
-                            let mut value = 0;
-                            while !input.is_empty() && input[0] != b'}' {
-                                *input = &input[1..];
-                                value = value << 8 | hex_digit(input[0])? as u32;
-                            }
-                            if input[0] == b'}' {
-                                *input = &input[1..];
-                                Ok(Some(
-                                    char::from_u32(value)
-                                        .ok_or(LiteralValueParseError::InvalidUnicodeEscape)?,
-                                ))
-                            } else {
-                                Err(LiteralValueParseError::InvalidInput)
-                            }
+                            value = value << 8 | hex_digit(input[0])? as u32;
+                        }
+                        if input[0] == b'}' {
+                            *input = &input[1..];
+                            Ok(Some(
+                                char::from_u32(value)
+                                    .ok_or(LiteralValueParseError::InvalidUnicodeEscape)?,
+                            ))
                         } else {
-                            Err(LiteralValueParseError::UnrecognizedCharEscape)
+                            Err(LiteralValueParseError::InvalidInput)
                         }
                     }
+                    _ => Err(LiteralValueParseError::UnrecognizedCharEscape),
                 }
             } else {
                 Err(LiteralValueParseError::UnrecognizedCharEscape)

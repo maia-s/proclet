@@ -12,7 +12,7 @@ mod tests {
     #[test]
     fn test_parse() {
         check!("a string");
-        check!("a string with escapes: \' \" \\ \0 \n \r \t");
+        check!("a string with escapes: \' \" \\ \0 \n \r \t \x7f");
         check!(
             "a string with an escaped newline\
 
