@@ -1,4 +1,6 @@
-use crate::span::{IncompatibleSpanError, Span, WrappedSpan};
+#[cfg(feature = "proc-macro")]
+use crate::span::IncompatibleSpanError;
+use crate::span::{Span, WrappedSpan};
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -708,6 +710,7 @@ impl From<&proc_macro2::Literal> for Literal {
     }
 }
 
+#[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
 macro_rules! from_literal_impl {
     ([$($expr:tt)*][fallible]) => { from_literal_impl!(@ [$($expr)*][fallible:1]) };
     ([$($expr:tt)*][infallible]) => { from_literal_impl!(@ [$($expr)*][infallible:1]) };

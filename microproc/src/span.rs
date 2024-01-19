@@ -27,6 +27,9 @@ pub enum WrappedSpan {
 
     #[cfg(feature = "proc-macro2")]
     PM2(proc_macro2::Span),
+
+    #[cfg(not(any(feature = "proc-macro", feature = "proc-macro2")))]
+    None,
 }
 
 impl WrappedSpan {
@@ -40,6 +43,10 @@ impl WrappedSpan {
         {
             Self::PM2(proc_macro2::Span::call_site())
         }
+        #[cfg(not(any(feature = "proc-macro", feature = "proc-macro2")))]
+        {
+            Self::None
+        }
     }
 
     #[inline]
@@ -51,6 +58,10 @@ impl WrappedSpan {
         #[cfg(all(not(feature = "proc-macro"), feature = "proc-macro2"))]
         {
             Self::PM2(proc_macro2::Span::mixed_site())
+        }
+        #[cfg(not(any(feature = "proc-macro", feature = "proc-macro2")))]
+        {
+            Self::None
         }
     }
 }
