@@ -11,6 +11,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "microproc-tests"
+version = "0.1.0"
+dependencies = [
+ "microproc",
+ "microproc-tests-macros",
+]
+
+[[package]]
+name = "microproc-tests-macros"
+version = "0.1.0"
+dependencies = [
+ "microproc",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"

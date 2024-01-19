@@ -1,27 +1,7 @@
-[package]
-name = "microproc"
-version = "0.1.0"
-edition = "2021"
-authors = ["Maia S. R."]
-license = "MIT OR Apache-2.0 OR Zlib"
-description = "Make lightweight proc macros"
-repository = "https://github.com/maia-s/microproc"
-documentation = "https://docs.rs/microproc"
-keywords = ["macros", "proc-macro", "lightweight"]
-categories = ["parsing", "development-tools::procedural-macro-helpers"]
-
-[features]
-default = ["proc-macro"]
-proc-macro = []
-proc-macro2 = ["dep:proc-macro2"]
-quote = ["dep:quote", "proc-macro2"]
-
-# only used for documentation feature tags
-nightly = []
-
-[dependencies]
-proc-macro2 = { version = "1.0", optional = true }
-quote = { version = "1.0", optional = true }
-
-[package.metadata.docs.rs]
-all-features = true
+[workspace]
+members = [
+    "microproc",
+    "microproc-tests",
+    "microproc-tests-macros",
+]
+resolver = "2"
