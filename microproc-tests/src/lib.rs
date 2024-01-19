@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(all(test, any(feature = "proc-macro", feature = "proc-macro2")))]
 mod tests {
     use microproc_tests_macros::literal_roundtrip;
 
@@ -9,7 +9,38 @@ mod tests {
         )* };
     }
 
+    #[cfg(all(feature = "proc-macro", not(feature = "proc-macro2")))]
     #[test]
+    fn with_proc_macro() {
+        test_parse()
+    }
+
+    #[cfg(all(feature = "proc-macro2", not(feature = "proc-macro")))]
+    #[test]
+    fn with_proc_macro2() {
+        test_parse()
+    }
+
+    #[cfg(all(
+        feature = "proc-macro",
+        feature = "proc-macro2",
+        feature = "prefer-pm1"
+    ))]
+    #[test]
+    fn with_proc_macro_over_proc_macro2() {
+        test_parse()
+    }
+
+    #[cfg(all(
+        feature = "proc-macro",
+        feature = "proc-macro2",
+        not(feature = "prefer-pm1")
+    ))]
+    #[test]
+    fn with_proc_macro2_over_proc_macro() {
+        test_parse()
+    }
+
     fn test_parse() {
         check!('a');
         check!('\'');

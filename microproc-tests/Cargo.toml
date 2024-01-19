@@ -3,6 +3,12 @@ name = "microproc-tests"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["proc-macro"]
+proc-macro = ["microproc-tests-macros/proc-macro"]
+proc-macro2 = ["microproc-tests-macros/proc-macro2"]
+prefer-pm1 = ["microproc-tests-macros/prefer-pm1"]
+
 [dependencies]
 microproc = { path = "../microproc" }
 microproc-tests-macros = { path = "../microproc-tests-macros" }

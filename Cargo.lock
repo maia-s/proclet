@@ -23,6 +23,7 @@ name = "microproc-tests-macros"
 version = "0.1.0"
 dependencies = [
  "microproc",
+ "proc-macro2",
 ]
 
 [[package]]
