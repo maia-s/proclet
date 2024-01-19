@@ -512,7 +512,8 @@ impl FromStr for LiteralValue {
                 if input[0] == b'0' && input.len() > 1 {
                     match input[1] {
                         b'b' | b'B' => {
-                            let suffix = parse_suffix(&mut &input[2..], true);
+                            let mut input = &input[2..];
+                            let suffix = parse_suffix(&mut input, true);
                             if !input.is_empty() {
                                 let mut value: u128 = bin_digit(input[0])?.into();
                                 for &digit in &input[1..] {
@@ -530,10 +531,11 @@ impl FromStr for LiteralValue {
                         }
 
                         b'o' | b'O' => {
-                            let suffix = parse_suffix(&mut &input[2..], true);
+                            let mut input = &input[2..];
+                            let suffix = parse_suffix(&mut input, true);
                             if !input.is_empty() {
-                                let mut value: u128 = oct_digit(input[2])?.into();
-                                for &digit in &input[3..] {
+                                let mut value: u128 = oct_digit(input[0])?.into();
+                                for &digit in &input[1..] {
                                     if digit != b'_' {
                                         value = value
                                             .checked_shl(3)
@@ -548,10 +550,11 @@ impl FromStr for LiteralValue {
                         }
 
                         b'x' | b'X' => {
-                            let suffix = parse_suffix(&mut &input[2..], false);
+                            let mut input = &input[2..];
+                            let suffix = parse_suffix(&mut input, false);
                             if !input.is_empty() {
-                                let mut value: u128 = hex_digit(input[2])?.into();
-                                for &digit in &input[3..] {
+                                let mut value: u128 = hex_digit(input[0])?.into();
+                                for &digit in &input[1..] {
                                     if digit != b'_' {
                                         value = value
                                             .checked_shl(4)
