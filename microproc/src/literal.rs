@@ -282,10 +282,15 @@ impl FromStr for LiteralValue {
                     b'n' => Ok(b'\n'),
                     b'r' => Ok(b'\r'),
                     b't' => Ok(b'\t'),
-                    _ => Err(LiteralValueParseError::UnrecognizedCharEscape),
+                    b'x' if input.len() >= 2 => {
+                        let value = hex_digit(input[0])? << 4 | hex_digit(input[1])?;
+                        *input = &input[2..];
+                        Ok(value)
+                    }
+                    _ => Err(LiteralValueParseError::UnrecognizedByteEscape),
                 }
             } else {
-                Err(LiteralValueParseError::UnrecognizedCharEscape)
+                Err(LiteralValueParseError::UnrecognizedByteEscape)
             }
         }
 
