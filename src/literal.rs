@@ -101,43 +101,49 @@ impl LiteralValue {
     }
 
     #[inline]
+    pub fn remove_suffix(&mut self) -> Result<(), OutOfRangeError> {
+        if let Self::Suffixed(s) = self {
+            match *s {
+                Suffixed::I8(value) => {
+                    *self = Self::Int(value.try_into().map_err(|_| OutOfRangeError)?)
+                }
+                Suffixed::I16(value) => {
+                    *self = Self::Int(value.try_into().map_err(|_| OutOfRangeError)?)
+                }
+                Suffixed::I32(value) => {
+                    *self = Self::Int(value.try_into().map_err(|_| OutOfRangeError)?)
+                }
+                Suffixed::I64(value) => {
+                    *self = Self::Int(value.try_into().map_err(|_| OutOfRangeError)?)
+                }
+                Suffixed::I128(value) => {
+                    *self = Self::Int(value.try_into().map_err(|_| OutOfRangeError)?)
+                }
+                Suffixed::Isize(value) => {
+                    *self = Self::Int(value.try_into().map_err(|_| OutOfRangeError)?)
+                }
+                Suffixed::U8(value) => *self = Self::Int(value as _),
+                Suffixed::U16(value) => *self = Self::Int(value as _),
+                Suffixed::U32(value) => *self = Self::Int(value as _),
+                Suffixed::U64(value) => *self = Self::Int(value as _),
+                Suffixed::U128(value) => *self = Self::Int(value),
+                Suffixed::Usize(value) => *self = Self::Int(value as _),
+                Suffixed::F32(value) => *self = Self::Float(value as _),
+                Suffixed::F64(value) => *self = Self::Float(value),
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
     pub fn to_unsuffixed(&self) -> Result<Self, OutOfRangeError> {
         self.clone().into_unsuffixed()
     }
 
     #[inline]
-    pub fn into_unsuffixed(self) -> Result<Self, OutOfRangeError> {
-        match self {
-            Self::Suffixed(s) => match s {
-                Suffixed::I8(value) => {
-                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
-                }
-                Suffixed::I16(value) => {
-                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
-                }
-                Suffixed::I32(value) => {
-                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
-                }
-                Suffixed::I64(value) => {
-                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
-                }
-                Suffixed::I128(value) => {
-                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
-                }
-                Suffixed::Isize(value) => {
-                    Ok(Self::Int(value.try_into().map_err(|_| OutOfRangeError)?))
-                }
-                Suffixed::U8(value) => Ok(Self::Int(value as _)),
-                Suffixed::U16(value) => Ok(Self::Int(value as _)),
-                Suffixed::U32(value) => Ok(Self::Int(value as _)),
-                Suffixed::U64(value) => Ok(Self::Int(value as _)),
-                Suffixed::U128(value) => Ok(Self::Int(value)),
-                Suffixed::Usize(value) => Ok(Self::Int(value as _)),
-                Suffixed::F32(value) => Ok(Self::Float(value as _)),
-                Suffixed::F64(value) => Ok(Self::Float(value)),
-            },
-            other => Ok(other),
-        }
+    pub fn into_unsuffixed(mut self) -> Result<Self, OutOfRangeError> {
+        self.remove_suffix()?;
+        Ok(self)
     }
 }
 
