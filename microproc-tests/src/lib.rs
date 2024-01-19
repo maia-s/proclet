@@ -20,6 +20,7 @@ mod tests {
         check!('\r');
         check!('\t');
         check!('\x7f');
+
         check!("a string");
         check!("a string with escapes: \' \" \\ \0 \n \r \t \x7f");
         check!(
@@ -38,5 +39,14 @@ mod tests {
         check!(b'\r');
         check!(b'\t');
         check!(b'\xff');
+
+        check!(b"a byte string");
+        check!(b"a byte string with escapes: \' \" \\ \0 \n \r \t \xff");
+        check!(
+            b"a byte string with an escaped newline\
+
+
+            !"
+        );
     }
 }

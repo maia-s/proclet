@@ -268,24 +268,25 @@ impl FromStr for LiteralValue {
 
         fn parse_byte_escape(
             input: &mut &[u8],
-            _escapes: Escapes,
-        ) -> Result<u8, LiteralValueParseError> {
+            escapes: Escapes,
+        ) -> Result<Option<u8>, LiteralValueParseError> {
             assert_eq!(input[0], b'\\');
             if input.len() >= 2 {
                 let escape = input[1];
                 *input = &input[2..];
                 match escape {
-                    b'\'' => Ok(b'\''),
-                    b'\"' => Ok(b'\"'),
-                    b'\\' => Ok(b'\\'),
-                    b'0' => Ok(b'\0'),
-                    b'n' => Ok(b'\n'),
-                    b'r' => Ok(b'\r'),
-                    b't' => Ok(b'\t'),
+                    b'\'' => Ok(Some(b'\'')),
+                    b'\"' => Ok(Some(b'\"')),
+                    b'\\' => Ok(Some(b'\\')),
+                    b'0' => Ok(Some(b'\0')),
+                    b'n' => Ok(Some(b'\n')),
+                    b'r' => Ok(Some(b'\r')),
+                    b't' => Ok(Some(b'\t')),
+                    b'\n' if matches!(escapes, Escapes::String) => Ok(None),
                     b'x' if input.len() >= 2 => {
                         let value = hex_digit(input[0])? << 4 | hex_digit(input[1])?;
                         *input = &input[2..];
-                        Ok(value)
+                        Ok(Some(value))
                     }
                     _ => Err(LiteralValueParseError::UnrecognizedByteEscape),
                 }
@@ -294,13 +295,16 @@ impl FromStr for LiteralValue {
             }
         }
 
-        fn parse_byte(input: &mut &[u8], escapes: Escapes) -> Result<u8, LiteralValueParseError> {
+        fn parse_byte(
+            input: &mut &[u8],
+            escapes: Escapes,
+        ) -> Result<Option<u8>, LiteralValueParseError> {
             if let Some(&value) = input.first() {
                 if value == b'\\' {
                     Ok(parse_byte_escape(input, escapes)?)
                 } else {
                     *input = &input[1..];
-                    Ok(value)
+                    Ok(Some(value))
                 }
             } else {
                 Err(LiteralValueParseError::InvalidInput)
@@ -451,8 +455,10 @@ impl FromStr for LiteralValue {
                     match input[0] {
                         b'\'' => {
                             if input.len() > 1 && input[input.len() - 1] == b'\'' {
-                                parse_byte(&mut &input[1..input.len() - 1], Escapes::Char)
-                                    .map(LiteralValue::ByteCharacter)
+                                Ok(LiteralValue::ByteCharacter(
+                                    parse_byte(&mut &input[1..input.len() - 1], Escapes::Char)?
+                                        .unwrap(),
+                                ))
                             } else {
                                 Err(LiteralValueParseError::InvalidInput)
                             }
@@ -463,7 +469,13 @@ impl FromStr for LiteralValue {
                                 input = &input[1..input.len() - 1];
                                 let mut s = Vec::new();
                                 while !input.is_empty() {
-                                    s.push(parse_byte(&mut input, Escapes::String)?);
+                                    if let Some(c) = parse_byte(&mut input, Escapes::String)? {
+                                        s.push(c);
+                                    } else {
+                                        while !input.is_empty() && input[0].is_ascii_whitespace() {
+                                            input = &input[1..];
+                                        }
+                                    }
                                 }
                                 Ok(LiteralValue::ByteString(s))
                             } else {
