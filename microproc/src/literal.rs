@@ -268,14 +268,14 @@ impl FromStr for LiteralValue {
 
         fn parse_byte_escape(
             input: &mut &[u8],
-            escapes: Escapes,
+            _escapes: Escapes,
         ) -> Result<u8, LiteralValueParseError> {
             assert_eq!(input[0], b'\\');
             if input.len() >= 2 {
                 let escape = input[1];
                 *input = &input[2..];
                 match escape {
-                    b'\'' if matches!(escapes, Escapes::Char) => Ok(b'\''),
+                    b'\'' => Ok(b'\''),
                     b'\"' => Ok(b'\"'),
                     b'\\' => Ok(b'\\'),
                     b'0' => Ok(b'\0'),
@@ -310,7 +310,7 @@ impl FromStr for LiteralValue {
                 let escape = input[1];
                 *input = &input[2..];
                 match escape {
-                    b'\'' if matches!(escapes, Escapes::Char) => Ok(Some('\'')),
+                    b'\'' => Ok(Some('\'')),
                     b'\"' => Ok(Some('\"')),
                     b'\\' => Ok(Some('\\')),
                     b'0' => Ok(Some('\0')),
