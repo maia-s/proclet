@@ -28,5 +28,15 @@ mod tests {
 
             !"
         );
+
+        check!(b'a');
+        check!(b'\'');
+        check!(b'\"');
+        check!(b'\\');
+        check!(b'\0');
+        check!(b'\n');
+        check!(b'\r');
+        check!(b'\t');
+        check!(b'\xff');
     }
 }

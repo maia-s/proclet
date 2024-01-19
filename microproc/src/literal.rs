@@ -295,11 +295,12 @@ impl FromStr for LiteralValue {
         }
 
         fn parse_byte(input: &mut &[u8], escapes: Escapes) -> Result<u8, LiteralValueParseError> {
-            if !input.is_empty() {
-                if input[0] == b'\\' {
-                    Ok(parse_byte_escape(&mut &input[1..input.len() - 1], escapes)?)
+            if let Some(&value) = input.first() {
+                if value == b'\\' {
+                    Ok(parse_byte_escape(input, escapes)?)
                 } else {
-                    Ok(input[0])
+                    *input = &input[1..];
+                    Ok(value)
                 }
             } else {
                 Err(LiteralValueParseError::InvalidInput)
