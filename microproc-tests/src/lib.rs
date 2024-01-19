@@ -43,6 +43,8 @@ mod tests {
 
     fn test_parse() {
         check!('a');
+        check!('æ');
+        check!('✨');
         check!('\'');
         check!('\"');
         check!('\\');
@@ -62,6 +64,7 @@ mod tests {
         );
         check!(r"raw string");
         check!(r#""raw string\n""#);
+        check!("✨🧚‍♀️✨");
 
         check!(b'a');
         check!(b'\'');
