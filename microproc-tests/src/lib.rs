@@ -53,7 +53,7 @@ mod tests {
         check!('\x7f');
 
         check!("a string");
-        check!("a string with escapes: \' \" \\ \0 \n \r \t \x7f");
+        check!("a string with escapes: \' \" \\ \0 \n \r \t \x7f \u{0} \u{2728} \u{10ffff}");
         check!(
             "a string with an escaped newline\
 

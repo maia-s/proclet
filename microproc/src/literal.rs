@@ -336,12 +336,14 @@ impl FromStr for LiteralValue {
                         Ok(Some(char::from(value)))
                     }
                     b'u' if input.len() > 2 && input[0] == b'{' => {
-                        // \u{...}
                         *input = &input[1..];
-                        let mut value = 0;
+                        let mut value: u32 = 0;
                         while !input.is_empty() && input[0] != b'}' {
+                            value = value
+                                .checked_shl(4)
+                                .ok_or(LiteralValueParseError::InvalidUnicodeEscape)?
+                                | hex_digit(input[0])? as u32;
                             *input = &input[1..];
-                            value = value << 8 | hex_digit(input[0])? as u32;
                         }
                         if input[0] == b'}' {
                             *input = &input[1..];
