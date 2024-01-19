@@ -638,6 +638,17 @@ impl Literal {
     }
 }
 
+impl FromStr for Literal {
+    type Err = LiteralValueParseError;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value = s.parse()?;
+        let span = WrappedSpan::call_site();
+        Ok(Literal { value, span })
+    }
+}
+
 #[cfg(feature = "proc-macro")]
 impl From<proc_macro::Literal> for Literal {
     #[inline]

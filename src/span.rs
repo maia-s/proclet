@@ -29,6 +29,32 @@ pub enum WrappedSpan {
     PM2(proc_macro2::Span),
 }
 
+impl WrappedSpan {
+    #[inline]
+    pub fn call_site() -> Self {
+        #[cfg(feature = "proc-macro")]
+        {
+            Self::PM1(proc_macro::Span::call_site())
+        }
+        #[cfg(all(not(feature = "proc-macro"), feature = "proc-macro2"))]
+        {
+            Self::PM2(proc_macro2::Span::call_site())
+        }
+    }
+
+    #[inline]
+    pub fn mixed_site() -> Self {
+        #[cfg(feature = "proc-macro")]
+        {
+            Self::PM1(proc_macro::Span::mixed_site())
+        }
+        #[cfg(all(not(feature = "proc-macro"), feature = "proc-macro2"))]
+        {
+            Self::PM2(proc_macro2::Span::mixed_site())
+        }
+    }
+}
+
 #[cfg(feature = "proc-macro")]
 impl From<proc_macro::Span> for WrappedSpan {
     #[inline]
