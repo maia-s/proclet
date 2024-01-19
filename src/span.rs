@@ -20,7 +20,7 @@ impl Debug for IncompatibleSpanError {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum WrappedSpan {
     #[cfg(feature = "proc-macro")]
     PM1(proc_macro::Span),

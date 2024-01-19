@@ -65,7 +65,7 @@ impl Display for LiteralValueParseError {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Suffixed {
     I8(i8),
     I16(i16),
@@ -83,7 +83,7 @@ pub enum Suffixed {
     F64(f64),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LiteralValue {
     String(String),
     ByteString(Vec<u8>),
@@ -600,6 +600,7 @@ impl FromStr for LiteralValue {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Literal {
     value: LiteralValue,
     span: WrappedSpan,
