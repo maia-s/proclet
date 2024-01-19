@@ -176,13 +176,6 @@ impl FromStr for LiteralValue {
             }
         }
 
-        fn dec_digit(b: u8) -> Result<u8, LiteralValueParseError> {
-            match b {
-                b'0'..=b'9' => Ok(b - b'0'),
-                _ => Err(LiteralValueParseError::InvalidDecDigit),
-            }
-        }
-
         fn from_int(value: u128, suffix: &[u8]) -> Result<LiteralValue, LiteralValueParseError> {
             macro_rules! make {
                 ($($s:literal => $t:ident $(as $as:ident)?),* $(,)?) => {
@@ -552,7 +545,48 @@ impl FromStr for LiteralValue {
                         _ => (),
                     }
                 }
-                todo!("i*/u*/f32/f64")
+
+                let suffix = parse_suffix(&mut input, true);
+                let mut is_float = false;
+
+                // parse doesn't accept '_'s
+                let s: String = input
+                    .iter()
+                    .filter_map(|&b| {
+                        if matches!(b, b'.' | b'e' | b'E' | b'+' | b'-') {
+                            is_float = true;
+                        }
+                        if b != b'_' {
+                            Some(char::from(b))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                if is_float {
+                    if suffix == b"f32" {
+                        let value: f32 = s
+                            .parse()
+                            .map_err(|_| LiteralValueParseError::InvalidInput)?;
+                        Ok(LiteralValue::Suffixed(Suffixed::F32(value)))
+                    } else {
+                        let value: f64 = s
+                            .parse()
+                            .map_err(|_| LiteralValueParseError::InvalidInput)?;
+                        if suffix == b"f64" {
+                            Ok(LiteralValue::Suffixed(Suffixed::F64(value)))
+                        } else {
+                            Ok(LiteralValue::Float(value))
+                        }
+                    }
+                } else {
+                    from_int(
+                        s.parse()
+                            .map_err(|_| LiteralValueParseError::InvalidInput)?,
+                        suffix,
+                    )
+                }
             }
 
             _ => Err(LiteralValueParseError::InvalidInput),
