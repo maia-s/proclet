@@ -5,7 +5,7 @@ mod tests {
     macro_rules! check {
         ($($lit:literal),*) => { $(
             let lit2 = literal_roundtrip!($lit);
-            assert_eq!($lit, lit2);
+            assert_eq!(lit2, $lit);
         )* };
     }
 
