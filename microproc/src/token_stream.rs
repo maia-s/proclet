@@ -1,8 +1,14 @@
-use crate::{token::Token, TokenTreeExt};
-use core::iter;
+use crate::{span::Span, TokenTreeExt};
+use std::{iter, str::FromStr};
 
-pub trait TokenStreamExt: Sized {
+pub trait TokenStreamExt: Sized + FromStr {
+    type Span: Span;
     type TokenTree: TokenTreeExt;
+
+    #[must_use]
+    fn apply_span(self, span: Self::Span) -> Self;
+
+    #[must_use]
     fn expect(self, tokens: impl Iterator<Item = Self::TokenTree>) -> Option<(Self, Self)>;
 }
 
@@ -10,7 +16,13 @@ macro_rules! impl_token_stream_ext {
     ($($pm:ident: $feature:literal),*) => { $(
         #[cfg(feature = $feature)]
         impl TokenStreamExt for $pm::TokenStream {
+            type Span = $pm::Span;
             type TokenTree = $pm::TokenTree;
+
+            #[inline]
+            fn apply_span(self, span: Self::Span) -> Self {
+                self.into_iter().map(|mut tt|{ tt.set_span(span); tt }).collect()
+            }
 
             #[inline]
             fn expect(self, tokens: impl Iterator<Item = Self::TokenTree>) -> Option<(Self, Self)> {
