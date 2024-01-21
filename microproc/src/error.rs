@@ -1,4 +1,5 @@
 use crate::{
+    base::ProcMacro,
     span::{Span, WrappedSpan},
     TokenStreamExt,
 };
@@ -17,7 +18,10 @@ pub struct Error {
 impl Error {
     #[inline]
     pub fn new(message: impl Into<Cow<'static, str>>) -> Self {
-        Self::with_span(WrappedSpan::call_site(), message)
+        Self {
+            message: message.into(),
+            span: WrappedSpan::call_site(),
+        }
     }
 
     #[inline]
@@ -37,7 +41,7 @@ impl Error {
     pub fn to_compile_error<TokenStream: TokenStreamExt>(&self) -> TokenStream
     where
         <TokenStream as FromStr>::Err: fmt::Debug,
-        <<TokenStream as TokenStreamExt>::Span as TryFrom<WrappedSpan>>::Error: fmt::Debug,
+        <<TokenStream as ProcMacro>::Span as TryFrom<WrappedSpan>>::Error: fmt::Debug,
     {
         let ts: TokenStream = format!("::core::compile_error!({:?});", self.message)
             .parse()

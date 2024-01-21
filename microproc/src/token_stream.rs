@@ -1,10 +1,7 @@
-use crate::{span::Span, TokenTreeExt};
+use crate::base::ProcMacro;
 use std::{iter, str::FromStr};
 
-pub trait TokenStreamExt: Sized + FromStr {
-    type Span: Span;
-    type TokenTree: TokenTreeExt;
-
+pub trait TokenStreamExt: ProcMacro + Sized + FromStr {
     #[must_use]
     fn apply_span(self, span: Self::Span) -> Self;
 
@@ -16,9 +13,6 @@ macro_rules! impl_token_stream_ext {
     ($($pm:ident: $feature:literal),*) => { $(
         #[cfg(feature = $feature)]
         impl TokenStreamExt for $pm::TokenStream {
-            type Span = $pm::Span;
-            type TokenTree = $pm::TokenTree;
-
             #[inline]
             fn apply_span(self, span: Self::Span) -> Self {
                 self.into_iter().map(|mut tt|{ tt.set_span(span); tt }).collect()

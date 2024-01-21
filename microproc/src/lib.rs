@@ -9,6 +9,7 @@ pub mod prelude {
     pub use crate::TokenTreeExt as _;
 }
 
+mod base;
 mod error;
 mod literal;
 mod span;
@@ -16,6 +17,7 @@ mod token;
 mod token_stream;
 mod token_tree;
 
+pub use base::ProcMacro;
 pub use error::Error;
 pub use literal::{Literal, LiteralValue, Suffixed};
 pub use token_stream::TokenStreamExt;

@@ -1,4 +1,6 @@
-pub trait TokenTreeExt {
+use crate::base::ProcMacro;
+
+pub trait TokenTreeExt: ProcMacro {
     /// If the TokenTree is a group with delimiter None containing a single item,
     /// replace the group with that item, recursively.
     fn flatten_group(&mut self);
