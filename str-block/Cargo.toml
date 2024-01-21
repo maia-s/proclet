@@ -1,0 +1,17 @@
+[package]
+name = "str-block"
+version = "0.1.0"
+edition = "2021"
+authors = ["Maia S. R."]
+license = "MIT OR Apache-2.0 OR Zlib"
+description = "Make lightweight proc macros"
+repository = "https://github.com/maia-s/proclet"
+documentation = "https://docs.rs/str-block"
+keywords = ["strings", "compile-time"]
+categories = ["text-processing"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proclet = { path = "../proclet", default-features = false, features = ["proc-macro", "token-buffer"] }

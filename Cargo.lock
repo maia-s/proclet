@@ -33,6 +33,7 @@ version = "0.1.0"
 dependencies = [
  "proclet",
  "proclet-test-macros",
+ "str-block",
 ]
 
 [[package]]
@@ -45,6 +46,13 @@ dependencies = [
 
 [[package]]
 name = "proclet-utils-macros"
+version = "0.1.0"
+dependencies = [
+ "proclet",
+]
+
+[[package]]
+name = "str-block"
 version = "0.1.0"
 dependencies = [
  "proclet",

@@ -5,5 +5,6 @@ members = [
     "proclet-test-macros",
     "proclet-utils",
     "proclet-utils-macros",
+    "str-block",
 ]
 resolver = "2"
