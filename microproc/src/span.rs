@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fmt::{self, Debug, Display};
+use std::fmt::{Debug, Display};
 
 use crate::base::ProcMacro;
 
@@ -112,7 +112,7 @@ impl From<WrappedSpan> for proc_macro2::Span {
     }
 }
 
-pub trait Span: Into<WrappedSpan> + TryFrom<WrappedSpan> + fmt::Debug + ProcMacro {}
+pub trait Span: ProcMacro + Copy + Into<WrappedSpan> + TryFrom<WrappedSpan> {}
 
 #[cfg(feature = "proc-macro")]
 impl Span for proc_macro::Span {}
