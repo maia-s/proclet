@@ -9,12 +9,14 @@ pub mod prelude {
     pub use crate::TokenTreeExt as _;
 }
 
+mod error;
 mod literal;
 mod span;
 mod token;
 mod token_stream;
 mod token_tree;
 
+pub use error::Error;
 pub use literal::{Literal, LiteralValue, Suffixed};
 pub use token_stream::TokenStreamExt;
 pub use token_tree::TokenTreeExt;
