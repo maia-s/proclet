@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fmt::{Debug, Display};
+use std::fmt::{self, Debug, Display};
 
 #[derive(Clone, Copy)]
 pub struct IncompatibleSpanError;
@@ -110,10 +110,12 @@ impl From<WrappedSpan> for proc_macro2::Span {
     }
 }
 
-pub trait Span: Into<WrappedSpan> + TryFrom<WrappedSpan> {}
+pub trait Span: Into<WrappedSpan> + TryFrom<WrappedSpan> + fmt::Debug {}
 
 #[cfg(feature = "proc-macro")]
 impl Span for proc_macro::Span {}
 
 #[cfg(feature = "proc-macro2")]
 impl Span for proc_macro2::Span {}
+
+impl Span for WrappedSpan {}
