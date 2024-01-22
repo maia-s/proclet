@@ -1,8 +1,4 @@
-use crate::{
-    base::ProcMacro,
-    span::{Span, WrappedSpan},
-    TokenStreamExt,
-};
+use crate::{span::WrappedSpan, ProcMacroExt, SpanExt, TokenStreamExt};
 use std::{
     borrow::Cow,
     fmt::{self, Display},
@@ -25,7 +21,7 @@ impl Error {
     }
 
     #[inline]
-    pub fn with_span(span: impl Span, message: impl Into<Cow<'static, str>>) -> Self {
+    pub fn with_span(span: impl SpanExt, message: impl Into<Cow<'static, str>>) -> Self {
         Self {
             message: message.into(),
             span: span.into(),
@@ -33,7 +29,7 @@ impl Error {
     }
 
     #[inline]
-    pub fn set_span(&mut self, span: impl Span) {
+    pub fn set_span(&mut self, span: impl SpanExt) {
         self.span = span.into();
     }
 
@@ -41,7 +37,7 @@ impl Error {
     pub fn to_compile_error<TokenStream: TokenStreamExt>(&self) -> TokenStream
     where
         <TokenStream as FromStr>::Err: fmt::Debug,
-        <<TokenStream as ProcMacro>::Span as TryFrom<WrappedSpan>>::Error: fmt::Debug,
+        <<TokenStream as ProcMacroExt>::SpanExt as TryFrom<WrappedSpan>>::Error: fmt::Debug,
     {
         let ts: TokenStream = format!("::core::compile_error!({:?});", self.message)
             .parse()

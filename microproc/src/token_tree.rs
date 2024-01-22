@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::base::ProcMacro;
+use crate::base::{ProcMacro, ProcMacroExt};
 
 /// `TokenTree` API trait.
 ///
@@ -20,7 +20,7 @@ pub trait TokenTree: ProcMacro + Display {
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding features are enabled.
-pub trait TokenTreeExt: TokenTree {
+pub trait TokenTreeExt: ProcMacroExt + TokenTree {
     /// If the TokenTree is a group with delimiter None containing a single item,
     /// replace the group with that item, recursively.
     fn flatten_group(&mut self);

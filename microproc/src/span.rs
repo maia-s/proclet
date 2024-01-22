@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt::{Debug, Display};
 
-use crate::base::ProcMacro;
+use crate::base::{ProcMacro, ProcMacroExt};
 
 #[derive(Clone, Copy)]
 pub struct IncompatibleSpanError;
@@ -112,10 +112,18 @@ impl From<WrappedSpan> for proc_macro2::Span {
     }
 }
 
-pub trait Span: ProcMacro + Copy + Into<WrappedSpan> + TryFrom<WrappedSpan> {}
+pub trait Span: ProcMacro + Copy {}
 
 #[cfg(feature = "proc-macro")]
 impl Span for proc_macro::Span {}
 
 #[cfg(feature = "proc-macro2")]
 impl Span for proc_macro2::Span {}
+
+pub trait SpanExt: ProcMacroExt + Span + Into<WrappedSpan> + TryFrom<WrappedSpan> {}
+
+#[cfg(feature = "proc-macro")]
+impl SpanExt for proc_macro::Span {}
+
+#[cfg(feature = "proc-macro2")]
+impl SpanExt for proc_macro2::Span {}
