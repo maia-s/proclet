@@ -1,4 +1,4 @@
-use crate::{Delimiter, Group, Span, TokenStream, TokenTree};
+use crate::{Delimiter, Group, Literal, Span, TokenStream, TokenTree};
 use std::fmt::Debug;
 
 macro_rules! impl_base {
@@ -72,6 +72,7 @@ macro_rules! impl_base {
 impl_base!({
     Delimiter: DelimiterExt,
     Group: GroupExt,
+    Literal: LiteralExt,
     Span: SpanExt,
     TokenStream: TokenStreamExt: "token-stream-ext",
     TokenTree: TokenTreeExt: "token-tree-ext",

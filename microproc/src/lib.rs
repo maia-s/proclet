@@ -27,7 +27,7 @@ mod token_tree;
 
 pub use base::{ProcMacro, ProcMacroExt};
 pub use error::Error;
-pub use literal::{Literal, LiteralValue, Suffixed};
+pub use literal::{Literal, LiteralExt, LiteralValue, Suffixed};
 pub use span::{Span, SpanExt};
 pub use token_stream::TokenStream;
 #[cfg(feature = "token-stream-ext")]

@@ -1,7 +1,5 @@
 #[cfg(feature = "proc-macro")]
-use crate::span::IncompatibleSpanError;
-
-use crate::span::WrappedSpan;
+use crate::{ProcMacro, ProcMacroExt};
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -625,220 +623,202 @@ impl FromStr for LiteralValue {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Literal {
-    value: LiteralValue,
-    span: WrappedSpan,
-}
+macro_rules! def {
+    ($([$what:tt] $($id:ident: $t:ty),* $(,)?)*) => { $(
+        $( def!(@ $what $id: $t); )*
+    )* };
 
-impl Literal {
-    #[inline]
-    pub fn new(value: LiteralValue, span: impl crate::SpanExt) -> Self {
-        Self {
-            value,
-            span: span.into(),
-        }
-    }
-
-    #[inline]
-    pub const fn value(&self) -> &LiteralValue {
-        &self.value
-    }
-
-    /// Get the associated span of this literal. You can get either a `proc_macro::Span`
-    /// or a `proc_macro2::Span` if the corresponding crate features are enabled.
-    /// This may fail if the span originates from a `proc_macro2::Span` and you're trying
-    /// to get a `proc_macro::Span`.
-    #[inline]
-    pub fn span<S: crate::SpanExt>(&self) -> Result<S, S::Error> {
-        self.span.try_into()
-    }
-
-    /// Set the associated span of this literal. You can set either a `proc_macro::Span`
-    /// or a `proc_macro2::Span` if the corresponding crate features are enabled.
-    /// `proc_macro::Span` is compatible with both `proc-macro` and `proc-macro2`, but
-    /// `proc_macro2::Span` can't be used with types from `proc-macro`.
-    #[inline]
-    pub fn set_span(&mut self, span: impl crate::SpanExt) {
-        self.span = span.into();
-    }
-}
-
-impl FromStr for Literal {
-    type Err = LiteralValueParseError;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let value = s.parse()?;
-        let span = WrappedSpan::call_site();
-        Ok(Literal { value, span })
-    }
-}
-
-#[cfg(feature = "proc-macro")]
-impl From<proc_macro::Literal> for Literal {
-    #[inline]
-    fn from(value: proc_macro::Literal) -> Self {
-        Self::from(&value)
-    }
-}
-
-#[cfg(feature = "proc-macro")]
-impl From<&proc_macro::Literal> for Literal {
-    #[inline]
-    fn from(value: &proc_macro::Literal) -> Self {
-        Literal::new(
-            LiteralValue::from_str(&value.to_string()).unwrap(),
-            value.span(),
-        )
-    }
-}
-
-#[cfg(feature = "proc-macro2")]
-impl From<proc_macro2::Literal> for Literal {
-    #[inline]
-    fn from(value: proc_macro2::Literal) -> Self {
-        Self::from(&value)
-    }
-}
-
-#[cfg(feature = "proc-macro2")]
-impl From<&proc_macro2::Literal> for Literal {
-    #[inline]
-    fn from(value: &proc_macro2::Literal) -> Self {
-        Literal::new(
-            LiteralValue::from_str(&value.to_string()).unwrap(),
-            value.span(),
-        )
-    }
-}
-
-#[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
-macro_rules! from_literal_impl {
-    ([$($expr:tt)*][fallible]) => { from_literal_impl!(@ [$($expr)*][fallible:1]) };
-    ([$($expr:tt)*][infallible]) => { from_literal_impl!(@ [$($expr)*][infallible:1]) };
-
-    (@ [$($expr:tt)*]$([fallible:$fallible:literal])?$([infallible:$infallible:literal])?) => {
-        from_literal_impl! {
-            @ [$($expr)*]$([fallible:$fallible])?$([infallible:$infallible])?
-            I8, i8_suffixed,
-            I16, i16_suffixed,
-            I32, i32_suffixed,
-            I64, i64_suffixed,
-            I128, i128_suffixed,
-            Isize, isize_suffixed,
-            U8, u8_suffixed,
-            U16, u16_suffixed,
-            U32, u32_suffixed,
-            U64, u64_suffixed,
-            U128, u128_suffixed,
-            Usize, usize_suffixed,
-            F32, f32_suffixed,
-            F64, f64_suffixed,
-        }
+    (@ suffixed_int $ident:ident: $t:ty) => {
+        /// Suffixed integer literal.
+        fn $ident(n: $t) -> Self::Literal;
     };
 
-    (@ [$expr:expr]$([fallible:$fallible:literal])?$([infallible:$infallible:literal])? $($ident:ident, $suffixed:ident),* $(,)?) => {{
-        let expr = $expr;
-        let mut output = match &expr.value {
-            LiteralValue::String(s) => Self::string(s),
-            LiteralValue::ByteString(s) => Self::byte_string(s),
-            LiteralValue::Character(c) => Self::character(*c),
-            LiteralValue::ByteCharacter(b) => format!("b'\\x{b:02x}'").parse().unwrap(),
-            LiteralValue::Int(value) => Self::u128_unsuffixed(*value),
-            LiteralValue::Float(value) => Self::f64_unsuffixed(*value),
-            $( LiteralValue::Suffixed(Suffixed::$ident(value)) => Self::$suffixed(*value), )*
-        };
-        $(
-            let _ = $fallible;
-            output.set_span(expr.span()?);
-            Ok(output)
-        )?
-        $(
-            let _ = $infallible;
-            output.set_span(expr.span().unwrap());
-            output
-        )?
-    }};
+    (@ unsuffixed_int $ident:ident: $t:ty) => {
+        /// Unsuffixed integer literal.
+        fn $ident(n: $t) -> Self::Literal;
+    };
+
+    (@ suffixed_float $ident:ident: $t:ty) => {
+        /// Suffixed floating-point literal.
+        fn $ident(n: $t) -> Self::Literal;
+    };
+
+    (@ unsuffixed_float $ident:ident: $t:ty) => {
+        /// Unsuffixed floating-point literal.
+        fn $ident(n: $t) -> Self::Literal;
+    };
 }
 
-#[cfg(feature = "proc-macro")]
-impl TryFrom<Literal> for proc_macro::Literal {
-    type Error = IncompatibleSpanError;
+pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
+    def! {
+        [suffixed_int]
+        i8_suffixed: i8,
+        i16_suffixed: i16,
+        i32_suffixed: i32,
+        i64_suffixed: i64,
+        i128_suffixed: i128,
+        isize_suffixed: isize,
+        u8_suffixed: u8,
+        u16_suffixed: u16,
+        u32_suffixed: u32,
+        u64_suffixed: u64,
+        u128_suffixed: u128,
+        usize_suffixed: usize,
 
-    #[inline]
-    fn try_from(value: Literal) -> Result<Self, Self::Error> {
-        Self::try_from(&value)
+        [unsuffixed_int]
+        i8_unsuffixed: i8,
+        i16_unsuffixed: i16,
+        i32_unsuffixed: i32,
+        i64_unsuffixed: i64,
+        i128_unsuffixed: i128,
+        isize_unsuffixed: isize,
+        u8_unsuffixed: u8,
+        u16_unsuffixed: u16,
+        u32_unsuffixed: u32,
+        u64_unsuffixed: u64,
+        u128_unsuffixed: u128,
+        usize_unsuffixed: usize,
+
+        [suffixed_float]
+        f32_suffixed: f32,
+        f64_suffixed: f64,
+
+        [unsuffixed_float]
+        f32_unsuffixed: f32,
+        f64_unsuffixed: f64,
     }
+
+    /// String literal.
+    fn string(str: &str) -> Self::Literal;
+
+    /// Character literal.
+    fn character(c: char) -> Self::Literal;
+
+    /// Byte character literal.
+    fn byte_character(b: u8) -> Self::Literal;
+
+    /// Byte string literal.
+    fn byte_string(bytes: &[u8]) -> Self::Literal;
+
+    /// The span of this literal.
+    fn span(&self) -> Self::Span;
+
+    /// Set the span of this literal.
+    fn set_span(&mut self, span: Self::Span);
 }
 
-#[cfg(feature = "proc-macro")]
-impl TryFrom<&Literal> for proc_macro::Literal {
-    type Error = IncompatibleSpanError;
-
-    #[inline]
-    fn try_from(value: &Literal) -> Result<Self, Self::Error> {
-        from_literal_impl!([value][fallible])
-    }
+pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal {
+    fn value(&self) -> LiteralValue;
+    fn set_value(&mut self, value: LiteralValue);
 }
 
-#[cfg(feature = "proc-macro2")]
-impl From<Literal> for proc_macro2::Literal {
-    #[inline]
-    fn from(value: Literal) -> Self {
-        Self::from(&value)
-    }
+macro_rules! impl_literal {
+    ($($pm:ident: $feature:literal),*) => { $(
+        #[cfg(feature = $feature)]
+        impl Literal for $pm::Literal {
+            impl_literal! { @ $pm
+                i8_suffixed: n: i8,
+                i16_suffixed: n: i16,
+                i32_suffixed: n: i32,
+                i64_suffixed: n: i64,
+                i128_suffixed: n: i128,
+                isize_suffixed: n: isize,
+                u8_suffixed: n: u8,
+                u16_suffixed: n: u16,
+                u32_suffixed: n: u32,
+                u64_suffixed: n: u64,
+                u128_suffixed: n: u128,
+                usize_suffixed: n: usize,
+                i8_unsuffixed: n: i8,
+                i16_unsuffixed: n: i16,
+                i32_unsuffixed: n: i32,
+                i64_unsuffixed: n: i64,
+                i128_unsuffixed: n: i128,
+                isize_unsuffixed: n: isize,
+                u8_unsuffixed: n: u8,
+                u16_unsuffixed: n: u16,
+                u32_unsuffixed: n: u32,
+                u64_unsuffixed: n: u64,
+                u128_unsuffixed: n: u128,
+                usize_unsuffixed: n: usize,
+                f32_unsuffixed: n: f32,
+                f32_suffixed: n: f32,
+                f64_unsuffixed: n: f64,
+                f64_suffixed: n: f64,
+                string: str: &str,
+                character: c: char,
+                byte_string: bytes: &[u8],
+            }
+
+            #[inline]
+            fn byte_character(b: u8) -> Self::Literal {
+                format!("b'\\x{b:02x}'").parse().unwrap()
+            }
+
+            #[inline]
+            fn span(&self) -> Self::Span {
+                self.span()
+            }
+
+            #[inline]
+            fn set_span(&mut self, span: Self::Span) {
+                self.set_span(span)
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl LiteralExt for $pm::Literal {
+            #[inline]
+            fn value(&self) -> LiteralValue {
+                self.to_string().parse().unwrap()
+            }
+
+            #[inline]
+            fn set_value(&mut self, value: LiteralValue) {
+                let mut lit = impl_literal!(@ to_literal(value));
+                lit.set_span(self.span());
+                *self = lit;
+            }
+        }
+    )* };
+
+    (@ $pm:ident $($id:ident: $arg:ident: $t:ty),* $(,)?) => { $(
+        #[inline]
+        fn $id($arg: $t) -> Self::Literal {
+            $pm::Literal::$id($arg)
+        }
+    )* };
+
+    (@ to_literal($value:expr)) => {
+        impl_literal!(@ to_literal($value) for
+            I8: i8_suffixed,
+            I16: i16_suffixed,
+            I32: i32_suffixed,
+            I64: i64_suffixed,
+            I128: i128_suffixed,
+            Isize: isize_suffixed,
+            U8: u8_suffixed,
+            U16: u16_suffixed,
+            U32: u32_suffixed,
+            U64: u64_suffixed,
+            U128: u128_suffixed,
+            Usize: usize_suffixed,
+            F32: f32_suffixed,
+            F64: f64_suffixed,
+        )
+    };
+
+    (@ to_literal($value:expr) for $($id:ident: $suffixed:ident),* $(,)?) => {
+        match $value {
+            LiteralValue::String(s) => Self::string(&s),
+            LiteralValue::ByteString(bytes) => Self::byte_string(&bytes),
+            LiteralValue::Character(c) => Self::character(c),
+            LiteralValue::ByteCharacter(b) => <Self as Literal>::byte_character(b),
+            LiteralValue::Int(value) => Self::u128_unsuffixed(value),
+            LiteralValue::Float(value) => Self::f64_unsuffixed(value),
+            $( LiteralValue::Suffixed(Suffixed::$id(value)) => Self::$suffixed(value), )*
+        }
+    };
 }
 
-#[cfg(feature = "proc-macro2")]
-impl From<&Literal> for proc_macro2::Literal {
-    #[inline]
-    fn from(value: &Literal) -> Self {
-        from_literal_impl!([value][infallible])
-    }
-}
-
-#[cfg(feature = "proc-macro")]
-impl TryFrom<Literal> for proc_macro::TokenTree {
-    type Error = IncompatibleSpanError;
-
-    #[inline]
-    fn try_from(value: Literal) -> Result<Self, IncompatibleSpanError> {
-        proc_macro::Literal::try_from(value).map(|x| x.into())
-    }
-}
-
-#[cfg(feature = "proc-macro")]
-impl TryFrom<&Literal> for proc_macro::TokenTree {
-    type Error = IncompatibleSpanError;
-
-    #[inline]
-    fn try_from(value: &Literal) -> Result<Self, IncompatibleSpanError> {
-        proc_macro::Literal::try_from(value).map(|x| x.into())
-    }
-}
-
-#[cfg(feature = "proc-macro2")]
-impl From<Literal> for proc_macro2::TokenTree {
-    #[inline]
-    fn from(value: Literal) -> Self {
-        proc_macro2::Literal::from(value).into()
-    }
-}
-
-#[cfg(feature = "proc-macro2")]
-impl From<&Literal> for proc_macro2::TokenTree {
-    #[inline]
-    fn from(value: &Literal) -> Self {
-        proc_macro2::Literal::from(value).into()
-    }
-}
-
-#[cfg(feature = "quote")]
-impl quote::ToTokens for Literal {
-    #[inline]
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let tt: proc_macro2::TokenTree = self.into();
-        tt.to_tokens(tokens);
-    }
-}
+impl_literal!(proc_macro: "proc-macro", proc_macro2: "proc-macro2");
