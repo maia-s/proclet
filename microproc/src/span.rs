@@ -113,7 +113,7 @@ impl From<WrappedSpan> for proc_macro2::Span {
     }
 }
 
-pub trait Span: ProcMacro + Copy {}
+pub trait Span: ProcMacro<Span = Self> + Copy {}
 
 #[cfg(feature = "proc-macro")]
 impl Span for proc_macro::Span {}
@@ -121,7 +121,10 @@ impl Span for proc_macro::Span {}
 #[cfg(feature = "proc-macro2")]
 impl Span for proc_macro2::Span {}
 
-pub trait SpanExt: ProcMacroExt + Span + Into<WrappedSpan> + TryFrom<WrappedSpan> {}
+pub trait SpanExt:
+    ProcMacroExt<SpanExt = Self> + Span + Into<WrappedSpan> + TryFrom<WrappedSpan>
+{
+}
 
 #[cfg(feature = "proc-macro")]
 impl SpanExt for proc_macro::Span {}

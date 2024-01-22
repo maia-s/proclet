@@ -13,7 +13,7 @@ use std::iter;
 ///
 /// See also [`TokenStreamExt`].
 pub trait TokenStream:
-    ProcMacro
+    ProcMacro //<TokenStream = Self> // uncommenting this fails to compile
     + Default
     + Display
     + Extend<Self::TokenStream>
@@ -36,7 +36,7 @@ pub trait TokenStream:
 ///
 /// This trait is implemented for `TokenStream` in `proc_macro` and `proc_macro2` if the
 /// corresponding features are enabled.
-pub trait TokenStreamExt: crate::ProcMacroExt + TokenStream {
+pub trait TokenStreamExt: crate::ProcMacroExt<TokenStreamExt = Self> + TokenStream {
     /// Apply a span to every [`TokenTree`] in the `TokenStream`, using [`TokenTree::set_span`]
     #[inline]
     #[must_use]
