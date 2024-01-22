@@ -1,16 +1,18 @@
 #[cfg(feature = "proc-macro")]
 use crate::{ProcMacro, ProcMacroExt};
-use std::{
-    error::Error,
-    fmt::{self, Display},
-    str::{self, FromStr},
-};
+use std::{fmt::Display, str::FromStr};
 
+#[cfg(feature = "literal-value")]
+use std::{error::Error, fmt};
+
+#[cfg(feature = "literal-value")]
 #[derive(Clone, Copy, Debug)]
 pub struct OutOfRangeError;
 
+#[cfg(feature = "literal-value")]
 impl Error for OutOfRangeError {}
 
+#[cfg(feature = "literal-value")]
 impl Display for OutOfRangeError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -18,18 +20,7 @@ impl Display for OutOfRangeError {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct WrongTypeError;
-
-impl Error for WrongTypeError {}
-
-impl Display for WrongTypeError {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "wrong type")
-    }
-}
-
+#[cfg(feature = "literal-value")]
 #[derive(Clone, Copy, Debug)]
 pub enum LiteralValueParseError {
     UnrecognizedByteEscape,
@@ -43,8 +34,10 @@ pub enum LiteralValueParseError {
     ValueOutOfRange,
 }
 
+#[cfg(feature = "literal-value")]
 impl Error for LiteralValueParseError {}
 
+#[cfg(feature = "literal-value")]
 impl Display for LiteralValueParseError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -66,6 +59,7 @@ impl Display for LiteralValueParseError {
     }
 }
 
+#[cfg(feature = "literal-value")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Suffixed {
     I8(i8),
@@ -84,6 +78,7 @@ pub enum Suffixed {
     F64(f64),
 }
 
+#[cfg(feature = "literal-value")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum LiteralValue {
     String(String),
@@ -95,6 +90,7 @@ pub enum LiteralValue {
     Suffixed(Suffixed),
 }
 
+#[cfg(feature = "literal-value")]
 impl LiteralValue {
     #[inline]
     pub const fn is_suffixed(&self) -> bool {
@@ -148,6 +144,7 @@ impl LiteralValue {
     }
 }
 
+#[cfg(feature = "literal-value")]
 impl FromStr for LiteralValue {
     type Err = LiteralValueParseError;
 
@@ -708,7 +705,10 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
 }
 
 pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal {
+    #[cfg(feature = "literal-value")]
     fn value(&self) -> LiteralValue;
+
+    #[cfg(feature = "literal-value")]
     fn set_value(&mut self, value: LiteralValue);
 }
 
@@ -768,11 +768,13 @@ macro_rules! impl_literal {
 
         #[cfg(feature = $feature)]
         impl LiteralExt for $pm::Literal {
+            #[cfg(feature = "literal-value")]
             #[inline]
             fn value(&self) -> LiteralValue {
                 self.to_string().parse().unwrap()
             }
 
+            #[cfg(feature = "literal-value")]
             #[inline]
             fn set_value(&mut self, value: LiteralValue) {
                 let mut lit = impl_literal!(@ to_literal(value));
