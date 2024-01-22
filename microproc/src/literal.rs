@@ -710,6 +710,11 @@ pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal {
 
     #[cfg(feature = "literal-value")]
     fn set_value(&mut self, value: LiteralValue);
+
+    #[inline]
+    fn to_token_tree(&self) -> Self::TokenTree {
+        self.clone().into()
+    }
 }
 
 macro_rules! impl_literal {

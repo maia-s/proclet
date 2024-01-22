@@ -21,6 +21,10 @@ pub trait TokenTree: ProcMacro + Display {
 /// corresponding features are enabled.
 pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
     fn group(&self) -> Option<&Self::GroupExt>;
+    fn group_mut(&mut self) -> Option<&mut Self::GroupExt>;
+
+    fn literal(&self) -> Option<&Self::Literal>;
+    fn literal_mut(&mut self) -> Option<&mut Self::Literal>;
 
     /// If the `TokenTree` is a group with delimiter `None` containing a single item,
     /// replace the group with that item, recursively.
@@ -93,6 +97,33 @@ macro_rules! impl_token_tree {
             fn group(&self) -> Option<&Self::GroupExt> {
                 if let Self::Group(group) = self {
                     Some(group)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn group_mut(&mut self) -> Option<&mut Self::GroupExt> {
+                if let Self::Group(group) = self {
+                    Some(group)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn literal(&self) -> Option<&Self::LiteralExt> {
+                if let Self::Literal(lit) = self {
+                    Some(lit)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn literal_mut(&mut self) -> Option<&mut Self::LiteralExt> {
+                if let Self::Literal(lit) = self {
+                    Some(lit)
                 } else {
                     None
                 }
