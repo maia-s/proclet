@@ -1,5 +1,5 @@
 #[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
-use microproc::{LiteralExt, TokenTreeExt};
+use microproc::prelude::*;
 
 #[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
 use std::iter;
