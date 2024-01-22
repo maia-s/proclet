@@ -9,10 +9,16 @@ pub mod prelude {
     pub use crate::DelimiterExt as _;
     pub use crate::Group as _;
     pub use crate::GroupExt as _;
+    pub use crate::Ident as _;
+    pub use crate::IdentExt as _;
     pub use crate::Literal as _;
     pub use crate::LiteralExt as _;
     pub use crate::ProcMacro as _;
     pub use crate::ProcMacroExt as _;
+    pub use crate::Punct as _;
+    pub use crate::PunctExt as _;
+    pub use crate::Spacing as _;
+    pub use crate::SpacingExt as _;
     pub use crate::Span as _;
     pub use crate::SpanExt as _;
     pub use crate::TokenStream as _;
@@ -38,4 +44,7 @@ pub use span::{Span, SpanExt};
 pub use token_stream::TokenStream;
 pub use token_stream::TokenStreamExt;
 pub use token_tree::TokenTreeExt;
-pub use token_tree::{Delimiter, DelimiterExt, Group, GroupExt, TokenTree};
+pub use token_tree::{
+    Delimiter, DelimiterExt, Group, GroupExt, Ident, IdentExt, Punct, PunctExt, Spacing,
+    SpacingExt, TokenTree,
+};
