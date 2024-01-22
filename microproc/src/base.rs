@@ -9,6 +9,7 @@ macro_rules! impl_base {
     };
 
     (@t1 {$($t:ident: $ts:ident),* $(,)?} $t2:tt) => {
+        /// Base trait with associated types from `proc-macro`/`proc-macro2`.
         pub trait ProcMacro: Clone + Debug {
             $( impl_base!(@t2 $t: $ts, $t2); )*
             type TokenStreamIntoIter: Clone + Iterator<Item = Self::TokenTree>;

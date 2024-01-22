@@ -2,11 +2,24 @@ use std::fmt::Display;
 
 use crate::base::ProcMacro;
 
+/// `TokenTree` API trait.
+///
+/// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
+/// corresponding features are enabled.
+///
+/// See also [`TokenTreeExt`].
 pub trait TokenTree: ProcMacro + Display {
+    /// Get the span of this `TokenTree`.
     fn span(&self) -> Self::Span;
+
+    /// Set the span of this `TokenTree`. If the `TokenTree` is a [`Group`], this will use [`Group::set_span`].
     fn set_span(&mut self, span: Self::Span);
 }
 
+/// Extra utilities for [`TokenTree`].
+///
+/// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
+/// corresponding features are enabled.
 pub trait TokenTreeExt: TokenTree {
     /// If the TokenTree is a group with delimiter None containing a single item,
     /// replace the group with that item, recursively.

@@ -1,6 +1,12 @@
-use crate::{base::ProcMacro, prelude::*};
+use crate::{base::ProcMacro, TokenTree};
 use std::{fmt::Display, iter, str::FromStr};
 
+/// `TokenStream` API trait.
+///
+/// This trait is implemented for `TokenStream` in `proc_macro` and `proc_macro2` if the
+/// corresponding features are enabled.
+///
+/// See also [`TokenStreamExt`].
 pub trait TokenStream:
     ProcMacro
     + Default
@@ -13,11 +19,19 @@ pub trait TokenStream:
     + FromStr
     + IntoIterator<IntoIter = Self::TokenStreamIntoIter, Item = Self::TokenTree>
 {
+    /// Make an empty `TokenStream`.
     fn new() -> Self;
+
+    /// Check if this `TokenStream` is empty.
     fn is_empty(&self) -> bool;
 }
 
+/// Extra utilities for [`TokenStream`].
+///
+/// This trait is implemented for `TokenStream` in `proc_macro` and `proc_macro2` if the
+/// corresponding features are enabled.
 pub trait TokenStreamExt: TokenStream {
+    /// Apply a span to every [`TokenTree`] in the `TokenStream`, using [`TokenTree::set_span`]
     #[inline]
     #[must_use]
     fn apply_span(self, span: Self::Span) -> Self {
@@ -29,6 +43,10 @@ pub trait TokenStreamExt: TokenStream {
             .collect()
     }
 
+    /// Match `tokens` and split the `TokenStream`.
+    /// The first value in the returned tuple is a `TokenStream` with the matched tokens
+    /// (taken from `self`), and the second is the rest of the `TokenStream` with the
+    /// matching tokens removed.
     #[inline]
     #[must_use]
     fn expect(self, tokens: impl Iterator<Item = Self::TokenTree>) -> Option<(Self, Self)> {
