@@ -1,7 +1,7 @@
 use crate::{base::ProcMacro, prelude::*};
 use std::{fmt::Display, iter, str::FromStr};
 
-pub trait TokenStreamExt:
+pub trait TokenStream:
     ProcMacro
     + Default
     + Display
@@ -15,7 +15,9 @@ pub trait TokenStreamExt:
 {
     fn new() -> Self;
     fn is_empty(&self) -> bool;
+}
 
+pub trait TokenStreamExt: TokenStream {
     #[inline]
     #[must_use]
     fn apply_span(self, span: Self::Span) -> Self {
@@ -47,10 +49,10 @@ pub trait TokenStreamExt:
     }
 }
 
-macro_rules! impl_token_stream_ext {
+macro_rules! impl_token_stream {
     ($($pm:ident: $feature:literal),*) => { $(
         #[cfg(feature = $feature)]
-        impl TokenStreamExt for $pm::TokenStream {
+        impl TokenStream for $pm::TokenStream {
             #[inline]
             fn new() -> Self {
                 Self::new()
@@ -61,7 +63,10 @@ macro_rules! impl_token_stream_ext {
                 self.is_empty()
             }
         }
+
+        #[cfg(feature = $feature)]
+        impl TokenStreamExt for $pm::TokenStream {}
     )* };
 }
 
-impl_token_stream_ext!(proc_macro: "proc-macro", proc_macro2: "proc-macro2");
+impl_token_stream!(proc_macro: "proc-macro", proc_macro2: "proc-macro2");

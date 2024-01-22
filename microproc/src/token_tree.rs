@@ -2,19 +2,21 @@ use std::fmt::Display;
 
 use crate::base::ProcMacro;
 
-pub trait TokenTreeExt: ProcMacro + Display {
+pub trait TokenTree: ProcMacro + Display {
     fn span(&self) -> Self::Span;
     fn set_span(&mut self, span: Self::Span);
+}
 
+pub trait TokenTreeExt: TokenTree {
     /// If the TokenTree is a group with delimiter None containing a single item,
     /// replace the group with that item, recursively.
     fn flatten_group(&mut self);
 }
 
-macro_rules! impl_token_tree_ext {
+macro_rules! impl_token_tree {
     ($($pm:ident: $feature:literal),*) => { $(
         #[cfg(feature = $feature)]
-        impl TokenTreeExt for $pm::TokenTree {
+        impl TokenTree for $pm::TokenTree {
             #[inline]
             fn span(&self) -> Self::Span {
                 self.span()
@@ -24,7 +26,10 @@ macro_rules! impl_token_tree_ext {
             fn set_span(&mut self, span: Self::Span) {
                 self.set_span(span);
             }
+        }
 
+        #[cfg(feature = $feature)]
+        impl TokenTreeExt for $pm::TokenTree {
             #[inline]
             fn flatten_group(&mut self) {
                 while let Self::Group(group) = self {
@@ -44,4 +49,4 @@ macro_rules! impl_token_tree_ext {
     )* };
 }
 
-impl_token_tree_ext!(proc_macro: "proc-macro", proc_macro2: "proc-macro2");
+impl_token_tree!(proc_macro: "proc-macro", proc_macro2: "proc-macro2");
