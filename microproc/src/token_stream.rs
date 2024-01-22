@@ -1,10 +1,5 @@
-use crate::base::ProcMacro;
-use std::{fmt::Display, str::FromStr};
-
-#[cfg(feature = "token-stream-ext")]
-use crate::TokenTree;
-#[cfg(feature = "token-stream-ext")]
-use std::iter;
+use crate::{ProcMacro, TokenTree};
+use std::{fmt::Display, iter, str::FromStr};
 
 /// `TokenStream` API trait.
 ///
@@ -31,7 +26,6 @@ pub trait TokenStream:
     fn is_empty(&self) -> bool;
 }
 
-#[cfg(feature = "token-stream-ext")]
 /// Extra utilities for [`TokenStream`].
 ///
 /// This trait is implemented for `TokenStream` in `proc_macro` and `proc_macro2` if the
@@ -88,7 +82,7 @@ macro_rules! impl_token_stream {
             }
         }
 
-        #[cfg(all(feature = "token-stream-ext", feature = $feature))]
+        #[cfg(feature = $feature)]
         impl TokenStreamExt for $pm::TokenStream {}
     )* };
 }

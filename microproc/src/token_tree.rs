@@ -15,7 +15,6 @@ pub trait TokenTree: ProcMacro + Display {
     fn set_span(&mut self, span: Self::Span);
 }
 
-#[cfg(feature = "token-tree-ext")]
 /// Extra utilities for [`TokenTree`].
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
@@ -88,7 +87,7 @@ macro_rules! impl_token_tree {
             }
         }
 
-        #[cfg(all(feature = "token-tree-ext", feature = $feature))]
+        #[cfg(feature = $feature)]
         impl TokenTreeExt for $pm::TokenTree {
             #[inline]
             fn group(&self) -> Option<&Self::GroupExt> {

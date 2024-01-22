@@ -32,7 +32,6 @@ impl Error {
         self.span = span.into();
     }
 
-    #[cfg(feature = "token-stream-ext")]
     #[inline]
     pub fn to_compile_error<TokenStream: crate::TokenStreamExt>(&self) -> TokenStream
     where

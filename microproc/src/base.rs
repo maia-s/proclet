@@ -17,19 +17,15 @@ macro_rules! impl_base {
         }
 
         /// This trait adds extra bounds to the associated types of `ProcMacro` to enable extension
-        /// traits if their corresponding feature is enabled. You can keep using the types defined in
-        /// `ProcMacro`; the associated types of this trait should be considered an implementation
-        /// detail.
+        /// traits. You can keep using the types defined in `ProcMacro`; the associated types of this
+        /// trait should be considered an implementation detail.
         pub trait ProcMacroExt: ProcMacro<
             $($t = Self::$ts,)*
             TokenStreamIntoIter = Self::TokenStreamExtIntoIter
         > {
             $( impl_base!(@t3 $t: $ts $(: $tf)?, $t2); )*
 
-            #[cfg(feature = "token-stream-ext")]
             type TokenStreamExtIntoIter: Clone + Iterator<Item = Self::TokenTreeExt>;
-            #[cfg(not(feature = "token-stream-ext"))]
-            type TokenStreamExtIntoIter;
         }
     };
 
@@ -74,6 +70,6 @@ impl_base!({
     Group: GroupExt,
     Literal: LiteralExt,
     Span: SpanExt,
-    TokenStream: TokenStreamExt: "token-stream-ext",
-    TokenTree: TokenTreeExt: "token-tree-ext",
+    TokenStream: TokenStreamExt,
+    TokenTree: TokenTreeExt,
 });
