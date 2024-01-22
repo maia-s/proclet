@@ -113,21 +113,61 @@ impl From<WrappedSpan> for proc_macro2::Span {
     }
 }
 
-pub trait Span: ProcMacro<Span = Self> + Copy {}
+pub trait Span: ProcMacro<Span = Self> + Copy {
+    /// Create a new `Span` with call site hygiene.
+    fn call_site() -> Self;
 
-#[cfg(feature = "proc-macro")]
-impl Span for proc_macro::Span {}
+    /// Create a new `Span` with mixed site hygiene.
+    fn mixed_site() -> Self;
 
-#[cfg(feature = "proc-macro2")]
-impl Span for proc_macro2::Span {}
+    /// Create a new `Span` with the same position as `self` but that resolves as if it was `other`.
+    fn resolved_at(&self, other: Self) -> Self;
+
+    /// Create a new `Span` that resolves like `self` but with the position of `other`.
+    fn located_at(&self, other: Self) -> Self;
+
+    /// Get the source text of the span, if any. Observable behaviour should not rely on this.
+    fn source_text(&self) -> Option<String>;
+}
 
 pub trait SpanExt:
     ProcMacroExt<SpanExt = Self> + Span + Into<WrappedSpan> + TryFrom<WrappedSpan>
 {
 }
 
-#[cfg(feature = "proc-macro")]
-impl SpanExt for proc_macro::Span {}
+macro_rules! impl_span {
+    ($($pm:ident: $feature:literal),*) => { $(
+        #[cfg(feature = $feature)]
+        impl Span for $pm::Span {
+            #[inline]
+            fn call_site() -> Self {
+                Self::call_site()
+            }
 
-#[cfg(feature = "proc-macro2")]
-impl SpanExt for proc_macro2::Span {}
+            #[inline]
+            fn mixed_site() -> Self {
+                Self::mixed_site()
+            }
+
+            #[inline]
+            fn resolved_at(&self, other: Self) -> Self {
+                self.resolved_at(other)
+            }
+
+            #[inline]
+            fn located_at(&self, other: Self) -> Self {
+                self.located_at(other)
+            }
+
+            #[inline]
+            fn source_text(&self) -> Option<String> {
+                self.source_text()
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl SpanExt for $pm::Span {}
+    )* };
+}
+
+impl_span!(proc_macro: "proc-macro", proc_macro2: "proc-macro2");
