@@ -32,6 +32,6 @@ pub use span::{Span, SpanExt};
 pub use token_stream::TokenStream;
 #[cfg(feature = "token-stream-ext")]
 pub use token_stream::TokenStreamExt;
-pub use token_tree::TokenTree;
 #[cfg(feature = "token-tree-ext")]
 pub use token_tree::TokenTreeExt;
+pub use token_tree::{Delimiter, DelimiterExt, Group, GroupExt, TokenTree};
