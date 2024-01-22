@@ -20,8 +20,8 @@ pub trait TokenTree: ProcMacro + Display {
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding features are enabled.
 pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
-    fn group(&self) -> Option<&Self::GroupExt>;
-    fn group_mut(&mut self) -> Option<&mut Self::GroupExt>;
+    fn group(&self) -> Option<&Self::Group>;
+    fn group_mut(&mut self) -> Option<&mut Self::Group>;
 
     fn literal(&self) -> Option<&Self::Literal>;
     fn literal_mut(&mut self) -> Option<&mut Self::Literal>;
@@ -94,7 +94,7 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl TokenTreeExt for $pm::TokenTree {
             #[inline]
-            fn group(&self) -> Option<&Self::GroupExt> {
+            fn group(&self) -> Option<&<Self as ProcMacro>::Group> {
                 if let Self::Group(group) = self {
                     Some(group)
                 } else {
@@ -103,7 +103,7 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
-            fn group_mut(&mut self) -> Option<&mut Self::GroupExt> {
+            fn group_mut(&mut self) -> Option<&mut <Self as ProcMacro>::Group> {
                 if let Self::Group(group) = self {
                     Some(group)
                 } else {
@@ -112,7 +112,7 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
-            fn literal(&self) -> Option<&Self::LiteralExt> {
+            fn literal(&self) -> Option<&<Self as ProcMacro>::Literal> {
                 if let Self::Literal(lit) = self {
                     Some(lit)
                 } else {
@@ -121,7 +121,7 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
-            fn literal_mut(&mut self) -> Option<&mut Self::LiteralExt> {
+            fn literal_mut(&mut self) -> Option<&mut <Self as ProcMacro>::Literal> {
                 if let Self::Literal(lit) = self {
                     Some(lit)
                 } else {
