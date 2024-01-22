@@ -1,7 +1,7 @@
 #[cfg(feature = "proc-macro")]
 use crate::span::IncompatibleSpanError;
 
-use crate::{span::WrappedSpan, SpanExt};
+use crate::span::WrappedSpan;
 use std::{
     error::Error,
     fmt::{self, Display},
@@ -633,7 +633,7 @@ pub struct Literal {
 
 impl Literal {
     #[inline]
-    pub fn new(value: LiteralValue, span: impl SpanExt) -> Self {
+    pub fn new(value: LiteralValue, span: impl crate::SpanExt) -> Self {
         Self {
             value,
             span: span.into(),
@@ -650,7 +650,7 @@ impl Literal {
     /// This may fail if the span originates from a `proc_macro2::Span` and you're trying
     /// to get a `proc_macro::Span`.
     #[inline]
-    pub fn span<S: SpanExt>(&self) -> Result<S, S::Error> {
+    pub fn span<S: crate::SpanExt>(&self) -> Result<S, S::Error> {
         self.span.try_into()
     }
 
@@ -659,7 +659,7 @@ impl Literal {
     /// `proc_macro::Span` is compatible with both `proc-macro` and `proc-macro2`, but
     /// `proc_macro2::Span` can't be used with types from `proc-macro`.
     #[inline]
-    pub fn set_span(&mut self, span: impl SpanExt) {
+    pub fn set_span(&mut self, span: impl crate::SpanExt) {
         self.span = span.into();
     }
 }

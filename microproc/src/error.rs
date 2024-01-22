@@ -1,8 +1,7 @@
-use crate::{span::WrappedSpan, ProcMacroExt, SpanExt, TokenStreamExt};
+use crate::{span::WrappedSpan, SpanExt};
 use std::{
     borrow::Cow,
     fmt::{self, Display},
-    str::FromStr,
 };
 
 #[derive(Debug)]
@@ -33,11 +32,12 @@ impl Error {
         self.span = span.into();
     }
 
+    #[cfg(feature = "token-stream-ext")]
     #[inline]
-    pub fn to_compile_error<TokenStream: TokenStreamExt>(&self) -> TokenStream
+    pub fn to_compile_error<TokenStream: crate::TokenStreamExt>(&self) -> TokenStream
     where
-        <TokenStream as FromStr>::Err: fmt::Debug,
-        <<TokenStream as ProcMacroExt>::SpanExt as TryFrom<WrappedSpan>>::Error: fmt::Debug,
+        <TokenStream as std::str::FromStr>::Err: fmt::Debug,
+        <<TokenStream as crate::ProcMacroExt>::SpanExt as TryFrom<WrappedSpan>>::Error: fmt::Debug,
     {
         let ts: TokenStream = format!("::core::compile_error!({:?});", self.message)
             .parse()

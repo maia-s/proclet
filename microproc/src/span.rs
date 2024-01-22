@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::fmt::{Debug, Display};
 
-use crate::base::{ProcMacro, ProcMacroExt};
+use crate::base::ProcMacro;
+use crate::ProcMacroExt;
 
 #[derive(Clone, Copy)]
 pub struct IncompatibleSpanError;

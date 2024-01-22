@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::base::{ProcMacro, ProcMacroExt};
+use crate::base::ProcMacro;
 
 /// `TokenTree` API trait.
 ///
@@ -16,11 +16,12 @@ pub trait TokenTree: ProcMacro + Display {
     fn set_span(&mut self, span: Self::Span);
 }
 
+#[cfg(feature = "token-tree-ext")]
 /// Extra utilities for [`TokenTree`].
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding features are enabled.
-pub trait TokenTreeExt: ProcMacroExt + TokenTree {
+pub trait TokenTreeExt: crate::ProcMacroExt + TokenTree {
     /// If the TokenTree is a group with delimiter None containing a single item,
     /// replace the group with that item, recursively.
     fn flatten_group(&mut self);
@@ -41,7 +42,7 @@ macro_rules! impl_token_tree {
             }
         }
 
-        #[cfg(feature = $feature)]
+        #[cfg(all(feature = "token-tree-ext", feature = $feature))]
         impl TokenTreeExt for $pm::TokenTree {
             #[inline]
             fn flatten_group(&mut self) {

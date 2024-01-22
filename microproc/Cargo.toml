@@ -11,7 +11,12 @@ keywords = ["macros", "proc-macro", "lightweight"]
 categories = ["parsing", "development-tools::procedural-macro-helpers"]
 
 [features]
-default = ["proc-macro"]
+default = ["proc-macro", "extension-traits"]
+
+extension-traits = ["token-stream-ext", "token-tree-ext"]
+token-stream-ext = []
+token-tree-ext = []
+
 proc-macro = []
 proc-macro2 = ["dep:proc-macro2"]
 quote = ["dep:quote", "proc-macro2"]
