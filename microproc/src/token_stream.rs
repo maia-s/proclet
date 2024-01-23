@@ -54,16 +54,18 @@ pub trait TokenStreamExt:
     fn expect(self, mut tokens: impl Iterator<Item = Self::TokenTree>) -> Option<(Self, Self)> {
         let mut it = self.into_iter();
         let mut n = 0;
-        for a in it.clone() {
-            let Some(b) = tokens.next() else { break };
-            n += 1;
-            if a.to_string() != b.to_string() {
+        'check: {
+            for a in it.clone() {
+                let Some(b) = tokens.next() else { break 'check };
+                n += 1;
+                if a.to_string() != b.to_string() {
+                    return None;
+                }
+            }
+            if tokens.next().is_some() {
+                // not enough tokens in self
                 return None;
             }
-        }
-        if tokens.next().is_some() {
-            // not enough tokens in self
-            return None;
         }
         let mut matched = Self::new();
         while n != 0 {
