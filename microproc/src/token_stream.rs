@@ -1,4 +1,4 @@
-use crate::{ProcMacro, TokenTree};
+use crate::{FromStrDebug, ProcMacro, TokenTree};
 use std::{fmt::Display, iter, str::FromStr};
 
 /// `TokenStream` API trait.
@@ -30,7 +30,9 @@ pub trait TokenStream:
 ///
 /// This trait is implemented for `TokenStream` in `proc_macro` and `proc_macro2` if the
 /// corresponding features are enabled.
-pub trait TokenStreamExt: crate::ProcMacroExt<TokenStreamExt = Self> + TokenStream {
+pub trait TokenStreamExt:
+    crate::ProcMacroExt<TokenStreamExt = Self> + TokenStream + FromStrDebug
+{
     /// Apply a span to every [`TokenTree`] in the `TokenStream`, using [`TokenTree::set_span`]
     #[inline]
     #[must_use]

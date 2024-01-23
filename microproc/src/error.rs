@@ -33,11 +33,7 @@ impl Error {
     }
 
     #[inline]
-    pub fn to_compile_error<TokenStream: crate::TokenStreamExt>(&self) -> TokenStream
-    where
-        <TokenStream as std::str::FromStr>::Err: fmt::Debug,
-        <<TokenStream as crate::ProcMacroExt>::SpanExt as TryFrom<WrappedSpan>>::Error: fmt::Debug,
-    {
+    pub fn to_compile_error<TokenStream: crate::TokenStreamExt>(&self) -> TokenStream {
         let ts: TokenStream = format!("::core::compile_error!({:?});", self.message)
             .parse()
             .unwrap();
