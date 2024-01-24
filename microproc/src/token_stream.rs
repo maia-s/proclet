@@ -7,8 +7,11 @@ use std::{fmt::Display, iter, str::FromStr};
 /// corresponding features are enabled.
 ///
 /// See also [`TokenStreamExt`].
+//
+// The ProcMacro bound should be ProcMacro<TokenStream = Self>, but that fails to compile.
+// (this comment is up here because rustfmt stops working if trait bounds have comments)
 pub trait TokenStream:
-    ProcMacro //<TokenStream = Self> // uncommenting this fails to compile
+    ProcMacro
     + Default
     + Display
     + Extend<Self::TokenStream>
