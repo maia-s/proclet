@@ -1,6 +1,14 @@
 use crate::ProcMacro;
 use std::fmt::Display;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TokenTreeKind {
+    Group,
+    Ident,
+    Punct,
+    Literal,
+}
+
 /// `TokenTree` API trait.
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
@@ -27,17 +35,11 @@ pub trait TokenTree:
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding features are enabled.
 pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
-    fn do_match<T>(
-        &self,
-        group: impl FnOnce(&Self::Group) -> T,
-        ident: impl FnOnce(&Self::Ident) -> T,
-        punct: impl FnOnce(&Self::Punct) -> T,
-        literal: impl FnOnce(&Self::Literal) -> T,
-    ) -> T;
+    fn kind(&self) -> TokenTreeKind;
 
     #[inline]
     fn is_group(&self) -> bool {
-        self.group().is_some()
+        self.kind() == TokenTreeKind::Group
     }
 
     fn group(&self) -> Option<&Self::Group>;
@@ -45,7 +47,7 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
 
     #[inline]
     fn is_ident(&self) -> bool {
-        self.ident().is_some()
+        self.kind() == TokenTreeKind::Ident
     }
 
     fn ident(&self) -> Option<&Self::Ident>;
@@ -53,7 +55,7 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
 
     #[inline]
     fn is_punct(&self) -> bool {
-        self.punct().is_some()
+        self.kind() == TokenTreeKind::Punct
     }
 
     fn punct(&self) -> Option<&Self::Punct>;
@@ -61,7 +63,7 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
 
     #[inline]
     fn is_literal(&self) -> bool {
-        self.literal().is_some()
+        self.kind() == TokenTreeKind::Literal
     }
 
     fn literal(&self) -> Option<&Self::Literal>;
@@ -109,22 +111,55 @@ pub trait Group: ProcMacro<Group = Self> + Display {
     fn set_span(&mut self, span: Self::Span);
 }
 
-pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group {}
+pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group {
+    /// Get the delimiter of this `Group` as a matchable enum.
+    #[inline]
+    fn delimiter_kind(&self) -> DelimiterKind {
+        self.delimiter().into()
+    }
+}
 
-pub trait Delimiter: ProcMacro<Delimiter = Self> {}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DelimiterKind {
+    Parenthesis,
+    Brace,
+    Bracket,
+    None,
+}
 
-pub trait DelimiterExt: crate::ProcMacroExt<DelimiterExt = Self> + Delimiter {
-    fn do_match<T>(
-        &self,
-        parenthesis: impl FnOnce() -> T,
-        brace: impl FnOnce() -> T,
-        bracket: impl FnOnce() -> T,
-        none: impl FnOnce() -> T,
-    ) -> T;
-    fn is_parenthesis(&self) -> bool;
-    fn is_brace(&self) -> bool;
-    fn is_bracket(&self) -> bool;
-    fn is_none(&self) -> bool;
+pub trait Delimiter: ProcMacro<Delimiter = Self> + Copy + Eq {}
+
+pub trait DelimiterExt:
+    crate::ProcMacroExt<DelimiterExt = Self>
+    + Delimiter
+    + From<DelimiterKind>
+    + Into<DelimiterKind>
+    + PartialEq<DelimiterKind>
+{
+    #[inline]
+    fn kind(&self) -> DelimiterKind {
+        (*self).into()
+    }
+
+    #[inline]
+    fn is_parenthesis(&self) -> bool {
+        *self == DelimiterKind::Parenthesis
+    }
+
+    #[inline]
+    fn is_brace(&self) -> bool {
+        *self == DelimiterKind::Brace
+    }
+
+    #[inline]
+    fn is_bracket(&self) -> bool {
+        *self == DelimiterKind::Bracket
+    }
+
+    #[inline]
+    fn is_none(&self) -> bool {
+        *self == DelimiterKind::None
+    }
 }
 
 pub trait Ident: ProcMacro<Ident = Self> + Display {
@@ -187,18 +222,12 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl TokenTreeExt for $pm::TokenTree {
             #[inline]
-            fn do_match<T>(
-                &self,
-                on_group: impl FnOnce(&<Self as ProcMacro>::Group) -> T,
-                on_ident: impl FnOnce(&<Self as ProcMacro>::Ident) -> T,
-                on_punct: impl FnOnce(&<Self as ProcMacro>::Punct) -> T,
-                on_literal: impl FnOnce(&<Self as ProcMacro>::Literal) -> T,
-            ) -> T {
+            fn kind(&self) -> TokenTreeKind {
                 match self {
-                    Self::Group(group) => on_group(group),
-                    Self::Ident(ident) => on_ident(ident),
-                    Self::Punct(punct) => on_punct(punct),
-                    Self::Literal(literal) => on_literal(literal),
+                    Self::Group(_) => TokenTreeKind::Group,
+                    Self::Ident(_) => TokenTreeKind::Ident,
+                    Self::Punct(_) => TokenTreeKind::Punct,
+                    Self::Literal(_) => TokenTreeKind::Literal,
                 }
             }
 
@@ -317,46 +346,52 @@ macro_rules! impl_token_tree {
         impl GroupExt for $pm::Group {}
 
         #[cfg(feature = $feature)]
+        impl From<$pm::Delimiter> for DelimiterKind {
+            #[inline]
+            fn from(value: $pm::Delimiter) -> Self {
+                match value {
+                    $pm::Delimiter::Parenthesis => Self::Parenthesis,
+                    $pm::Delimiter::Brace => Self::Brace,
+                    $pm::Delimiter::Bracket => Self::Bracket,
+                    $pm::Delimiter::None => Self::None,
+                }
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl From<DelimiterKind> for $pm::Delimiter {
+            #[inline]
+            fn from(value: DelimiterKind) -> Self {
+                match value {
+                    DelimiterKind::Parenthesis => Self::Parenthesis,
+                    DelimiterKind::Brace => Self::Brace,
+                    DelimiterKind::Bracket => Self::Bracket,
+                    DelimiterKind::None => Self::None,
+                }
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl PartialEq<$pm::Delimiter> for DelimiterKind {
+            #[inline]
+            fn eq(&self, rhs: &$pm::Delimiter) -> bool {
+                *self == rhs.kind()
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl PartialEq<DelimiterKind> for $pm::Delimiter {
+            #[inline]
+            fn eq(&self, rhs: &DelimiterKind) -> bool {
+                self.kind() == *rhs
+            }
+        }
+
+        #[cfg(feature = $feature)]
         impl Delimiter for $pm::Delimiter {}
 
         #[cfg(feature = $feature)]
-        impl DelimiterExt for $pm::Delimiter {
-            #[inline]
-            fn do_match<T>(
-                &self,
-                parenthesis: impl FnOnce() -> T,
-                brace: impl FnOnce() -> T,
-                bracket: impl FnOnce() -> T,
-                none: impl FnOnce() -> T,
-            ) -> T {
-                match *self {
-                    Self::Parenthesis => parenthesis(),
-                    Self::Brace => brace(),
-                    Self::Bracket => bracket(),
-                    Self::None => none(),
-                }
-            }
-
-            #[inline]
-            fn is_parenthesis(&self) -> bool {
-                matches!(self, $pm::Delimiter::Parenthesis)
-            }
-
-            #[inline]
-            fn is_brace(&self) -> bool {
-                matches!(self, $pm::Delimiter::Brace)
-            }
-
-            #[inline]
-            fn is_bracket(&self) -> bool {
-                matches!(self, $pm::Delimiter::Bracket)
-            }
-
-            #[inline]
-            fn is_none(&self) -> bool {
-                matches!(self, $pm::Delimiter::None)
-            }
-        }
+        impl DelimiterExt for $pm::Delimiter {}
 
         #[cfg(feature = $feature)]
         impl Ident for $pm::Ident {

@@ -41,12 +41,10 @@ pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralValue, Suffixed};
 pub use span::{Span, SpanExt};
-pub use token_stream::TokenStream;
-pub use token_stream::TokenStreamExt;
-pub use token_tree::TokenTreeExt;
+pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
-    Delimiter, DelimiterExt, Group, GroupExt, Ident, IdentExt, Punct, PunctExt, Spacing,
-    SpacingExt, TokenTree,
+    Delimiter, DelimiterExt, DelimiterKind, Group, GroupExt, Ident, IdentExt, Punct, PunctExt,
+    Spacing, SpacingExt, TokenTree, TokenTreeExt, TokenTreeKind,
 };
 
 use internal::*;
