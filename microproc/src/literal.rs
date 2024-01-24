@@ -692,6 +692,9 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
     fn character(c: char) -> Self;
 
     /// Byte character literal.
+    ///
+    /// This method is currently unstable in `proc-macro` and is missing from `proc-macro2`,
+    /// but this crate implements it in a way that works with both on stable.
     fn byte_character(b: u8) -> Self;
 
     /// Byte string literal.
