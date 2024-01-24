@@ -627,22 +627,22 @@ macro_rules! def {
 
     (@ suffixed_int $ident:ident: $t:ty) => {
         /// Suffixed integer literal.
-        fn $ident(n: $t) -> Self::Literal;
+        fn $ident(n: $t) -> Self;
     };
 
     (@ unsuffixed_int $ident:ident: $t:ty) => {
         /// Unsuffixed integer literal.
-        fn $ident(n: $t) -> Self::Literal;
+        fn $ident(n: $t) -> Self;
     };
 
     (@ suffixed_float $ident:ident: $t:ty) => {
         /// Suffixed floating-point literal.
-        fn $ident(n: $t) -> Self::Literal;
+        fn $ident(n: $t) -> Self;
     };
 
     (@ unsuffixed_float $ident:ident: $t:ty) => {
         /// Unsuffixed floating-point literal.
-        fn $ident(n: $t) -> Self::Literal;
+        fn $ident(n: $t) -> Self;
     };
 }
 
@@ -686,16 +686,16 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
     }
 
     /// String literal.
-    fn string(str: &str) -> Self::Literal;
+    fn string(str: &str) -> Self;
 
     /// Character literal.
-    fn character(c: char) -> Self::Literal;
+    fn character(c: char) -> Self;
 
     /// Byte character literal.
-    fn byte_character(b: u8) -> Self::Literal;
+    fn byte_character(b: u8) -> Self;
 
     /// Byte string literal.
-    fn byte_string(bytes: &[u8]) -> Self::Literal;
+    fn byte_string(bytes: &[u8]) -> Self;
 
     /// The span of this literal.
     fn span(&self) -> Self::Span;
@@ -756,7 +756,7 @@ macro_rules! impl_literal {
             }
 
             #[inline]
-            fn byte_character(b: u8) -> Self::Literal {
+            fn byte_character(b: u8) -> Self {
                 format!("b'\\x{b:02x}'").parse().unwrap()
             }
 
@@ -791,7 +791,7 @@ macro_rules! impl_literal {
 
     (@ $pm:ident $($id:ident: $arg:ident: $t:ty),* $(,)?) => { $(
         #[inline]
-        fn $id($arg: $t) -> Self::Literal {
+        fn $id($arg: $t) -> Self {
             $pm::Literal::$id($arg)
         }
     )* };
