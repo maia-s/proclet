@@ -9,10 +9,10 @@ pub enum TokenTreeKind {
     Literal,
 }
 
-/// `TokenTree` API trait.
+/// `TokenTree` API trait. See [`proc_macro::TokenTree`](https://doc.rust-lang.org/stable/proc_macro/enum.TokenTree.html).
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
-/// corresponding features are enabled.
+/// corresponding feature is enabled.
 ///
 /// See also [`TokenTreeExt`].
 pub trait TokenTree:
@@ -30,10 +30,10 @@ pub trait TokenTree:
     fn set_span(&mut self, span: Self::Span);
 }
 
-/// Extra utilities for [`TokenTree`].
+/// Extensions for [`TokenTree`].
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
-/// corresponding features are enabled.
+/// corresponding feature is enabled.
 pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
     fn kind(&self) -> TokenTreeKind;
 
@@ -88,6 +88,12 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
     }
 }
 
+/// `Group` API trait. See [`proc_macro::Group`](https://doc.rust-lang.org/stable/proc_macro/struct.Group.html).
+///
+/// This trait is implemented for `Group` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+///
+/// See also [`GroupExt`].
 pub trait Group: ProcMacro<Group = Self> + Display {
     /// Create a new `Group`. The span will be set to `Span::call_site()`.
     fn new(delimiter: Self::Delimiter, stream: Self::TokenStream) -> Self;
@@ -111,6 +117,10 @@ pub trait Group: ProcMacro<Group = Self> + Display {
     fn set_span(&mut self, span: Self::Span);
 }
 
+/// Extensions for [`Group`].
+///
+/// This trait is implemented for `Group` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
 pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group {
     /// Get the delimiter of this `Group` as a matchable enum.
     #[inline]
@@ -127,8 +137,18 @@ pub enum DelimiterKind {
     None,
 }
 
+/// `Delimiter` API trait. See [`proc_macro::Delimiter`](https://doc.rust-lang.org/stable/proc_macro/enum.Delimiter.html).
+///
+/// This trait is implemented for `Delimiter` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+///
+/// See also [`DelimiterExt`].
 pub trait Delimiter: ProcMacro<Delimiter = Self> + Copy + Eq {}
 
+/// Extensions for [`Delimiter`].
+///
+/// This trait is implemented for `Delimiter` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
 pub trait DelimiterExt:
     crate::ProcMacroExt<DelimiterExt = Self>
     + Delimiter
@@ -162,6 +182,12 @@ pub trait DelimiterExt:
     }
 }
 
+/// `Ident` API trait. See [`proc_macro::Ident`](https://doc.rust-lang.org/stable/proc_macro/struct.Ident.html).
+///
+/// This trait is implemented for `Ident` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+///
+/// See also [`IdentExt`].
 pub trait Ident: ProcMacro<Ident = Self> + Display {
     /// Create a new `Ident` with the specified `span`.
     fn new(string: &str, span: Self::Span) -> Self;
@@ -176,8 +202,18 @@ pub trait Ident: ProcMacro<Ident = Self> + Display {
     fn set_span(&mut self, span: Self::Span);
 }
 
+/// Extensions for [`Ident`].
+///
+/// This trait is implemented for `Ident` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
 pub trait IdentExt: crate::ProcMacroExt<IdentExt = Self> + Ident {}
 
+/// `Punct` API trait. See [`proc_macro::Punct`](https://doc.rust-lang.org/stable/proc_macro/struct.Punct.html).
+///
+/// This trait is implemented for `Punct` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+///
+/// See also [`PunctExt`].
 pub trait Punct: ProcMacro<Punct = Self> + Display {
     /// Create a new `Punct`.
     fn new(ch: char, spacing: Self::Spacing) -> Self;
@@ -195,10 +231,24 @@ pub trait Punct: ProcMacro<Punct = Self> + Display {
     fn set_span(&mut self, span: Self::Span);
 }
 
+/// Extensions for [`Punct`].
+///
+/// This trait is implemented for `Punct` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
 pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct {}
 
+/// `Spacing` API trait. See [`proc_macro::Spacing`](https://doc.rust-lang.org/stable/proc_macro/enum.Spacing.html).
+///
+/// This trait is implemented for `Spacing` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+///
+/// See also [`SpacingExt`].
 pub trait Spacing: ProcMacro<Spacing = Self> + Copy + Eq {}
 
+/// Extensions for [`Spacing`].
+///
+/// This trait is implemented for `Spacing` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
 pub trait SpacingExt: crate::ProcMacroExt<SpacingExt = Self> + Spacing {
     fn is_joint(&self) -> bool;
     fn is_alone(&self) -> bool;

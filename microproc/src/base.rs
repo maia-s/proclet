@@ -9,16 +9,17 @@ macro_rules! impl_base {
     };
 
     (@t1 {$($t:ident: $ts:ident $(: $tf:literal)?),* $(,)?} $t2:tt) => {
-        /// Base trait with associated types from `proc-macro`/`proc-macro2`.
+        /// Base trait with associated type aliases for types from `proc-macro`/`proc-macro2`.
         /// See also [`ProcMacroExt`].
         pub trait ProcMacro: Clone + Debug {
             $( impl_base!(@t2 $t: $ts, $t2); )*
             type TokenStreamIntoIter: Clone + Iterator<Item = Self::TokenTree>;
         }
 
-        /// This trait adds extra bounds to the associated types of `ProcMacro` to enable extension
-        /// traits. You can keep using the types defined in `ProcMacro`; the associated types of this
-        /// trait should be considered an implementation detail.
+        /// Adds extra bounds to the associated types of [`ProcMacro`] to enable extension traits.
+        ///
+        /// You can keep using the types defined in `ProcMacro`; the associated types of this trait
+        /// should be considered an implementation detail.
         pub trait ProcMacroExt: ProcMacro<
             $($t = Self::$ts,)*
             TokenStreamIntoIter = Self::TokenStreamExtIntoIter

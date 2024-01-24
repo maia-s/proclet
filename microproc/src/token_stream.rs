@@ -1,10 +1,10 @@
 use crate::{FromStrDebug, ProcMacro, TokenTree};
 use std::{fmt::Display, iter, str::FromStr};
 
-/// `TokenStream` API trait.
+/// `TokenStream` API trait. See [`proc_macro::TokenStream`](https://doc.rust-lang.org/stable/proc_macro/struct.TokenStream.html).
 ///
 /// This trait is implemented for `TokenStream` in `proc_macro` and `proc_macro2` if the
-/// corresponding features are enabled.
+/// corresponding feature is enabled.
 ///
 /// See also [`TokenStreamExt`].
 //
@@ -29,10 +29,10 @@ pub trait TokenStream:
     fn is_empty(&self) -> bool;
 }
 
-/// Extra utilities for [`TokenStream`].
+/// Extensions for [`TokenStream`].
 ///
 /// This trait is implemented for `TokenStream` in `proc_macro` and `proc_macro2` if the
-/// corresponding features are enabled.
+/// corresponding feature is enabled.
 pub trait TokenStreamExt:
     crate::ProcMacroExt<TokenStreamExt = Self> + TokenStream + FromStrDebug
 {

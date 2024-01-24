@@ -112,6 +112,12 @@ impl From<WrappedSpan> for proc_macro2::Span {
     }
 }
 
+/// `Span` API trait. See [`proc_macro::Span`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html).
+///
+/// This trait is implemented for `Span` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+///
+/// See also [`SpanExt`].
 pub trait Span: ProcMacro<Span = Self> + Copy {
     /// Create a new `Span` with call site hygiene.
     fn call_site() -> Self;
@@ -129,6 +135,10 @@ pub trait Span: ProcMacro<Span = Self> + Copy {
     fn source_text(&self) -> Option<String>;
 }
 
+/// Extensions for [`Span`].
+///
+/// This trait is implemented for `Span` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
 pub trait SpanExt:
     ProcMacroExt<SpanExt = Self> + Span + Into<WrappedSpan> + TryFromDebug<WrappedSpan>
 {

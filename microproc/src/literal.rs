@@ -646,6 +646,12 @@ macro_rules! def {
     };
 }
 
+/// `Literal` API trait. See [`proc_macro::Literal`](https://doc.rust-lang.org/stable/proc_macro/struct.Literal.html).
+///
+/// This trait is implemented for `Literal` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+///
+/// See also [`LiteralExt`].
 pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
     def! {
         [suffixed_int]
@@ -707,6 +713,10 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
     fn set_span(&mut self, span: Self::Span);
 }
 
+/// Extensions for [`Literal`].
+///
+/// This trait is implemented for `Literal` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
 pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal {
     #[cfg(feature = "literal-value")]
     fn value(&self) -> LiteralValue;
