@@ -30,6 +30,7 @@ pub mod prelude {
 mod base;
 mod error;
 mod literal;
+mod op;
 mod span;
 mod token;
 mod token_stream;
