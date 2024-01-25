@@ -56,7 +56,7 @@ macro_rules! define_tokens {
 
         #[macro_export]
         macro_rules! Token {
-            $( ($($tt)*) => { $crate::token::$token }; )*
+            $( ($($tt)*) => { $crate::rust::$token }; )*
         }
     };
 }
