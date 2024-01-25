@@ -31,7 +31,6 @@ mod base;
 mod error;
 mod literal;
 mod op;
-mod rust;
 mod span;
 mod token_stream;
 mod token_tree;
@@ -41,6 +40,7 @@ pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralValue, Suffixed};
+pub use op::{Op, OpParser};
 pub use span::{Span, SpanExt};
 pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
