@@ -44,6 +44,7 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
 
     fn group(&self) -> Option<&Self::Group>;
     fn group_mut(&mut self) -> Option<&mut Self::Group>;
+    fn into_group(self) -> Option<Self::Group>;
 
     #[inline]
     fn is_ident(&self) -> bool {
@@ -52,6 +53,7 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
 
     fn ident(&self) -> Option<&Self::Ident>;
     fn ident_mut(&mut self) -> Option<&mut Self::Ident>;
+    fn into_ident(self) -> Option<Self::Ident>;
 
     #[inline]
     fn is_punct(&self) -> bool {
@@ -60,6 +62,7 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
 
     fn punct(&self) -> Option<&Self::Punct>;
     fn punct_mut(&mut self) -> Option<&mut Self::Punct>;
+    fn into_punct(self) -> Option<Self::Punct>;
 
     #[inline]
     fn is_literal(&self) -> bool {
@@ -68,6 +71,7 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
 
     fn literal(&self) -> Option<&Self::Literal>;
     fn literal_mut(&mut self) -> Option<&mut Self::Literal>;
+    fn into_literal(self) -> Option<Self::Literal>;
 
     /// If the `TokenTree` is a group with delimiter `None` containing a single item,
     /// replace the group with that item, recursively.
@@ -300,6 +304,15 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
+            fn into_group(self) -> Option<<Self as ProcMacro>::Group> {
+                if let Self::Group(group) = self {
+                    Some(group)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
             fn ident(&self) -> Option<&<Self as ProcMacro>::Ident> {
                 if let Self::Ident(ident) = self {
                     Some(ident)
@@ -310,6 +323,15 @@ macro_rules! impl_token_tree {
 
             #[inline]
             fn ident_mut(&mut self) -> Option<&mut <Self as ProcMacro>::Ident> {
+                if let Self::Ident(ident) = self {
+                    Some(ident)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn into_ident(self) -> Option<<Self as ProcMacro>::Ident> {
                 if let Self::Ident(ident) = self {
                     Some(ident)
                 } else {
@@ -336,9 +358,18 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
+            fn into_punct(self) -> Option<<Self as ProcMacro>::Punct> {
+                if let Self::Punct(punct) = self {
+                    Some(punct)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
             fn literal(&self) -> Option<&<Self as ProcMacro>::Literal> {
-                if let Self::Literal(lit) = self {
-                    Some(lit)
+                if let Self::Literal(literal) = self {
+                    Some(literal)
                 } else {
                     None
                 }
@@ -346,8 +377,17 @@ macro_rules! impl_token_tree {
 
             #[inline]
             fn literal_mut(&mut self) -> Option<&mut <Self as ProcMacro>::Literal> {
-                if let Self::Literal(lit) = self {
-                    Some(lit)
+                if let Self::Literal(literal) = self {
+                    Some(literal)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn into_literal(self) -> Option<<Self as ProcMacro>::Literal> {
+                if let Self::Literal(literal) = self {
+                    Some(literal)
                 } else {
                     None
                 }
