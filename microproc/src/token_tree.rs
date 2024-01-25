@@ -147,7 +147,13 @@ pub enum DelimiterKind {
 /// corresponding feature is enabled.
 ///
 /// See also [`DelimiterExt`].
-pub trait Delimiter: ProcMacro<Delimiter = Self> + Copy + Eq {}
+#[allow(non_upper_case_globals)]
+pub trait Delimiter: ProcMacro<Delimiter = Self> + Copy + Eq {
+    const Parenthesis: Self;
+    const Brace: Self;
+    const Bracket: Self;
+    const None: Self;
+}
 
 /// Extensions for [`Delimiter`].
 ///
@@ -167,22 +173,22 @@ pub trait DelimiterExt:
 
     #[inline]
     fn is_parenthesis(&self) -> bool {
-        *self == DelimiterKind::Parenthesis
+        *self == Self::Parenthesis
     }
 
     #[inline]
     fn is_brace(&self) -> bool {
-        *self == DelimiterKind::Brace
+        *self == Self::Brace
     }
 
     #[inline]
     fn is_bracket(&self) -> bool {
-        *self == DelimiterKind::Bracket
+        *self == Self::Bracket
     }
 
     #[inline]
     fn is_none(&self) -> bool {
-        *self == DelimiterKind::None
+        *self == Self::None
     }
 }
 
@@ -239,7 +245,10 @@ pub trait Punct: ProcMacro<Punct = Self> + Display {
 ///
 /// This trait is implemented for `Punct` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct {}
+pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct {
+    /// Set the spacing of this `Punct`.
+    fn set_spacing(&mut self, spacing: Self::Spacing);
+}
 
 /// `Spacing` API trait. See [`proc_macro::Spacing`](https://doc.rust-lang.org/stable/proc_macro/enum.Spacing.html).
 ///
@@ -247,15 +256,26 @@ pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct {}
 /// corresponding feature is enabled.
 ///
 /// See also [`SpacingExt`].
-pub trait Spacing: ProcMacro<Spacing = Self> + Copy + Eq {}
+#[allow(non_upper_case_globals)]
+pub trait Spacing: ProcMacro<Spacing = Self> + Copy + Eq {
+    const Joint: Self;
+    const Alone: Self;
+}
 
 /// Extensions for [`Spacing`].
 ///
 /// This trait is implemented for `Spacing` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait SpacingExt: crate::ProcMacroExt<SpacingExt = Self> + Spacing {
-    fn is_joint(&self) -> bool;
-    fn is_alone(&self) -> bool;
+    #[inline]
+    fn is_joint(&self) -> bool {
+        *self == Self::Joint
+    }
+
+    #[inline]
+    fn is_alone(&self) -> bool {
+        *self == Self::Alone
+    }
 }
 
 macro_rules! impl_token_tree {
@@ -478,7 +498,13 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl Delimiter for $pm::Delimiter {}
+        #[allow(non_upper_case_globals)]
+        impl Delimiter for $pm::Delimiter {
+            const Parenthesis: Self = Self::Parenthesis;
+            const Brace: Self = Self::Brace;
+            const Bracket: Self = Self::Bracket;
+            const None: Self = Self::None;
+        }
 
         #[cfg(feature = $feature)]
         impl DelimiterExt for $pm::Delimiter {}
@@ -538,23 +564,24 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl PunctExt for $pm::Punct {}
-
-        #[cfg(feature = $feature)]
-        impl Spacing for $pm::Spacing {}
-
-        #[cfg(feature = $feature)]
-        impl SpacingExt for $pm::Spacing {
+        impl PunctExt for $pm::Punct {
             #[inline]
-            fn is_joint(&self) -> bool {
-                matches!(self, $pm::Spacing::Joint)
-            }
-
-            #[inline]
-            fn is_alone(&self) -> bool {
-                matches!(self, $pm::Spacing::Alone)
+            fn set_spacing(&mut self, spacing: Self::Spacing) {
+                let mut punct = Self::new(self.as_char(), spacing);
+                punct.set_span(self.span());
+                *self = punct;
             }
         }
+
+        #[cfg(feature = $feature)]
+        #[allow(non_upper_case_globals)]
+        impl Spacing for $pm::Spacing {
+            const Joint: Self = Self::Joint;
+            const Alone: Self = Self::Alone;
+        }
+
+        #[cfg(feature = $feature)]
+        impl SpacingExt for $pm::Spacing {}
     )* };
 }
 
