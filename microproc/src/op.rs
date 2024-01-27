@@ -143,11 +143,12 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> bool> OpParser<P, F> {
     /// valid, it returns an error. Call [`OpParser::finish`] to finish parsing.
     #[inline]
     pub fn apply(&mut self, punct: P) -> Option<Result<Op<P>, InvalidOpError<P>>> {
-        let mut punct = if let Some(next) = mem::take(&mut self.next) {
+        let (mut punct, mut next_ch) = if let Some(next) = mem::take(&mut self.next) {
+            let next_ch = next.spacing().is_joint().then_some(punct.as_char());
             self.next = Some(punct);
-            next
+            (next, next_ch)
         } else if punct.spacing().is_alone() {
-            punct
+            (punct, None)
         } else {
             self.next = Some(punct);
             return None;
@@ -157,12 +158,13 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> bool> OpParser<P, F> {
             self.str.push(punct.as_char());
             self.puncts.push(punct);
 
-            if self.is_valid(&self.str, self.next.as_ref().map(|p| p.as_char())) {
+            if self.is_valid(&self.str, next_ch) {
                 self.str.clear();
                 return Some(Ok(Op::from_iter(mem::take(&mut self.puncts))));
             } else if let Some(next) = self.next.as_ref() {
                 if next.spacing().is_alone() {
                     punct = mem::take(&mut self.next).unwrap();
+                    next_ch = None;
                     continue;
                 } else {
                     return None;
