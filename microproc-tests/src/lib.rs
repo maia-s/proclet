@@ -1,115 +1,161 @@
 #[cfg(all(test, any(feature = "proc-macro", feature = "proc-macro2")))]
 mod tests {
-    use microproc_tests_macros::literal_roundtrip;
+    use microproc_tests_macros::{literal_roundtrip, parse_rust_ops};
 
-    macro_rules! check {
+    macro_rules! test_literal {
         ($($lit:literal),*) => { $(
             let lit2 = literal_roundtrip!($lit);
             assert_eq!(lit2, $lit);
         )* };
     }
 
-    #[cfg(all(feature = "proc-macro", not(feature = "proc-macro2")))]
-    #[test]
-    fn with_proc_macro() {
-        test_parse()
+    macro_rules! test_ops {
+        ([$($punct:tt)*] $expected:tt) => {
+            let parsed = parse_rust_ops!($($punct)*);
+            assert_eq!(parsed, $expected);
+        };
     }
 
+    #[cfg(all(feature = "proc-macro", not(feature = "proc-macro2")))]
+    macro_rules! tests { ($($tt:tt)*) => { mod with_proc_macro { use super::*; $($tt)* } }; }
+
     #[cfg(all(feature = "proc-macro2", not(feature = "proc-macro")))]
-    #[test]
-    fn with_proc_macro2() {
-        test_parse()
-    }
+    macro_rules! tests { ($($tt:tt)*) => { mod with_proc_macro2 { use super::*; $($tt)* } }; }
 
     #[cfg(all(
         feature = "proc-macro",
         feature = "proc-macro2",
         feature = "prefer-pm1"
     ))]
-    #[test]
-    fn with_proc_macro_over_proc_macro2() {
-        test_parse()
-    }
+    macro_rules! tests { ($($tt:tt)*) => { mod with_proc_macro_over_proc_macro2 { use super::*; $($tt)* } }; }
 
     #[cfg(all(
         feature = "proc-macro",
         feature = "proc-macro2",
         not(feature = "prefer-pm1")
     ))]
-    #[test]
-    fn with_proc_macro2_over_proc_macro() {
-        test_parse()
-    }
+    macro_rules! tests { ($($tt:tt)*) => { mod with_proc_macro2_over_proc_macro { use super::*; $($tt)* } }; }
 
-    fn test_parse() {
-        check!('a');
-        check!('æ');
-        check!('✨');
-        check!('\'');
-        check!('\"');
-        check!('\\');
-        check!('\0');
-        check!('\n');
-        check!('\r');
-        check!('\t');
-        check!('\x7f');
+    tests! {
+        #[test]
+        fn test_parse_literals() {
+            test_literal!('a');
+            test_literal!('æ');
+            test_literal!('✨');
+            test_literal!('\'');
+            test_literal!('\"');
+            test_literal!('\\');
+            test_literal!('\0');
+            test_literal!('\n');
+            test_literal!('\r');
+            test_literal!('\t');
+            test_literal!('\x7f');
 
-        check!("a string");
-        check!("a string with escapes: \' \" \\ \0 \n \r \t \x7f \u{0} \u{2728} \u{10ffff}");
-        check!(
-            "a string with an escaped newline\
-
-
-            !"
-        );
-        check!(r"raw string");
-        check!(r#""raw string\n""#);
-        check!("✨🧚‍♀️✨");
-
-        check!(b'a');
-        check!(b'\'');
-        check!(b'\"');
-        check!(b'\\');
-        check!(b'\0');
-        check!(b'\n');
-        check!(b'\r');
-        check!(b'\t');
-        check!(b'\xff');
-
-        check!(b"a byte string");
-        check!(b"a byte string with escapes: \' \" \\ \0 \n \r \t \xff");
-        check!(
-            b"a byte string with an escaped newline\
+            test_literal!("a string");
+            test_literal!("a string with escapes: \' \" \\ \0 \n \r \t \x7f \u{0} \u{2728} \u{10ffff}");
+            test_literal!(
+                "a string with an escaped newline\
 
 
-            !"
-        );
-        check!(br"raw byte string");
-        check!(br#""raw byte string\n""#);
+                !"
+            );
+            test_literal!(r"raw string");
+            test_literal!(r#""raw string\n""#);
+            test_literal!("✨🧚‍♀️✨");
 
-        check!(127_i8);
-        check!(32767_i16);
-        check!(2147483647_i32);
-        check!(9223372036854775807_i64);
-        check!(170141183460469231731687303715884105727_i128);
+            test_literal!(b'a');
+            test_literal!(b'\'');
+            test_literal!(b'\"');
+            test_literal!(b'\\');
+            test_literal!(b'\0');
+            test_literal!(b'\n');
+            test_literal!(b'\r');
+            test_literal!(b'\t');
+            test_literal!(b'\xff');
 
-        check!(255_u8);
-        check!(65535_u16);
-        check!(4294967295_u32);
-        check!(18446744073709551615_u64);
-        check!(340282366920938463463374607431768211455_u128);
+            test_literal!(b"a byte string");
+            test_literal!(b"a byte string with escapes: \' \" \\ \0 \n \r \t \xff");
+            test_literal!(
+                b"a byte string with an escaped newline\
 
-        check!(0.5_f32);
-        check!(0.5_f64);
 
-        check!(0b1010);
-        check!(0o1234);
-        check!(0x1234);
-        check!(2147483647);
+                !"
+            );
+            test_literal!(br"raw byte string");
+            test_literal!(br#""raw byte string\n""#);
 
-        check!(0b1010_i8);
-        check!(0o1234_u16);
-        check!(0x1234_usize);
-        check!(2147483647_f64);
+            test_literal!(127_i8);
+            test_literal!(32767_i16);
+            test_literal!(2147483647_i32);
+            test_literal!(9223372036854775807_i64);
+            test_literal!(170141183460469231731687303715884105727_i128);
+
+            test_literal!(255_u8);
+            test_literal!(65535_u16);
+            test_literal!(4294967295_u32);
+            test_literal!(18446744073709551615_u64);
+            test_literal!(340282366920938463463374607431768211455_u128);
+
+            test_literal!(0.5_f32);
+            test_literal!(0.5_f64);
+
+            test_literal!(0b1010);
+            test_literal!(0o1234);
+            test_literal!(0x1234);
+            test_literal!(2147483647);
+
+            test_literal!(0b1010_i8);
+            test_literal!(0o1234_u16);
+            test_literal!(0x1234_usize);
+            test_literal!(2147483647_f64);
+        }
+
+        #[test]
+        fn test_parse_ops() {
+            test_ops!([+] ["+"]);
+            test_ops!([++] ["+", "+"]);
+            test_ops!([+ +] ["+", "+"]);
+            test_ops!([+++] ["+", "+", "+"]);
+            test_ops!([++ +] ["+", "+", "+"]);
+            test_ops!([+ ++] ["+", "+", "+"]);
+            test_ops!([++++] ["+", "+", "+", "+"]);
+            test_ops!([+++ +] ["+", "+", "+", "+"]);
+            test_ops!([++ ++] ["+", "+", "+", "+"]);
+            test_ops!([+ +++] ["+", "+", "+", "+"]);
+
+            test_ops!([=] ["="]);
+            test_ops!([==] ["=="]);
+            test_ops!([= =] ["=", "="]);
+            test_ops!([===] ["==", "="]);
+            test_ops!([== =] ["==", "="]);
+            test_ops!([= ==] ["=", "=="]);
+            test_ops!([====] ["==", "=="]);
+            test_ops!([=== =] ["==", "=", "="]);
+            test_ops!([== ==] ["==", "=="]);
+            test_ops!([= ===] ["=", "==", "="]);
+
+            test_ops!([.] ["."]);
+            test_ops!([..] [".."]);
+            test_ops!([. .] [".", "."]);
+            test_ops!([...] ["..."]);
+            test_ops!([.. .] ["..", "."]);
+            test_ops!([. ..] [".", ".."]);
+            test_ops!([....] ["...", "."]);
+            test_ops!([... .] ["...", "."]);
+            test_ops!([.. ..] ["..", ".."]);
+            test_ops!([. ...] [".", "..."]);
+
+            test_ops!([=+==+===+] ["=", "+=", "=", "+=", "==", "+"]);
+
+            test_ops!(
+                [!!=#$%%=&&&=&**=++=,--=->..=...../=/.:::;<<=<<<=<-<>>=>>>=>?===>=@^^=|||=|~]
+                [
+                    "!", "!=", "#", "$", "%", "%=", "&&", "&=", "&", "*", "*=", "+", "+=", ",",
+                    "-", "-=", "->", "..=", "...", "..", "/=", "/", ".", "::", ":", ";", "<<=",
+                    "<<", "<=", "<-", "<", ">>=", ">>", ">=", ">", "?", "==", "=>", "=", "@",
+                    "^", "^=", "||", "|=", "|", "~"
+                ]
+            );
+        }
     }
 }
