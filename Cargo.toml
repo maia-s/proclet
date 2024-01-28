@@ -2,6 +2,6 @@
 members = [
     "microproc",
     "microproc-tests",
-    "microproc-tests-macros",
+    "microproc-test-macros",
 ]
 resolver = "2"

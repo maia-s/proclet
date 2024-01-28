@@ -11,19 +11,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "microproc-tests"
-version = "0.1.0"
-dependencies = [
- "microproc",
- "microproc-tests-macros",
-]
-
-[[package]]
-name = "microproc-tests-macros"
+name = "microproc-test-macros"
 version = "0.1.0"
 dependencies = [
  "microproc",
  "proc-macro2",
+]
+
+[[package]]
+name = "microproc-tests"
+version = "0.1.0"
+dependencies = [
+ "microproc",
+ "microproc-test-macros",
 ]
 
 [[package]]
