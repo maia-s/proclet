@@ -1,4 +1,3 @@
-#[cfg(feature = "proc-macro")]
 use crate::{ProcMacro, ProcMacroExt};
 use std::{fmt::Display, str::FromStr};
 
