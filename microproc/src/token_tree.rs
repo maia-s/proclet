@@ -246,8 +246,19 @@ pub trait Punct: ProcMacro<Punct = Self> + Display {
 /// This trait is implemented for `Punct` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct {
+    /// Create a new `Punct` with a custom `Span`.
+    #[inline]
+    fn with_span(ch: char, spacing: Self::Spacing, span: Self::Span) -> Self {
+        let mut punct = Self::Punct::new(ch, spacing);
+        punct.set_span(span);
+        punct
+    }
+
     /// Set the spacing of this `Punct`.
-    fn set_spacing(&mut self, spacing: Self::Spacing);
+    #[inline]
+    fn set_spacing(&mut self, spacing: Self::Spacing) {
+        *self = Self::with_span(self.as_char(), spacing, self.span());
+    }
 }
 
 /// `Spacing` API trait. See [`proc_macro::Spacing`](https://doc.rust-lang.org/stable/proc_macro/enum.Spacing.html).
@@ -564,14 +575,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl PunctExt for $pm::Punct {
-            #[inline]
-            fn set_spacing(&mut self, spacing: Self::Spacing) {
-                let mut punct = Self::new(self.as_char(), spacing);
-                punct.set_span(self.span());
-                *self = punct;
-            }
-        }
+        impl PunctExt for $pm::Punct {}
 
         #[cfg(feature = $feature)]
         #[allow(non_upper_case_globals)]
