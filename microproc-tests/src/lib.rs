@@ -1,3 +1,6 @@
+#[cfg(not(any(feature = "proc-macro", feature = "proc-macro2")))]
+compile_error!("at least one of `proc-macro` or `proc-macro2` must be enabled");
+
 #[cfg(all(test, any(feature = "proc-macro", feature = "proc-macro2")))]
 mod tests {
     use microproc_tests_macros::{literal_roundtrip, parse_rust_ops};
