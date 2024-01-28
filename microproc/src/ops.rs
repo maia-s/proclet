@@ -1,0 +1,77 @@
+use crate::{define_ops, Op, OpParser, PunctExt};
+
+impl<P: PunctExt> OpParser<P, fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Span>>>> {
+    /// Make an `OpParser` for parsing Rust ops.
+    #[inline]
+    pub const fn new_rust() -> Self {
+        Self::new(make_rust_op)
+    }
+}
+
+define_ops! {
+    [#[macro_export] RustOp! ::microproc::op]
+    [make_rust_op()]
+    "!"('='),
+    Not[!] new,
+    Ne[!=] new,
+    Pound[#] new,
+    Dollar[$] new,
+    "%"('='),
+    Percent[%] new,
+    PercentEq[%=] new,
+    "&"('&' | '='),
+    And[&] new,
+    AndAnd[&&] new,
+    AndEq[&=] new,
+    "*"('='),
+    Star[*] new,
+    StarEq[*=] new,
+    "+"('='),
+    Plus[+] new,
+    PlusEq[+=] new,
+    Comma[,] new,
+    "-"('=' | '>'),
+    Minus[-] new,
+    MinusEq[-=] new,
+    RArrow[->] new,
+    "."('.'),
+    Dot[.] new,
+    ".."('.' | '='),
+    DotDot[..] new,
+    DotDotDot[...] new,
+    DotDotEq[..=] new,
+    "/"('='),
+    Slash[/] new,
+    SlashEq[/=] new,
+    ":"(':'),
+    Colon[:] new,
+    PathSep[::] new,
+    Semi[;] new,
+    "<"('-' | '<' | '='),
+    Lt[<] new,
+    LArrow[<-] new,
+    "<<"('='),
+    Shl[<<] new,
+    ShlEq[<<=] new,
+    Le[<=] new,
+    "="('=' | '>'),
+    Eq[=] new,
+    EqEq[==] new,
+    FatArrow[=>] new,
+    ">"('=' | '>'),
+    Gt[>] new,
+    Ge[>=] new,
+    ">>"('='),
+    Shr[>>] new,
+    ShrEq[>>=] new,
+    Question[?] new,
+    At[@] new,
+    "^"('='),
+    Caret[^] new,
+    CaretEq[^=] new,
+    "|"('=' | '|'),
+    Or[|] new,
+    OrEq[|=] new,
+    OrOr[||] new,
+    Tilde[~] new,
+}
