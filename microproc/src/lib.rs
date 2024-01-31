@@ -23,6 +23,7 @@ pub mod prelude {
     pub use crate::SpacingExt as _;
     pub use crate::Span as _;
     pub use crate::SpanExt as _;
+    pub use crate::Token as _;
     pub use crate::TokenStream as _;
     pub use crate::TokenStreamExt as _;
     pub use crate::TokenTree as _;
@@ -37,6 +38,7 @@ mod op;
 #[cfg(feature = "op")]
 pub mod ops;
 mod span;
+mod token;
 mod token_stream;
 mod token_tree;
 
@@ -48,6 +50,7 @@ pub use literal::{LiteralValue, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{Op, OpParser, Puncts};
 pub use span::{Span, SpanExt};
+pub use token::{Token, TokenTrees};
 pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
     Delimiter, DelimiterExt, DelimiterKind, Group, GroupExt, Ident, IdentExt, Punct, PunctExt,

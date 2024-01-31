@@ -1,4 +1,4 @@
-use crate::ProcMacro;
+use crate::{ProcMacro, Token, TokenTrees};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,7 +34,7 @@ pub trait TokenTree:
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree {
+pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Token<Self> {
     fn kind(&self) -> TokenTreeKind;
 
     #[inline]
@@ -125,7 +125,7 @@ pub trait Group: ProcMacro<Group = Self> + Display {
 ///
 /// This trait is implemented for `Group` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group {
+pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group + Token<Self::TokenTree> {
     /// Get the delimiter of this `Group` as a matchable enum.
     #[inline]
     fn delimiter_kind(&self) -> DelimiterKind {
@@ -216,7 +216,7 @@ pub trait Ident: ProcMacro<Ident = Self> + Display {
 ///
 /// This trait is implemented for `Ident` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait IdentExt: crate::ProcMacroExt<IdentExt = Self> + Ident {}
+pub trait IdentExt: crate::ProcMacroExt<IdentExt = Self> + Ident + Token<Self::TokenTree> {}
 
 /// `Punct` API trait. See [`proc_macro::Punct`](https://doc.rust-lang.org/stable/proc_macro/struct.Punct.html).
 ///
@@ -245,7 +245,7 @@ pub trait Punct: ProcMacro<Punct = Self> + Display {
 ///
 /// This trait is implemented for `Punct` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct {
+pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct + Token<Self::TokenTree> {
     /// Create a new `Punct` with a custom `Span`.
     #[inline]
     fn with_span(ch: char, spacing: Self::Spacing, span: Self::Span) -> Self {
@@ -426,6 +426,14 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
+        impl Token<$pm::TokenTree> for $pm::TokenTree {
+            #[inline]
+            fn to_token_trees(&self) -> TokenTrees<Self> {
+                self.clone().into()
+            }
+        }
+
+        #[cfg(feature = $feature)]
         impl Group for $pm::Group {
             #[inline]
             fn new(delimiter: Self::Delimiter, stream: Self::TokenStream) -> Self {
@@ -465,6 +473,14 @@ macro_rules! impl_token_tree {
 
         #[cfg(feature = $feature)]
         impl GroupExt for $pm::Group {}
+
+        #[cfg(feature = $feature)]
+        impl Token<$pm::TokenTree> for $pm::Group {
+            #[inline]
+            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
+                $pm::TokenTree::from(self.clone()).into()
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl From<$pm::Delimiter> for DelimiterKind {
@@ -547,6 +563,14 @@ macro_rules! impl_token_tree {
         impl IdentExt for $pm::Ident {}
 
         #[cfg(feature = $feature)]
+        impl Token<$pm::TokenTree> for $pm::Ident {
+            #[inline]
+            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
+                $pm::TokenTree::from(self.clone()).into()
+            }
+        }
+
+        #[cfg(feature = $feature)]
         impl Punct for $pm::Punct {
             #[inline]
             fn new(ch: char, spacing: Self::Spacing) -> Self {
@@ -576,6 +600,14 @@ macro_rules! impl_token_tree {
 
         #[cfg(feature = $feature)]
         impl PunctExt for $pm::Punct {}
+
+        #[cfg(feature = $feature)]
+        impl Token<$pm::TokenTree> for $pm::Punct {
+            #[inline]
+            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
+                $pm::TokenTree::from(self.clone()).into()
+            }
+        }
 
         #[cfg(feature = $feature)]
         #[allow(non_upper_case_globals)]

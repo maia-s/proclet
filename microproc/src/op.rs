@@ -1,4 +1,4 @@
-use crate::{prelude::*, Punct, PunctExt, Span};
+use crate::{prelude::*, Punct, PunctExt, Span, Token};
 use std::{
     fmt::Display,
     iter::{self, FusedIterator, Peekable},
@@ -7,10 +7,9 @@ use std::{
     str::Chars,
 };
 
-pub trait Op<S: Span> {
+pub trait Op<S: Span>: Token<S::TokenTree> {
     fn as_str(&self) -> &'static str;
     fn puncts(&self) -> Puncts<S::Punct>;
-    fn to_token_stream(&self) -> S::TokenStream;
     fn spans(&self) -> &[S];
     fn set_spans(&mut self, spans: &[S]);
     fn span(&self) -> S;
@@ -231,6 +230,13 @@ macro_rules! __define_ops_private {
             }
         }
 
+        impl<S: $crate::SpanExt> $crate::Token<S::TokenTree> for $ident<S> {
+            #[inline]
+            fn to_token_trees(&self) -> $crate::TokenTrees<S::TokenTree>{
+                $crate::TokenTrees::new(self.puncts().map(|p| S::TokenTree::from(p)))
+            }
+        }
+
         impl<S: $crate::SpanExt> $crate::Op<S> for $ident<S> {
             #[inline]
             fn as_str(&self) -> &'static str {
@@ -240,11 +246,6 @@ macro_rules! __define_ops_private {
             #[inline]
             fn puncts(&self) -> $crate::op::Puncts<S::Punct> {
                 $crate::op::Puncts::new(self.as_str(), &self.spans)
-            }
-
-            #[inline]
-            fn to_token_stream(&self) -> S::TokenStream {
-                self.puncts().map(S::TokenTree::from).collect()
             }
 
             #[inline]

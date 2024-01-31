@@ -1,4 +1,4 @@
-use crate::{ProcMacro, ProcMacroExt};
+use crate::{ProcMacro, ProcMacroExt, Token, TokenTrees};
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
@@ -716,7 +716,7 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
 ///
 /// This trait is implemented for `Literal` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal {
+pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal + Token<Self::TokenTree> {
     #[cfg(feature = "literal-value")]
     fn value(&self) -> LiteralValue;
 
@@ -797,6 +797,14 @@ macro_rules! impl_literal {
                 let mut lit = impl_literal!(@ to_literal(value));
                 lit.set_span(self.span());
                 *self = lit;
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl Token<$pm::TokenTree> for $pm::Literal {
+            #[inline]
+            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
+                self.to_token_tree().into()
             }
         }
     )* };
