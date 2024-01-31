@@ -118,7 +118,7 @@ impl From<WrappedSpan> for proc_macro2::Span {
 /// corresponding feature is enabled.
 ///
 /// See also [`SpanExt`].
-pub trait Span: ProcMacro<Span = Self> + Copy + 'static {
+pub trait Span: ProcMacro<Span = Self> + Copy {
     /// Create a new `Span` with call site hygiene.
     fn call_site() -> Self;
 
