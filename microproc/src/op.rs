@@ -1,9 +1,9 @@
 use crate::{prelude::*, Punct, PunctExt, Span};
 use std::{
     fmt::Display,
-    iter::{FusedIterator, Peekable},
+    iter::{self, FusedIterator, Peekable},
     marker::PhantomData,
-    mem,
+    mem, slice,
     str::Chars,
 };
 
@@ -11,6 +11,8 @@ pub trait Op<S: Span> {
     fn as_str(&self) -> &'static str;
     fn puncts(&self) -> Puncts<S::Punct>;
     fn to_token_stream(&self) -> S::TokenStream;
+    fn spans(&self) -> &[S];
+    fn set_spans(&mut self, spans: &[S]);
     fn span(&self) -> S;
     fn set_span(&mut self, span: S);
 }
@@ -43,13 +45,13 @@ impl<P: Punct> Display for InvalidOpError<P> {
 #[derive(Clone)]
 pub struct OpParser<P: PunctExt, F> {
     str: String,
+    spans: Vec<P::Span>,
     puncts: Vec<P>,
     next: Option<P>,
-    span: Option<P::Span>,
     make_op: F,
 }
 
-impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Span>>>>
+impl<P: PunctExt, F: Fn(&str, Option<char>, &[P::Span]) -> Option<Box<dyn Op<P::Span>>>>
     OpParser<P, F>
 {
     /// Create a new `OpParser`. `make_op` is used to implement [`OpParser::make_op`]; see that
@@ -58,9 +60,9 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
     pub const fn new(make_op: F) -> Self {
         Self {
             str: String::new(),
-            next: None,
+            spans: Vec::new(),
             puncts: Vec::new(),
-            span: None,
+            next: None,
             make_op,
         }
     }
@@ -69,13 +71,15 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
     #[inline]
     pub fn clear(&mut self) {
         self.str.clear();
+        self.spans.clear();
         self.puncts.clear();
         self.next = None;
     }
 
-    /// Returns an operator with span `span` if `str` is a valid op, unless, if `next` is `Some`,
-    /// appending `next` to `str` with joint spacing would also be a valid op. In other words,
-    /// this returns an op if that op is the only possible valid op given `str` and `next`.
+    /// Returns an operator with span `spans` if `str` is a valid op, unless, if `next` is
+    /// `Some`, appending `next` to `str` with joint spacing would also be a valid op.
+    /// In other words, this returns an op if that op is the only possible valid op given
+    /// `str` and `next`.
     ///
     /// For example, if `+` (`Plus`) and `+=` (`PlusEq`) are valid ops and `+-` is invalid:
     ///
@@ -84,14 +88,17 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
     /// - `make_op("+", None, span)` returns `Some(Box<Plus>)`
     /// - `make_op("+=", None, span)` returns `Some(Box<PlusEq>)`
     /// - `make_op("+-", None, span)` returns `None`
+    ///
+    /// `spans` can be one span per char, or just one span for the op to share. If `spans`
+    /// doesn't have either length `1` or the same length as `str`, the result is unspecified.
     #[inline]
     pub fn make_op(
         &self,
         str: &str,
         next: Option<char>,
-        span: P::Span,
+        spans: &[P::Span],
     ) -> Option<Box<dyn Op<P::Span>>> {
-        (self.make_op)(str, next, span)
+        (self.make_op)(str, next, spans)
     }
 
     /// Add a `Punct` to the currently accumulating op. This may return a new [`Op`], or `None`
@@ -100,14 +107,12 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
     #[inline]
     #[allow(clippy::type_complexity)]
     pub fn apply(&mut self, punct: P) -> Option<Result<Box<dyn Op<P::Span>>, InvalidOpError<P>>> {
-        let (mut punct, mut next_ch, span) = if let Some(next) = mem::take(&mut self.next) {
+        let (mut punct, mut next_ch) = if let Some(next) = mem::take(&mut self.next) {
             let next_ch = next.spacing().is_joint().then_some(punct.as_char());
-            let span = self.span.unwrap_or_else(|| punct.span());
             self.next = Some(punct);
-            (next, next_ch, span)
+            (next, next_ch)
         } else if punct.spacing().is_alone() {
-            let span = self.span.unwrap_or_else(|| punct.span());
-            (punct, None, span)
+            (punct, None)
         } else {
             self.next = Some(punct);
             return None;
@@ -115,11 +120,13 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
 
         loop {
             self.str.push(punct.as_char());
+            self.spans.push(punct.span());
             self.puncts.push(punct);
 
-            if let Some(op) = self.make_op(&self.str, next_ch, span) {
+            if let Some(op) = self.make_op(&self.str, next_ch, &self.spans) {
                 self.str.clear();
-                self.span = None;
+                self.spans.clear();
+                self.puncts.clear();
                 return Some(Ok(op));
             } else if let Some(next) = self.next.as_ref() {
                 if next.spacing().is_alone() {
@@ -131,7 +138,7 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
                 }
             } else {
                 self.str.clear();
-                self.span = None;
+                self.spans.clear();
                 return Some(Err(InvalidOpError(mem::take(&mut self.puncts))));
             }
         }
@@ -143,8 +150,10 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
     pub fn finish(&mut self) -> Option<Result<Box<dyn Op<P::Span>>, InvalidOpError<P>>> {
         mem::take(&mut self.next).map(|punct| {
             self.str.push(punct.as_char());
-            let op = self.make_op(&self.str, None, punct.span());
+            self.spans.push(punct.span());
+            let op = self.make_op(&self.str, None, &self.spans);
             self.str.clear();
+            self.spans.clear();
             self.puncts.push(punct);
             let puncts = mem::take(&mut self.puncts);
             if let Some(op) = op {
@@ -158,15 +167,23 @@ impl<P: PunctExt, F: Fn(&str, Option<char>, P::Span) -> Option<Box<dyn Op<P::Spa
 
 /// Iterator over `Punct`s.
 #[derive(Clone, Debug)]
-pub struct Puncts<P: Punct>(Peekable<Chars<'static>>, P::Span, PhantomData<fn() -> P>);
+pub struct Puncts<'a, P: Punct>(
+    Peekable<Chars<'a>>,
+    iter::Cycle<iter::Copied<slice::Iter<'a, P::Span>>>,
+    PhantomData<fn() -> P>,
+);
 
-impl<P: Punct> Puncts<P> {
-    pub fn new(str: &'static str, span: P::Span) -> Self {
-        Self(str.chars().peekable(), span, PhantomData)
+impl<'a, P: Punct> Puncts<'a, P> {
+    pub fn new(str: &'a str, span: &'a [P::Span]) -> Self {
+        Self(
+            str.chars().peekable(),
+            span.iter().copied().cycle(),
+            PhantomData,
+        )
     }
 }
 
-impl<P: PunctExt> Iterator for Puncts<P> {
+impl<'a, P: PunctExt> Iterator for Puncts<'a, P> {
     type Item = P;
 
     #[inline]
@@ -179,22 +196,40 @@ impl<P: PunctExt> Iterator for Puncts<P> {
                 } else {
                     P::Spacing::Alone
                 },
-                self.1,
+                self.1.next().unwrap(),
             )
         })
     }
 }
 
-impl<P: PunctExt> FusedIterator for Puncts<P> {}
+impl<'a, P: PunctExt> FusedIterator for Puncts<'a, P> where Puncts<'a, P>: Iterator {}
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __define_ops_private {
     (type new $ident:ident[$($tt:tt)*]) => {
         #[doc = ::core::concat!("`", ::core::stringify!($($tt)*), "`")]
-        #[derive(Clone, Copy, Debug)]
+        //#[derive(Clone, Copy, Debug)] // error: derive can't be used on items with type macros
         #[repr(transparent)]
-        pub struct $ident<S: $crate::Span>(S);
+        pub struct $ident<S: $crate::Span> {
+            pub spans: [S; ::core::stringify!($($tt)*).len()]
+        }
+
+        impl<S: $crate::Span> ::core::clone::Clone for $ident<S> {
+            #[inline]
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
+        impl<S: $crate::Span> ::core::marker::Copy for $ident<S> {}
+
+        impl<S: $crate::Span> ::core::fmt::Debug for $ident<S> {
+            #[inline]
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                write!(f, "{}({:?})", ::core::stringify!($ident), self.spans)
+            }
+        }
 
         impl<S: $crate::SpanExt> $crate::Op<S> for $ident<S> {
             #[inline]
@@ -204,7 +239,7 @@ macro_rules! __define_ops_private {
 
             #[inline]
             fn puncts(&self) -> $crate::op::Puncts<S::Punct> {
-                $crate::op::Puncts::new(self.as_str(), self.0)
+                $crate::op::Puncts::new(self.as_str(), &self.spans)
             }
 
             #[inline]
@@ -213,13 +248,27 @@ macro_rules! __define_ops_private {
             }
 
             #[inline]
+            fn spans(&self) -> &[S] {
+                &self.spans
+            }
+
+            #[inline]
+            fn set_spans(&mut self, spans: &[S]) {
+                for (s, span) in self.spans.iter_mut().zip(spans.into_iter().cycle()) {
+                    *s = *span;
+                }
+            }
+
+            #[inline]
             fn span(&self) -> S {
-                self.0
+                self.spans[0]
             }
 
             #[inline]
             fn set_span(&mut self, span: S) {
-                self.0 = span;
+                for s in self.spans.iter_mut() {
+                    *s = span;
+                }
             }
         }
 
@@ -229,7 +278,7 @@ macro_rules! __define_ops_private {
             #[inline]
             fn try_from(value: &str) -> ::core::result::Result<Self, Self::Error> {
                 if value == ::core::stringify!($($tt)*) {
-                    Ok($ident(S::call_site()))
+                    Ok($ident { spans: [S::call_site(); ::core::stringify!($($tt)*).len()] })
                 } else {
                     Err(())
                 }
@@ -252,14 +301,24 @@ macro_rules! __define_ops_private {
         fn fn $fn:ident
         $($($first:literal($follow:pat))? $($ident:ident[$($tt:tt)*])?,)*
     ) => {
-        /// Returns an operator with span `span` if `str` is a valid op, unless, if `next` is `Some`,
-        /// appending `next` to `str` with joint spacing would also be a valid op.
+        /// Returns an operator with span `spans` if `str` is a valid op, unless, if `next` is
+        /// `Some`, appending `next` to `str` with joint spacing would also be a valid op.
+        ///
+        /// `spans` can be one span per char, or just one span for the op to share. If `spans`
+        /// doesn't have either length `1` or the same length as `str`, the result is unspecified.
         #[inline]
-        pub fn $fn<S: $crate::SpanExt>(str: &str, next: Option<char>, span: S) -> Option<Box<dyn Op<S>>> {
+        pub fn $fn<S: $crate::SpanExt>(str: &str, next: Option<char>, spans: &[S]) -> Option<Box<dyn Op<S>>> {
             match (str, next) {
                 $(
                     $(($first, Some($follow)) => None,)?
-                    $((stringify!($($tt)*), _) => Some(Box::new($ident(span))),)?
+                    $((::core::stringify!($($tt)*), _) => {
+                        let mut spans = spans.into_iter().cycle();
+                        let mut s = [S::call_site(); ::core::stringify!($($tt)*).len()];
+                        for s in s.iter_mut() {
+                            *s = *spans.next().unwrap();
+                        }
+                        Some(Box::new($ident { spans: s }))
+                    })?
                 )*
                 _ => None,
             }
