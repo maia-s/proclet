@@ -13,6 +13,7 @@ pub mod prelude {
     pub use crate::IdentExt as _;
     pub use crate::Literal as _;
     pub use crate::LiteralExt as _;
+    #[cfg(feature = "op")]
     pub use crate::Op as _;
     pub use crate::ProcMacro as _;
     pub use crate::ProcMacroExt as _;
@@ -31,7 +32,9 @@ pub mod prelude {
 mod base;
 mod error;
 mod literal;
+#[cfg(feature = "op")]
 mod op;
+#[cfg(feature = "op")]
 pub mod ops;
 mod span;
 mod token_stream;
@@ -42,6 +45,7 @@ pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralValue, Suffixed};
+#[cfg(feature = "op")]
 pub use op::{Op, OpParser, Puncts};
 pub use span::{Span, SpanExt};
 pub use token_stream::{TokenStream, TokenStreamExt};
