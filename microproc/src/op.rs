@@ -230,7 +230,9 @@ macro_rules! __define_ops_private {
             }
         }
 
-        impl<S: $crate::SpanExt> $crate::Token<S::TokenTree> for $ident<S> {
+        impl<S: $crate::SpanExt> $crate::Token<S::TokenTree> for $ident<S> {}
+
+        impl<S: $crate::SpanExt> $crate::ToTokens<S::TokenTree> for $ident<S> {
             #[inline]
             fn to_token_trees(&self) -> $crate::TokenTrees<S::TokenTree>{
                 $crate::TokenTrees::new(self.puncts().map(|p| S::TokenTree::from(p)))

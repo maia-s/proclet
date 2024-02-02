@@ -1,4 +1,4 @@
-use crate::{ProcMacro, Token, TokenTrees};
+use crate::{ProcMacro, ToTokens, Token, TokenTrees};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -426,7 +426,10 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::TokenTree {
+        impl Token<$pm::TokenTree> for $pm::TokenTree {}
+
+        #[cfg(feature = $feature)]
+        impl ToTokens<$pm::TokenTree> for $pm::TokenTree {
             #[inline]
             fn to_token_trees(&self) -> TokenTrees<Self> {
                 self.clone().into()
@@ -475,7 +478,10 @@ macro_rules! impl_token_tree {
         impl GroupExt for $pm::Group {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Group {
+        impl Token<$pm::TokenTree> for $pm::Group {}
+
+        #[cfg(feature = $feature)]
+        impl ToTokens<$pm::TokenTree> for $pm::Group {
             #[inline]
             fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
                 $pm::TokenTree::from(self.clone()).into()
@@ -563,7 +569,10 @@ macro_rules! impl_token_tree {
         impl IdentExt for $pm::Ident {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Ident {
+        impl Token<$pm::TokenTree> for $pm::Ident {}
+
+        #[cfg(feature = $feature)]
+        impl ToTokens<$pm::TokenTree> for $pm::Ident {
             #[inline]
             fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
                 $pm::TokenTree::from(self.clone()).into()
@@ -602,7 +611,10 @@ macro_rules! impl_token_tree {
         impl PunctExt for $pm::Punct {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Punct {
+        impl Token<$pm::TokenTree> for $pm::Punct {}
+
+        #[cfg(feature = $feature)]
+        impl ToTokens<$pm::TokenTree> for $pm::Punct {
             #[inline]
             fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
                 $pm::TokenTree::from(self.clone()).into()

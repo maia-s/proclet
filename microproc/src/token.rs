@@ -1,7 +1,9 @@
 use crate::TokenTree;
 use std::{any::Any, iter};
 
-pub trait Token<T: TokenTree>: Any {
+pub trait Token<T: TokenTree>: Any + ToTokens<T> {}
+
+pub trait ToTokens<T: TokenTree> {
     fn to_token_trees(&self) -> TokenTrees<T>;
 
     #[inline]
