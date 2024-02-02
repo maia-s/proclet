@@ -16,15 +16,6 @@ pub trait Op<S: Span>: Token<S::TokenTree> {
     fn set_span(&mut self, span: S);
 }
 
-impl<S: Span> PartialEq for dyn Op<S> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.as_str() == other.as_str()
-    }
-}
-
-impl<S: Span> Eq for dyn Op<S> {}
-
 #[derive(Debug)]
 pub struct InvalidOpError<P: Punct>(pub Vec<P>);
 
@@ -230,7 +221,12 @@ macro_rules! __define_ops_private {
             }
         }
 
-        impl<S: $crate::SpanExt> $crate::Token<S::TokenTree> for $ident<S> {}
+        impl<S: $crate::SpanExt> $crate::Token<S::TokenTree> for $ident<S> {
+            #[inline]
+            fn eq_except_span(&self, other: &dyn $crate::Token<S::TokenTree>) -> bool {
+                other.is::<Self>()
+            }
+        }
 
         impl<S: $crate::SpanExt> $crate::ToTokens<S::TokenTree> for $ident<S> {
             #[inline]

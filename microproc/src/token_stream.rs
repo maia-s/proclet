@@ -1,4 +1,4 @@
-use crate::{FromStrDebug, ProcMacro, TokenTree};
+use crate::{FromStrDebug, ProcMacro, Token, TokenTree};
 use std::{fmt::Display, iter, str::FromStr};
 
 /// `TokenStream` API trait. See [`proc_macro::TokenStream`](https://doc.rust-lang.org/stable/proc_macro/struct.TokenStream.html).
@@ -76,6 +76,18 @@ pub trait TokenStreamExt:
             matched.extend(iter::once(it.next().unwrap()))
         }
         Some((matched, Self::from_iter(it)))
+    }
+
+    #[inline]
+    fn eq_except_span(self, other: Self) -> bool {
+        let mut oi = other.into_iter();
+        for s in self.into_iter() {
+            let Some(o) = oi.next() else { return false };
+            if !s.eq_except_span(&o) {
+                return false;
+            }
+        }
+        oi.next().is_none()
     }
 }
 

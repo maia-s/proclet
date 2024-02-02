@@ -1,4 +1,4 @@
-use crate::{ProcMacro, ToTokens, Token, TokenTrees};
+use crate::{ProcMacro, ToTokens, Token, TokenStreamExt, TokenTrees};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -426,7 +426,20 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::TokenTree {}
+        impl Token<$pm::TokenTree> for $pm::TokenTree {
+            #[inline]
+            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+                other.downcast_ref::<Self>().map(|other| {
+                    match (self, other) {
+                        (Self::Group(s), Self::Group(o)) => s.eq_except_span(o),
+                        (Self::Ident(s), Self::Ident(o)) => s.eq_except_span(o),
+                        (Self::Punct(s), Self::Punct(o)) => s.eq_except_span(o),
+                        (Self::Literal(s), Self::Literal(o)) => s.eq_except_span(o),
+                        _ => false,
+                    }
+                }).unwrap_or(false)
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl ToTokens<$pm::TokenTree> for $pm::TokenTree {
@@ -478,7 +491,14 @@ macro_rules! impl_token_tree {
         impl GroupExt for $pm::Group {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Group {}
+        impl Token<$pm::TokenTree> for $pm::Group {
+            #[inline]
+            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+                other.downcast_ref::<Self>().map(|other|
+                    self.delimiter() == other.delimiter() && self.stream().eq_except_span(other.stream())
+                ).unwrap_or(false)
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl ToTokens<$pm::TokenTree> for $pm::Group {
@@ -569,7 +589,15 @@ macro_rules! impl_token_tree {
         impl IdentExt for $pm::Ident {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Ident {}
+        impl Token<$pm::TokenTree> for $pm::Ident {
+            #[inline]
+            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+                #[allow(clippy::cmp_owned)] // it's the only way to get their value, clippy
+                other.downcast_ref::<Self>().map(
+                    |other| self.to_string() == other.to_string()
+                ).unwrap_or(false)
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl ToTokens<$pm::TokenTree> for $pm::Ident {
@@ -611,7 +639,12 @@ macro_rules! impl_token_tree {
         impl PunctExt for $pm::Punct {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Punct {}
+        impl Token<$pm::TokenTree> for $pm::Punct {
+            #[inline]
+            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+                other.downcast_ref::<Self>().map(|other| self.as_char() == other.as_char()).unwrap_or(false)
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl ToTokens<$pm::TokenTree> for $pm::Punct {

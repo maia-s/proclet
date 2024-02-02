@@ -1,7 +1,26 @@
 use crate::TokenTree;
 use std::{any::Any, iter};
 
-pub trait Token<T: TokenTree>: Any + ToTokens<T> {}
+pub trait Token<T: TokenTree>: Any + ToTokens<T> {
+    fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
+}
+
+impl<T: TokenTree> dyn Token<T> {
+    #[inline]
+    pub fn is<X: Token<T>>(&self) -> bool {
+        (self as &dyn Any).is::<X>()
+    }
+
+    #[inline]
+    pub fn downcast_ref<X: Token<T>>(&self) -> Option<&X> {
+        (self as &dyn Any).downcast_ref::<X>()
+    }
+
+    #[inline]
+    pub fn downcast_mut<X: Token<T>>(&mut self) -> Option<&mut X> {
+        (self as &mut dyn Any).downcast_mut::<X>()
+    }
+}
 
 pub trait ToTokens<T: TokenTree> {
     fn to_token_trees(&self) -> TokenTrees<T>;

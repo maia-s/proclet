@@ -801,7 +801,12 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Literal {}
+        impl Token<$pm::TokenTree> for $pm::Literal {
+            #[inline]
+            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+                other.downcast_ref::<Self>().map(|other| self.value() == other.value()).unwrap_or(false)
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl ToTokens<$pm::TokenTree> for $pm::Literal {
