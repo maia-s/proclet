@@ -11,10 +11,12 @@ keywords = ["macros", "proc-macro", "lightweight"]
 categories = ["parsing", "development-tools::procedural-macro-helpers"]
 
 [features]
-default = ["proc-macro", "literal-value", "op"]
+default = ["proc-macro", "all"]
 
+all = ["literal-value", "op", "token-buffer"]
 literal-value = []
 op = []
+token-buffer = []
 
 proc-macro = []
 proc-macro2 = ["dep:proc-macro2"]
