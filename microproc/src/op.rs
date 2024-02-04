@@ -76,6 +76,16 @@ impl<S: Span> Op<S> {
     }
 }
 
+impl<S: SpanExt> Op<S> {
+    #[inline]
+    pub fn split(
+        &self,
+        parser: &OpParser<S::Punct, impl OpParserFn>,
+    ) -> ParseOps<S, Puncts<S::Punct>, impl OpParserFn> {
+        parser.parse_ops(self.puncts())
+    }
+}
+
 impl<S: SpanExt> Token<S::TokenTree> for Op<S> {
     #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
@@ -137,6 +147,113 @@ impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
     }
 }
 
+impl<S: SpanExt> IntoIterator for Op<S> {
+    type Item = S::Punct;
+    type IntoIter = OpIntoIter<S>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        OpIntoIter {
+            op: self,
+            ci: 0,
+            si: 0,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct OpIntoIter<S: Span> {
+    op: Op<S>,
+    ci: usize,
+    si: usize,
+}
+
+impl<S: SpanExt> FusedIterator for OpIntoIter<S> {}
+
+impl<S: SpanExt> Iterator for OpIntoIter<S> {
+    type Item = S::Punct;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.op.str[self.ci..].chars().next().map(|ch| {
+            let span = self.op.spans[self.si];
+            self.ci += ch.len_utf8();
+            self.si += 1;
+            S::Punct::with_span(
+                ch,
+                if self.ci < self.op.str.len() {
+                    S::Spacing::Joint
+                } else {
+                    S::Spacing::Alone
+                },
+                span,
+            )
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct ParseOps<S: SpanExt, I: Iterator<Item = S::Punct>, F: OpParserFn>(
+    I,
+    OpParserInstance<S::Punct, F>,
+);
+
+impl<S: SpanExt, I: Iterator<Item = S::Punct>, F: OpParserFn> FusedIterator for ParseOps<S, I, F> {}
+
+impl<S: SpanExt, I: Iterator<Item = S::Punct>, F: OpParserFn> Iterator for ParseOps<S, I, F> {
+    type Item = Result<Op<S>, InvalidOpError<S::Punct>>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        for punct in self.0.by_ref() {
+            if let Some(x) = self.1.apply(punct) {
+                return Some(x);
+            }
+        }
+        self.1.finish()
+    }
+}
+
+/// Iterator over `Punct`s.
+#[derive(Clone, Debug)]
+pub struct Puncts<'a, P: Punct>(
+    Peekable<Chars<'a>>,
+    iter::Cycle<iter::Copied<slice::Iter<'a, P::Span>>>,
+    PhantomData<fn() -> P>,
+);
+
+impl<'a, P: Punct> Puncts<'a, P> {
+    #[inline]
+    pub fn new(str: &'a str, span: &'a [P::Span]) -> Self {
+        Self(
+            str.chars().peekable(),
+            span.iter().copied().cycle(),
+            PhantomData,
+        )
+    }
+}
+
+impl<'a, P: PunctExt> FusedIterator for Puncts<'a, P> where Puncts<'a, P>: Iterator {}
+
+impl<'a, P: PunctExt> Iterator for Puncts<'a, P> {
+    type Item = P;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|ch| {
+            P::with_span(
+                ch,
+                if self.0.peek().is_some() {
+                    P::Spacing::Joint
+                } else {
+                    P::Spacing::Alone
+                },
+                self.1.next().unwrap(),
+            )
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct InvalidOpError<P: Punct>(pub Vec<P>);
 
@@ -165,6 +282,11 @@ impl<P: PunctExt, F: OpParserFn> OpParser<P, F> {
     #[inline]
     pub fn create(&self) -> OpParserInstance<P, F> {
         OpParserInstance::new(self.0.clone())
+    }
+
+    #[inline]
+    pub fn parse_ops<I: Iterator<Item = P>>(&self, puncts: I) -> ParseOps<P::Span, I, F> {
+        ParseOps(puncts, self.create())
     }
 
     /// Check if `str` is a valid op.
@@ -325,45 +447,6 @@ impl<P: PunctExt, F: OpParserFn> OpParserInstance<P, F> {
         })
     }
 }
-
-/// Iterator over `Punct`s.
-#[derive(Clone, Debug)]
-pub struct Puncts<'a, P: Punct>(
-    Peekable<Chars<'a>>,
-    iter::Cycle<iter::Copied<slice::Iter<'a, P::Span>>>,
-    PhantomData<fn() -> P>,
-);
-
-impl<'a, P: Punct> Puncts<'a, P> {
-    pub fn new(str: &'a str, span: &'a [P::Span]) -> Self {
-        Self(
-            str.chars().peekable(),
-            span.iter().copied().cycle(),
-            PhantomData,
-        )
-    }
-}
-
-impl<'a, P: PunctExt> Iterator for Puncts<'a, P> {
-    type Item = P;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|ch| {
-            P::with_span(
-                ch,
-                if self.0.peek().is_some() {
-                    P::Spacing::Joint
-                } else {
-                    P::Spacing::Alone
-                },
-                self.1.next().unwrap(),
-            )
-        })
-    }
-}
-
-impl<'a, P: PunctExt> FusedIterator for Puncts<'a, P> where Puncts<'a, P>: Iterator {}
 
 #[doc(hidden)]
 #[macro_export]
