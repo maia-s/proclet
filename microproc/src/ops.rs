@@ -1,6 +1,6 @@
 use crate::{define_ops, Op, OpParser, PunctExt};
 
-impl<P: PunctExt> OpParser<P, fn(&str, Option<char>, &[P::Span]) -> Option<Box<dyn Op<P::Span>>>> {
+impl<P: PunctExt> OpParser<P, fn(&str, Option<char>, &[P::Span]) -> Option<Op<P::Span>>> {
     /// Make an `OpParser` for parsing Rust ops.
     #[inline]
     pub const fn new_rust() -> Self {

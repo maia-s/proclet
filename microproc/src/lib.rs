@@ -13,8 +13,6 @@ pub mod prelude {
     pub use crate::IdentExt as _;
     pub use crate::Literal as _;
     pub use crate::LiteralExt as _;
-    #[cfg(feature = "op")]
-    pub use crate::Op as _;
     pub use crate::ProcMacro as _;
     pub use crate::ProcMacroExt as _;
     pub use crate::Punct as _;
