@@ -13,6 +13,8 @@ pub mod prelude {
     pub use crate::IdentExt as _;
     pub use crate::Literal as _;
     pub use crate::LiteralExt as _;
+    #[cfg(feature = "token-buffer")]
+    pub use crate::Parser as _;
     pub use crate::ProcMacro as _;
     pub use crate::ProcMacroExt as _;
     pub use crate::Punct as _;
@@ -49,11 +51,11 @@ pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralValue, Suffixed};
 #[cfg(feature = "op")]
-pub use op::{Op, OpParser, Puncts};
+pub use op::{Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 pub use token::{ToTokens, Token, TokenTrees};
 #[cfg(feature = "token-buffer")]
-pub use token_buffer::{TokenBuf, TokenBuffer};
+pub use token_buffer::{Parser, TokenBuf, TokenBuffer};
 pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
     Delimiter, DelimiterExt, DelimiterKind, Group, GroupExt, Ident, IdentExt, Punct, PunctExt,

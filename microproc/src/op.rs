@@ -120,7 +120,85 @@ impl<P: Punct> Display for InvalidOpError<P> {
 }
 
 #[derive(Clone)]
-pub struct OpParser<P: PunctExt, F> {
+pub struct OpParser<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>>(
+    F,
+    PhantomData<fn() -> P>,
+);
+
+impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>> OpParser<P, F> {
+    pub fn new(f: F) -> Self {
+        Self(f, PhantomData)
+    }
+
+    pub fn create(&self) -> OpParserInstance<P, F> {
+        OpParserInstance::new(self.0.clone())
+    }
+
+    /// Check if `str` is a valid op.
+    ///
+    /// For example, if `+` and `+=` are valid ops and `+-` is invalid:
+    ///
+    /// - `match_op("+", Some('='))` returns `Match::Partial("+")`
+    /// - `match_op("+", Some('-'))` returns `Match::Complete("+")`
+    /// - `match_op("+", None)` returns `Match::Complete("+")`
+    /// - `match_op("+=", None)` returns `Match::Complete("+=")`
+    /// - `match_op("+-", None)` returns `Match::None`
+    ///
+    /// If `-=` is a valid op, and `-` and `-+` are invalid:
+    ///
+    /// - `match_op("-", Some('='))` returns `Match::NeedMore`
+    /// - `match_op("-", Some('+'))` returns `Match::None`
+    /// - `match_op("-", None)` returns `Match::None`
+    /// - `match_op("-=", None)` returns `Match::Complete("-=")`
+    #[inline]
+    pub fn match_op(&self, str: &str, next: Option<char>) -> Match<&'static str> {
+        (self.0)(str, next)
+    }
+}
+
+#[cfg(feature = "token-buffer")]
+impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>>
+    crate::Parser<P::TokenTree> for OpParser<P, F>
+{
+    type Output<'s, 'b> = Op<P::Span> where Self:'s;
+
+    #[inline]
+    fn parse<'s, 'b>(
+        &'s self,
+        buf: &'b crate::TokenBuf<P::TokenTree>,
+    ) -> Option<(Self::Output<'s, 'b>, &'b crate::TokenBuf<P::TokenTree>)> {
+        use std::ops::Deref;
+        let mut string = String::new();
+        let mut spans = Vec::new();
+        buf.match_prefix_buf(move |buf, next| {
+            let token = buf[buf.len() - 1].deref();
+            if let Some(punct) = token.downcast_ref::<P::Punct>() {
+                let next = if punct.spacing().is_joint() {
+                    next.and_then(|next| next.downcast_ref::<P::Punct>().map(|next| next.as_char()))
+                } else {
+                    None
+                };
+                string.push(punct.as_char());
+                spans.push(punct.span());
+
+                match self.match_op(&string, next) {
+                    Match::Complete(str) => {
+                        string.clear();
+                        let op = Op::with_spans(str, mem::take(&mut spans).into_boxed_slice());
+                        Match::Complete(op)
+                    }
+                    Match::Partial(_) | Match::NeedMore => Match::NeedMore,
+                    Match::NoMatch => Match::NoMatch,
+                }
+            } else {
+                Match::NoMatch
+            }
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct OpParserInstance<P: PunctExt, F> {
     str: String,
     spans: Vec<P::Span>,
     puncts: Vec<P>,
@@ -128,11 +206,11 @@ pub struct OpParser<P: PunctExt, F> {
     match_op: F,
 }
 
-impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParser<P, F> {
+impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParserInstance<P, F> {
     /// Create a new `OpParser`. `make_op` is used to implement [`OpParser::make_op`]; see that
     /// for information about how `make_op` should work.
     #[inline]
-    pub const fn new(match_op: F) -> Self {
+    const fn new(match_op: F) -> Self {
         Self {
             str: String::new(),
             spans: Vec::new(),
@@ -151,30 +229,9 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParser<P, 
         self.next = None;
     }
 
-    /// Check if `str` is a valid op.
-    ///
-    /// For example, if `+` and `+=` are valid ops and `+-` is invalid:
-    ///
-    /// - `match_op("+", Some('='))` returns `Match::Partial("+")`
-    /// - `match_op("+", Some('-'))` returns `Match::Complete("+")`
-    /// - `match_op("+", None)` returns `Match::Complete("+")`
-    /// - `match_op("+=", None)` returns `Match::Complete("+=")`
-    /// - `match_op("+-", None)` returns `Match::None"`
-    ///
-    /// If `-=` is a valid op, and `-` and `-+` are invalid:
-    ///
-    /// - `match_op("-", Some('='))` returns `Match::NeedMore`
-    /// - `match_op("-", Some('+'))` returns `Match::None`
-    /// - `match_op("-", None)` returns `Match::None`
-    /// - `match_op("-=", None)` returns `Match::Complete("-=")`
-    #[inline]
-    pub fn match_op(&self, str: &str, next: Option<char>) -> Match<&'static str> {
-        (self.match_op)(str, next)
-    }
-
     /// Add a `Punct` to the currently accumulating op. This may return a new [`Op`], or `None`
     /// if more puncts are needed. If `punct` has alone spacing and the accumulated op isn't
-    /// valid, it returns an error. Call [`OpParser::finish`] to finish parsing.
+    /// valid, it returns an error. Call [`OpParserInstance::finish`] to finish parsing.
     #[inline]
     #[allow(clippy::type_complexity)]
     pub fn apply(&mut self, punct: P) -> Option<Result<Op<P::Span>, InvalidOpError<P>>> {
@@ -194,7 +251,7 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParser<P, 
             self.spans.push(punct.span());
             self.puncts.push(punct);
 
-            match self.match_op(&self.str, next_ch) {
+            match (self.match_op)(&self.str, next_ch) {
                 Match::Complete(str) => {
                     self.str.clear();
                     self.puncts.clear();
@@ -227,7 +284,7 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParser<P, 
     pub fn finish(&mut self) -> Option<Result<Op<P::Span>, InvalidOpError<P>>> {
         mem::take(&mut self.next).map(|punct| {
             self.str.push(punct.as_char());
-            let m = self.match_op(&self.str, None);
+            let m = (self.match_op)(&self.str, None);
             self.str.clear();
             if let Match::Complete(str) | Match::Partial(str) = m {
                 self.spans.push(punct.span());
@@ -241,46 +298,6 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParser<P, 
                 Err(InvalidOpError(mem::take(&mut self.puncts)))
             }
         })
-    }
-
-    #[cfg(feature = "token-buffer")]
-    pub fn apply_token(
-        &mut self,
-        token: &dyn Token<P::TokenTree>,
-        next: Option<&dyn Token<P::TokenTree>>,
-    ) -> Match<Op<P::Span>> {
-        if let Some(punct) = token.downcast_ref::<P::Punct>() {
-            let next = if punct.spacing().is_joint() {
-                next.and_then(|next| next.downcast_ref::<P::Punct>().map(|next| next.as_char()))
-            } else {
-                None
-            };
-            self.str.push(punct.as_char());
-            self.spans.push(punct.span());
-
-            match self.match_op(&self.str, next) {
-                Match::Complete(str) => {
-                    self.str.clear();
-                    let op = Op::with_spans(str, mem::take(&mut self.spans).into_boxed_slice());
-                    Match::Complete(op)
-                }
-                Match::Partial(_) | Match::NeedMore => Match::NeedMore,
-                Match::NoMatch => Match::NoMatch,
-            }
-        } else {
-            Match::NoMatch
-        }
-    }
-
-    #[cfg(feature = "token-buffer")]
-    #[inline]
-    #[allow(clippy::type_complexity)]
-    pub fn parse<'a>(
-        &mut self,
-        buf: &'a crate::TokenBuf<P::TokenTree>,
-    ) -> Option<(Op<P::Span>, &'a crate::TokenBuf<P::TokenTree>)> {
-        use std::ops::Deref;
-        buf.match_prefix_buf(move |buf, next| self.apply_token(buf[buf.len() - 1].deref(), next))
     }
 }
 
@@ -349,25 +366,33 @@ macro_rules! __define_ops_private {
         fn fn $fn:ident
         $($($first:literal($follow:pat))? $($ident:ident[$($tt:tt)*])?,)*
     ) => {
-        /// Check if a string is a valid operator. See `OpParser::match_op` for details.
         #[inline]
-        pub fn $fn(
-            str: &::core::primitive::str,
-            next: ::core::option::Option<::core::primitive::char>
-        ) -> $crate::Match<&'static ::core::primitive::str> {
-            match (str, next) {
-                $(
-                    $(($first, ::core::option::Option::Some($follow)) => {
-                        if let $crate::Match::Complete(m) = $fn(str, ::core::option::Option::None) {
-                            $crate::Match::Partial(m)
-                        } else {
-                            $crate::Match::NeedMore
-                        }
-                    })?
-                    $((::core::stringify!($($tt)*), _) => $crate::Match::Complete(::core::stringify!($($tt)*)),)?
-                )*
-                _ => $crate::Match::NoMatch,
+        pub fn $fn<P: $crate::PunctExt>() -> $crate::OpParser<
+            P,
+            impl ::core::clone::Clone + ::core::ops::Fn(
+                &::core::primitive::str,
+                ::core::option::Option<::core::primitive::char>
+            ) -> $crate::Match<&'static ::core::primitive::str>
+        > {
+            fn $fn(
+                str: &::core::primitive::str,
+                next: ::core::option::Option<::core::primitive::char>
+            ) -> $crate::Match<&'static ::core::primitive::str> {
+                match (str, next) {
+                    $(
+                        $(($first, ::core::option::Option::Some($follow)) => {
+                            if let $crate::Match::Complete(m) = $fn(str, ::core::option::Option::None) {
+                                $crate::Match::Partial(m)
+                            } else {
+                                $crate::Match::NeedMore
+                            }
+                        })?
+                        $((::core::stringify!($($tt)*), _) => $crate::Match::Complete(::core::stringify!($($tt)*)),)?
+                    )*
+                    _ => $crate::Match::NoMatch,
+                }
             }
+            $crate::OpParser::new($fn)
         }
     };
 

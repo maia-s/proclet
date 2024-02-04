@@ -1,16 +1,8 @@
-use crate::{define_ops, Match, OpParser, PunctExt};
-
-impl<P: PunctExt> OpParser<P, fn(&str, Option<char>) -> Match<&'static str>> {
-    /// Make an `OpParser` for parsing Rust ops.
-    #[inline]
-    pub const fn new_rust() -> Self {
-        Self::new(make_rust_op)
-    }
-}
+use crate::define_ops;
 
 define_ops! {
     [#[macro_export] RustOp!]
-    [make_rust_op()]
+    [rust_op_parser()]
     "!"('='),
     Not[!] new,
     Ne[!=] new,

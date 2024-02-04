@@ -8,6 +8,29 @@ use std::{
     slice,
 };
 
+pub trait Parser<T: TokenTree> {
+    type Output<'s, 'b>
+    where
+        Self: 's;
+
+    fn parse<'s, 'b>(
+        &'s self,
+        buf: &'b TokenBuf<T>,
+    ) -> Option<(Self::Output<'s, 'b>, &'b TokenBuf<T>)>;
+
+    #[inline]
+    fn parse_all<'s, 'b>(
+        &'s self,
+        buf: &'b TokenBuf<T>,
+    ) -> Result<Self::Output<'s, 'b>, &'b TokenBuf<T>> {
+        match self.parse(buf) {
+            Some((result, rest)) if rest.is_empty() => Ok(result),
+            Some((_, rest)) => Err(rest),
+            _ => Err(&buf[..0]),
+        }
+    }
+}
+
 pub struct TokenBuffer<T: TokenTree>(Vec<Box<dyn Token<T>>>);
 
 impl<T: TokenTree> TokenBuffer<T> {
@@ -87,6 +110,14 @@ impl<T: TokenTree> TokenBuf<T> {
             // It's a reference to the same type in a transparent struct
             transmute::<&mut [Box<dyn Token<T>>], &mut Self>(r)
         }
+    }
+
+    #[inline]
+    pub fn parse_with<'p, 'b, P: Parser<T>>(
+        &'b self,
+        parser: &'p P,
+    ) -> Option<(P::Output<'p, 'b>, &'b Self)> {
+        parser.parse(self)
     }
 
     #[inline]

@@ -45,10 +45,9 @@ pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn parse_rust_ops(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use microproc::OpParser;
-
+    use microproc::ops::rust_op_parser;
     let input: TokenStream = input.into();
-    let mut parser = OpParser::new_rust();
+    let mut parser = rust_op_parser().create();
     let mut ops = String::new();
     ops.push('[');
     for mut token in input {
