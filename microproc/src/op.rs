@@ -9,30 +9,34 @@ use std::{
 
 #[derive(Clone, Debug)]
 pub struct Op<S: Span> {
-    str: &'static str,
+    str: Box<str>,
     spans: Box<[S]>,
 }
 
 impl<S: Span> Op<S> {
     #[inline]
-    pub fn new(str: &'static str) -> Self {
+    pub fn new(str: impl Into<String>) -> Self {
         Self::with_span(str, S::call_site())
     }
 
     #[inline]
-    pub fn with_span(str: &'static str, span: S) -> Self {
-        Self::with_spans(str, vec![span; str.len()].into_boxed_slice())
-    }
-
-    #[inline]
-    pub fn with_spans(str: &'static str, spans: Box<[S]>) -> Self {
-        assert_eq!(str.len(), spans.len());
+    pub fn with_span(str: impl Into<String>, span: S) -> Self {
+        let str = str.into().into_boxed_str();
+        let spans = vec![span; str.chars().count()].into_boxed_slice();
         Self { str, spans }
     }
 
     #[inline]
-    pub const fn as_str(&self) -> &'static str {
-        self.str
+    pub fn with_spans(str: impl Into<String>, spans: Vec<S>) -> Self {
+        let str = str.into().into_boxed_str();
+        let spans = spans.into_boxed_slice();
+        assert_eq!(str.chars().count(), spans.len());
+        Self { str, spans }
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        &self.str
     }
 
     #[inline]
@@ -103,6 +107,32 @@ impl<S: Span> From<&'static str> for Op<S> {
     }
 }
 
+#[cfg(feature = "token-buffer")]
+impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
+    fn parse(buf: &mut &crate::TokenBuf<S::TokenTree>) -> Option<Self> {
+        let mut str = String::new();
+        let mut spans = Vec::new();
+        buf.match_prefix(|token| {
+            if let Some(punct) = token.downcast_ref::<S::Punct>() {
+                str.push(punct.as_char());
+                spans.push(punct.span());
+                if punct.spacing().is_joint() {
+                    Match::Partial(str.len())
+                } else {
+                    Match::Complete(str.len())
+                }
+            } else {
+                Match::NoMatch
+            }
+        })
+        .map(|len| {
+            str.truncate(len);
+            spans.truncate(len);
+            Op::with_spans(str, spans)
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct InvalidOpError<P: Punct>(pub Vec<P>);
 
@@ -160,13 +190,13 @@ impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>> OpPa
 impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>>
     crate::Parser<P::TokenTree> for OpParser<P, F>
 {
-    type Output<'s, 'b> = Op<P::Span> where Self:'s;
+    type Output<'p, 'b> = Op<P::Span> where Self:'p;
 
     #[inline]
-    fn parse<'s, 'b>(
-        &'s self,
-        buf: &'b crate::TokenBuf<P::TokenTree>,
-    ) -> Option<(Self::Output<'s, 'b>, &'b crate::TokenBuf<P::TokenTree>)> {
+    fn parse<'p, 'b>(
+        &'p self,
+        buf: &mut &'b crate::TokenBuf<P::TokenTree>,
+    ) -> Option<Self::Output<'p, 'b>> {
         use std::ops::Deref;
         let mut string = String::new();
         let mut spans = Vec::new();
@@ -184,7 +214,7 @@ impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>>
                 match self.match_op(&string, next) {
                     Match::Complete(str) => {
                         string.clear();
-                        let op = Op::with_spans(str, mem::take(&mut spans).into_boxed_slice());
+                        let op = Op::with_spans(str, mem::take(&mut spans));
                         Match::Complete(op)
                     }
                     Match::Partial(_) | Match::NeedMore => Match::NeedMore,
@@ -255,10 +285,7 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParserInst
                 Match::Complete(str) => {
                     self.str.clear();
                     self.puncts.clear();
-                    return Some(Ok(Op::with_spans(
-                        str,
-                        mem::take(&mut self.spans).into_boxed_slice(),
-                    )));
+                    return Some(Ok(Op::with_spans(str, mem::take(&mut self.spans))));
                 }
                 Match::Partial(_) | Match::NeedMore => {
                     if self.next.as_ref().unwrap().spacing().is_alone() {
@@ -289,10 +316,7 @@ impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParserInst
             if let Match::Complete(str) | Match::Partial(str) = m {
                 self.spans.push(punct.span());
                 self.puncts.clear();
-                Ok(Op::with_spans(
-                    str,
-                    mem::take(&mut self.spans).into_boxed_slice(),
-                ))
+                Ok(Op::with_spans(str, mem::take(&mut self.spans)))
             } else {
                 self.puncts.push(punct);
                 Err(InvalidOpError(mem::take(&mut self.puncts)))

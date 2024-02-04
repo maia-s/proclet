@@ -8,25 +8,30 @@ use std::{
     slice,
 };
 
-pub trait Parser<T: TokenTree> {
-    type Output<'s, 'b>
-    where
-        Self: 's;
-
-    fn parse<'s, 'b>(
-        &'s self,
-        buf: &'b TokenBuf<T>,
-    ) -> Option<(Self::Output<'s, 'b>, &'b TokenBuf<T>)>;
+pub trait Parse<T: TokenTree>: Sized {
+    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self>;
 
     #[inline]
-    fn parse_all<'s, 'b>(
-        &'s self,
-        buf: &'b TokenBuf<T>,
-    ) -> Result<Self::Output<'s, 'b>, &'b TokenBuf<T>> {
+    fn parse_all(buf: &mut &TokenBuf<T>) -> Option<Self> {
+        match Self::parse(buf) {
+            Some(result) if buf.is_empty() => Some(result),
+            _ => None,
+        }
+    }
+}
+
+pub trait Parser<T: TokenTree>: Sized {
+    type Output<'p, 'b>
+    where
+        Self: 'p;
+
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>>;
+
+    #[inline]
+    fn parse_all<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
         match self.parse(buf) {
-            Some((result, rest)) if rest.is_empty() => Ok(result),
-            Some((_, rest)) => Err(rest),
-            _ => Err(&buf[..0]),
+            Some(result) if buf.is_empty() => Some(result),
+            _ => None,
         }
     }
 }
@@ -113,43 +118,51 @@ impl<T: TokenTree> TokenBuf<T> {
     }
 
     #[inline]
-    pub fn parse_with<'p, 'b, P: Parser<T>>(
-        &'b self,
-        parser: &'p P,
-    ) -> Option<(P::Output<'p, 'b>, &'b Self)> {
-        parser.parse(self)
+    pub fn parse<P: Parse<T>>(self: &mut &Self) -> Option<P> {
+        P::parse(self)
     }
 
     #[inline]
-    pub fn match_prefix<M>(
-        &self,
+    pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Option<P> {
+        P::parse_all(self)
+    }
+
+    #[inline]
+    pub fn match_prefix<'a, M: 'a>(
+        self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
-    ) -> Option<(M, &Self)> {
+    ) -> Option<M> {
         self.match_prefix_buf(|x, _| match_fn(x[x.len() - 1].deref()))
     }
 
     #[inline]
-    pub fn match_prefix_buf<'a, M>(
-        &'a self,
+    pub fn match_prefix_buf<'a, M: 'a>(
+        self: &mut &'a Self,
         mut match_fn: impl FnMut(&'a Self, Option<&dyn Token<T>>) -> Match<M>,
-    ) -> Option<(M, &Self)> {
+    ) -> Option<M> {
         let mut result = None;
         for i in 1..=self.len() {
             match match_fn(&self[..i], self.get(i).map(|x| x.deref())) {
-                Match::Complete(m) => return Some((m, &self[i..])),
+                Match::Complete(m) => {
+                    *self = &self[i..];
+                    return Some(m);
+                }
                 Match::Partial(m) => result = Some((m, &self[i..])),
                 Match::NeedMore => (),
                 Match::NoMatch => break,
             }
         }
-        result
+        result.map(|(result, rest)| {
+            *self = rest;
+            result
+        })
     }
 
     #[inline]
-    pub fn match_prefix_tokens(
-        &self,
+    pub fn match_prefix_tokens<'a>(
+        self: &mut &'a Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<(&Self, &Self)> {
+    ) -> Option<&'a Self> {
         let mut tokens = tokens.into_iter().peekable();
         self.match_prefix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
@@ -171,9 +184,9 @@ impl<T: TokenTree> TokenBuf<T> {
 
     #[inline]
     pub fn match_prefix_tokens_partial(
-        &self,
+        self: &mut &Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<(&Self, &Self)> {
+    ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
         self.match_prefix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
@@ -194,43 +207,49 @@ impl<T: TokenTree> TokenBuf<T> {
     }
 
     #[inline]
-    pub fn match_suffix<M>(
-        &self,
+    pub fn match_suffix<'a, M: 'a>(
+        self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
-    ) -> Option<(M, &Self)> {
+    ) -> Option<M> {
         self.match_suffix_buf(|x, _| match_fn(x[0].deref()))
     }
 
     #[inline]
-    pub fn match_suffix_buf<'a, M>(
-        &'a self,
+    pub fn match_suffix_buf<'a, M: 'a>(
+        self: &mut &'a Self,
         mut match_fn: impl FnMut(&'a Self, Option<&dyn Token<T>>) -> Match<M>,
-    ) -> Option<(M, &Self)> {
+    ) -> Option<M> {
         let mut result = None;
         for i in (0..self.len()).rev() {
             match match_fn(&self[i..], (i > 0).then(|| self[i - 1].deref())) {
-                Match::Complete(m) => return Some((m, &self[..i])),
+                Match::Complete(m) => {
+                    *self = &self[..i];
+                    return Some(m);
+                }
                 Match::Partial(m) => result = Some((m, &self[..i])),
                 Match::NeedMore => (),
                 Match::NoMatch => break,
             }
         }
-        result
+        result.map(|(result, rest)| {
+            *self = rest;
+            result
+        })
     }
 
     #[inline]
     pub fn match_suffix_tokens(
-        &self,
+        self: &mut &Self,
         tokens: impl IntoIterator<IntoIter = impl DoubleEndedIterator<Item = impl AsRef<dyn Token<T>>>>,
-    ) -> Option<(&Self, &Self)> {
+    ) -> Option<&Self> {
         self.match_suffix_tokens_reverse(tokens.into_iter().rev())
     }
 
     #[inline]
     pub fn match_suffix_tokens_reverse(
-        &self,
+        self: &mut &Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<(&Self, &Self)> {
+    ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
         self.match_suffix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
@@ -252,17 +271,17 @@ impl<T: TokenTree> TokenBuf<T> {
 
     #[inline]
     pub fn match_suffix_tokens_partial(
-        &self,
+        self: &mut &Self,
         tokens: impl IntoIterator<IntoIter = impl DoubleEndedIterator<Item = impl AsRef<dyn Token<T>>>>,
-    ) -> Option<(&Self, &Self)> {
+    ) -> Option<&Self> {
         self.match_suffix_tokens_reverse_partial(tokens.into_iter().rev())
     }
 
     #[inline]
     pub fn match_suffix_tokens_reverse_partial(
-        &self,
+        self: &mut &Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<(&Self, &Self)> {
+    ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
         self.match_suffix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
