@@ -112,6 +112,7 @@ impl<S: Span> From<&'static str> for Op<S> {
 
 #[cfg(feature = "token-buffer")]
 impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
+    #[inline]
     fn parse(buf: &mut &crate::TokenBuf<S::TokenTree>) -> Option<Self> {
         let mut str = String::new();
         let mut spans = Vec::new();
@@ -156,10 +157,12 @@ impl<P: Punct> Display for InvalidOpError<P> {
 pub struct OpParser<P: PunctExt, F: OpParserFn>(F, PhantomData<fn() -> P>);
 
 impl<P: PunctExt, F: OpParserFn> OpParser<P, F> {
+    #[inline]
     pub fn new(f: F) -> Self {
         Self(f, PhantomData)
     }
 
+    #[inline]
     pub fn create(&self) -> OpParserInstance<P, F> {
         OpParserInstance::new(self.0.clone())
     }
