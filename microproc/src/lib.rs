@@ -53,12 +53,19 @@ pub use op::{Op, OpParser, Puncts};
 pub use span::{Span, SpanExt};
 pub use token::{ToTokens, Token, TokenTrees};
 #[cfg(feature = "token-buffer")]
-pub use token_buffer::{MatchState, TokenBuf, TokenBuffer};
+pub use token_buffer::{TokenBuf, TokenBuffer};
 pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
     Delimiter, DelimiterExt, DelimiterKind, Group, GroupExt, Ident, IdentExt, Punct, PunctExt,
     Spacing, SpacingExt, TokenTree, TokenTreeExt, TokenTreeKind,
 };
+
+pub enum Match<T> {
+    Complete(T),
+    Partial(T),
+    NeedMore,
+    NoMatch,
+}
 
 use internal::*;
 mod internal {

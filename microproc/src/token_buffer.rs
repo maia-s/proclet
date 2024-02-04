@@ -1,4 +1,4 @@
-use crate::{Token, TokenTree};
+use crate::{Match, Token, TokenTree};
 use std::{
     mem::transmute,
     ops::{
@@ -67,13 +67,6 @@ impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
     }
 }
 
-pub enum MatchState<T> {
-    Complete(T),
-    Partial(T),
-    NeedMore,
-    NoMatch,
-}
-
 #[repr(transparent)]
 pub struct TokenBuf<T: TokenTree>([Box<dyn Token<T>>]);
 
@@ -99,23 +92,23 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn match_prefix<M>(
         &self,
-        mut match_fn: impl FnMut(&dyn Token<T>) -> MatchState<M>,
+        mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
     ) -> Option<(M, &Self)> {
-        self.match_prefix_buf(|x| match_fn(x[x.len() - 1].deref()))
+        self.match_prefix_buf(|x, _| match_fn(x[x.len() - 1].deref()))
     }
 
     #[inline]
     pub fn match_prefix_buf<'a, M>(
         &'a self,
-        mut match_fn: impl FnMut(&'a Self) -> MatchState<M>,
+        mut match_fn: impl FnMut(&'a Self, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<(M, &Self)> {
         let mut result = None;
         for i in 1..=self.len() {
-            match match_fn(&self[..i]) {
-                MatchState::Complete(m) => return Some((m, &self[i..])),
-                MatchState::Partial(m) => result = Some((m, &self[i..])),
-                MatchState::NeedMore => (),
-                MatchState::NoMatch => break,
+            match match_fn(&self[..i], self.get(i).map(|x| x.deref())) {
+                Match::Complete(m) => return Some((m, &self[i..])),
+                Match::Partial(m) => result = Some((m, &self[i..])),
+                Match::NeedMore => (),
+                Match::NoMatch => break,
             }
         }
         result
@@ -127,20 +120,20 @@ impl<T: TokenTree> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<(&Self, &Self)> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_prefix_buf(move |buf| {
+        self.match_prefix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
                 if buf[buf.len() - 1].eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
-                        MatchState::NeedMore
+                        Match::NeedMore
                     } else {
-                        MatchState::Complete(buf)
+                        Match::Complete(buf)
                     }
                 } else {
-                    MatchState::NoMatch
+                    Match::NoMatch
                 }
             } else {
                 // empty input
-                MatchState::Complete(&buf[..0])
+                Match::Complete(&buf[..0])
             }
         })
     }
@@ -151,20 +144,20 @@ impl<T: TokenTree> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<(&Self, &Self)> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_prefix_buf(move |buf| {
+        self.match_prefix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
                 if buf[buf.len() - 1].eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
-                        MatchState::Partial(buf)
+                        Match::Partial(buf)
                     } else {
-                        MatchState::Complete(buf)
+                        Match::Complete(buf)
                     }
                 } else {
-                    MatchState::NoMatch
+                    Match::NoMatch
                 }
             } else {
                 // empty input
-                MatchState::Complete(&buf[..0])
+                Match::Complete(&buf[..0])
             }
         })
     }
@@ -172,23 +165,23 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn match_suffix<M>(
         &self,
-        mut match_fn: impl FnMut(&dyn Token<T>) -> MatchState<M>,
+        mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
     ) -> Option<(M, &Self)> {
-        self.match_suffix_buf(|x| match_fn(x[0].deref()))
+        self.match_suffix_buf(|x, _| match_fn(x[0].deref()))
     }
 
     #[inline]
     pub fn match_suffix_buf<'a, M>(
         &'a self,
-        mut match_fn: impl FnMut(&'a Self) -> MatchState<M>,
+        mut match_fn: impl FnMut(&'a Self, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<(M, &Self)> {
         let mut result = None;
         for i in (0..self.len()).rev() {
-            match match_fn(&self[i..]) {
-                MatchState::Complete(m) => return Some((m, &self[..i])),
-                MatchState::Partial(m) => result = Some((m, &self[..i])),
-                MatchState::NeedMore => (),
-                MatchState::NoMatch => break,
+            match match_fn(&self[i..], (i > 0).then(|| self[i - 1].deref())) {
+                Match::Complete(m) => return Some((m, &self[..i])),
+                Match::Partial(m) => result = Some((m, &self[..i])),
+                Match::NeedMore => (),
+                Match::NoMatch => break,
             }
         }
         result
@@ -208,20 +201,20 @@ impl<T: TokenTree> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<(&Self, &Self)> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_suffix_buf(move |buf| {
+        self.match_suffix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
                 if buf[0].eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
-                        MatchState::NeedMore
+                        Match::NeedMore
                     } else {
-                        MatchState::Complete(buf)
+                        Match::Complete(buf)
                     }
                 } else {
-                    MatchState::NoMatch
+                    Match::NoMatch
                 }
             } else {
                 // empty input
-                MatchState::Complete(&buf[..0])
+                Match::Complete(&buf[..0])
             }
         })
     }
@@ -240,20 +233,20 @@ impl<T: TokenTree> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<(&Self, &Self)> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_suffix_buf(move |buf| {
+        self.match_suffix_buf(move |buf, _| {
             if let Some(t) = tokens.next() {
                 if buf[0].eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
-                        MatchState::Partial(buf)
+                        Match::Partial(buf)
                     } else {
-                        MatchState::Complete(buf)
+                        Match::Complete(buf)
                     }
                 } else {
-                    MatchState::NoMatch
+                    Match::NoMatch
                 }
             } else {
                 // empty input
-                MatchState::Complete(&buf[..0])
+                Match::Complete(&buf[..0])
             }
         })
     }
