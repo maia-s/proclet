@@ -1,5 +1,5 @@
 use crate::{ProcMacro, ProcMacroExt, ToTokens, Token, TokenTrees};
-use std::{fmt::Display, str::FromStr};
+use std::{any::Any, fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
 use std::{error::Error, fmt};
@@ -802,6 +802,16 @@ macro_rules! impl_literal {
 
         #[cfg(feature = $feature)]
         impl Token<$pm::TokenTree> for $pm::Literal {
+            #[inline]
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            #[inline]
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
                 other.downcast_ref::<Self>().map(|other| self.value() == other.value()).unwrap_or(false)

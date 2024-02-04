@@ -1,5 +1,5 @@
 use crate::{ProcMacro, ToTokens, Token, TokenStreamExt, TokenTrees};
-use std::fmt::Display;
+use std::{any::Any, fmt::Display};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenTreeKind {
@@ -428,6 +428,16 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl Token<$pm::TokenTree> for $pm::TokenTree {
             #[inline]
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            #[inline]
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
+            #[inline]
             fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
                 other.downcast_ref::<Self>().map(|other| {
                     match (self, other) {
@@ -492,6 +502,16 @@ macro_rules! impl_token_tree {
 
         #[cfg(feature = $feature)]
         impl Token<$pm::TokenTree> for $pm::Group {
+            #[inline]
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            #[inline]
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
                 other.downcast_ref::<Self>().map(|other|
@@ -591,6 +611,16 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl Token<$pm::TokenTree> for $pm::Ident {
             #[inline]
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            #[inline]
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
+            #[inline]
             fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
                 #[allow(clippy::cmp_owned)] // it's the only way to get their value, clippy
                 other.downcast_ref::<Self>().map(
@@ -640,6 +670,16 @@ macro_rules! impl_token_tree {
 
         #[cfg(feature = $feature)]
         impl Token<$pm::TokenTree> for $pm::Punct {
+            #[inline]
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            #[inline]
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
                 other.downcast_ref::<Self>().map(|other| self.as_char() == other.as_char()).unwrap_or(false)

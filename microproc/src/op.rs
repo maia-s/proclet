@@ -223,6 +223,16 @@ macro_rules! __define_ops_private {
 
         impl<S: $crate::SpanExt> $crate::Token<S::TokenTree> for $ident<S> {
             #[inline]
+            fn as_any(&self) -> &dyn ::core::any::Any {
+                self
+            }
+
+            #[inline]
+            fn as_any_mut(&mut self) -> &mut dyn ::core::any::Any {
+                self
+            }
+
+            #[inline]
             fn eq_except_span(&self, other: &dyn $crate::Token<S::TokenTree>) -> bool {
                 other.is::<Self>()
             }

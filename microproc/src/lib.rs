@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
+#![cfg_attr(all(doc, not(doctest)), feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 
 #[cfg(feature = "proc-macro")]
