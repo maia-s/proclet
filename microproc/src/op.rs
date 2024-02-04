@@ -7,6 +7,9 @@ use std::{
     str::Chars,
 };
 
+pub trait OpParserFn: Clone + Fn(&str, Option<char>) -> Match<&'static str> {}
+impl<T> OpParserFn for T where T: Clone + Fn(&str, Option<char>) -> Match<&'static str> {}
+
 #[derive(Clone, Debug)]
 pub struct Op<S: Span> {
     str: Box<str>,
@@ -150,12 +153,9 @@ impl<P: Punct> Display for InvalidOpError<P> {
 }
 
 #[derive(Clone)]
-pub struct OpParser<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>>(
-    F,
-    PhantomData<fn() -> P>,
-);
+pub struct OpParser<P: PunctExt, F: OpParserFn>(F, PhantomData<fn() -> P>);
 
-impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>> OpParser<P, F> {
+impl<P: PunctExt, F: OpParserFn> OpParser<P, F> {
     pub fn new(f: F) -> Self {
         Self(f, PhantomData)
     }
@@ -187,9 +187,7 @@ impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>> OpPa
 }
 
 #[cfg(feature = "token-buffer")]
-impl<P: PunctExt, F: Clone + Fn(&str, Option<char>) -> Match<&'static str>>
-    crate::Parser<P::TokenTree> for OpParser<P, F>
-{
+impl<P: PunctExt, F: OpParserFn> crate::Parser<P::TokenTree> for OpParser<P, F> {
     type Output<'p, 'b> = Op<P::Span> where Self:'p;
 
     #[inline]
@@ -236,7 +234,7 @@ pub struct OpParserInstance<P: PunctExt, F> {
     match_op: F,
 }
 
-impl<P: PunctExt, F: Fn(&str, Option<char>) -> Match<&'static str>> OpParserInstance<P, F> {
+impl<P: PunctExt, F: OpParserFn> OpParserInstance<P, F> {
     /// Create a new `OpParser`. `make_op` is used to implement [`OpParser::make_op`]; see that
     /// for information about how `make_op` should work.
     #[inline]
