@@ -1,4 +1,4 @@
-use crate::{prelude::*, Match, Punct, PunctExt, Span, SpanExt, ToTokens, Token, TokenTrees};
+use crate::{prelude::*, Match, Punct, PunctExt, Span, SpanExt, ToTokenTrees, Token, TokenTrees};
 use std::{
     fmt::Display,
     iter::{self, FusedIterator, Peekable},
@@ -106,7 +106,7 @@ impl<S: SpanExt> Token<S::PM> for Op<S> {
     }
 }
 
-impl<S: SpanExt> ToTokens<S::TokenTree> for Op<S> {
+impl<S: SpanExt> ToTokenTrees<S::TokenTree> for Op<S> {
     #[inline]
     fn to_token_trees(&self) -> TokenTrees<S::TokenTree> {
         TokenTrees::new(self.puncts().map(S::TokenTree::from))

@@ -25,7 +25,7 @@ pub mod prelude {
     pub use crate::SpacingExt as _;
     pub use crate::Span as _;
     pub use crate::SpanExt as _;
-    pub use crate::ToTokens as _;
+    pub use crate::ToTokenTrees as _;
     pub use crate::Token as _;
     pub use crate::TokenStream as _;
     pub use crate::TokenStreamExt as _;
@@ -55,7 +55,7 @@ pub use literal::{LiteralValue, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-pub use token::{ToTokens, Token, TokenTrees};
+pub use token::{ToTokenTrees, Token, TokenTrees};
 #[cfg(feature = "token-buffer")]
 pub use token_buffer::{Parse, Parser, TokenBuf, TokenBuffer};
 pub use token_stream::{TokenStream, TokenStreamExt};

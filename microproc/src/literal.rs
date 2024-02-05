@@ -1,4 +1,4 @@
-use crate::{ProcMacro, ProcMacroExt, ToTokens, Token, TokenTrees};
+use crate::{ProcMacro, ProcMacroExt, ToTokenTrees, Token, TokenTrees};
 use std::{any::Any, fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
@@ -819,7 +819,7 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokens<$pm::TokenTree> for $pm::Literal {
+        impl ToTokenTrees<$pm::TokenTree> for $pm::Literal {
             #[inline]
             fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
                 self.to_token_tree().into()

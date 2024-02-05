@@ -1,7 +1,7 @@
 use crate::{TokenTree, PM};
 use std::{any::Any, fmt::Debug, iter};
 
-pub trait Token<T: PM>: Any + Debug + ToTokens<T::TokenTree> {
+pub trait Token<T: PM>: Any + Debug + ToTokenTrees<T::TokenTree> {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
@@ -24,7 +24,7 @@ impl<T: PM> dyn Token<T> {
     }
 }
 
-pub trait ToTokens<T: TokenTree> {
+pub trait ToTokenTrees<T: TokenTree> {
     fn to_token_trees(&self) -> TokenTrees<T>;
 
     #[inline]
