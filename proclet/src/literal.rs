@@ -1,4 +1,7 @@
-use crate::{PMExt, ProcMacro, ProcMacroExt, Span, ToTokenTrees, Token, TokenTreeExt, TokenTrees};
+use crate::{
+    Match, PMExt, Parse, ProcMacro, ProcMacroExt, Span, ToTokenTrees, Token, TokenTreeExt,
+    TokenTrees,
+};
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
@@ -663,6 +666,22 @@ impl<S: Span> LiteralToken<S> {
 }
 
 #[cfg(feature = "literal-value")]
+impl<T: PMExt> Parse<T> for LiteralToken<T::Span> {
+    #[inline]
+    fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
+        buf.match_prefix(|token| {
+            if let Some(token) = token.downcast_ref::<Self>() {
+                Match::Complete(token.clone())
+            } else if let Some(token) = token.downcast_ref::<T::Literal>() {
+                Match::Complete(token.clone().into())
+            } else {
+                Match::NoMatch
+            }
+        })
+    }
+}
+
+#[cfg(feature = "literal-value")]
 impl<T: PMExt> Token<T> for LiteralToken<T::Span> {
     #[inline]
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
@@ -887,6 +906,23 @@ macro_rules! impl_literal {
                 let mut lit = impl_literal!(@ to_literal(value));
                 lit.set_span(self.span());
                 *self = lit;
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl Parse<crate::base::$pm::PM> for $pm::Literal {
+            #[inline]
+            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+                buf.match_prefix(|token| {
+                    if let Some(token) = token.downcast_ref::<Self>() {
+                        return Match::Complete(token.clone());
+                    }
+                    #[cfg(feature = "literal-value")]
+                    if let Some(token) = token.downcast_ref::<LiteralToken<$pm::Span>>() {
+                        return Match::Complete(token.clone().into())
+                    }
+                    Match::NoMatch
+                })
             }
         }
 

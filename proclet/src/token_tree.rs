@@ -1,4 +1,6 @@
-use crate::{AsToken, ProcMacro, ToTokenTrees, Token, TokenStreamExt, TokenTrees};
+use crate::{
+    AsToken, Match, Parse, ProcMacro, ToTokenTrees, Token, TokenBuf, TokenStreamExt, TokenTrees,
+};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -128,6 +130,13 @@ pub trait Group: ProcMacro<Group = Self> + Display {
 /// This trait is implemented for `Group` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group + Token<Self::PM> {
+    /// Create a new `Group` with a custom span.
+    fn with_span(delimiter: Self::Delimiter, stream: Self::TokenStream, span: Self::Span) -> Self {
+        let mut group = Self::new(delimiter, stream);
+        group.set_span(span);
+        group
+    }
+
     /// Get the delimiter of this `Group` as a matchable enum.
     #[inline]
     fn delimiter_kind(&self) -> DelimiterKind {
@@ -328,14 +337,6 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl From<$pm::TokenTree> for Box<dyn Token<crate::base::$pm::PM>> {
-            #[inline]
-            fn from(value: $pm::TokenTree) -> Self {
-                value.into_token()
-            }
-        }
-
-        #[cfg(feature = $feature)]
         impl TokenTreeExt for $pm::TokenTree {
             #[inline]
             fn into_token(self) -> Box<dyn Token<crate::base::$pm::PM>> {
@@ -477,7 +478,6 @@ macro_rules! impl_token_tree {
             }
         }
 
-
         #[cfg(feature = $feature)]
         impl AsToken<crate::base::$pm::PM> for $pm::TokenTree {
             #[inline]
@@ -497,6 +497,32 @@ macro_rules! impl_token_tree {
                     Self::Ident(t) => t as &mut dyn Token<crate::base::$pm::PM>,
                     Self::Punct(t) => t as &mut dyn Token<crate::base::$pm::PM>,
                     Self::Literal(t) => t as &mut dyn Token<crate::base::$pm::PM>,
+                }
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl From<$pm::TokenTree> for Box<dyn Token<crate::base::$pm::PM>> {
+            #[inline]
+            fn from(value: $pm::TokenTree) -> Self {
+                value.into_token()
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl Parse<crate::base::$pm::PM> for $pm::TokenTree {
+            #[inline]
+            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+                if let Some(group) = $pm::Group::parse(buf) {
+                    Some(group.into())
+                } else if let Some(ident) = $pm::Ident::parse(buf) {
+                    Some(ident.into())
+                } else if let Some(punct) = $pm::Punct::parse(buf) {
+                    Some(punct.into())
+                } else if let Some(literal) = $pm::Literal::parse(buf) {
+                    Some(literal.into())
+                } else {
+                    None
                 }
             }
         }
@@ -549,6 +575,20 @@ macro_rules! impl_token_tree {
 
         #[cfg(feature = $feature)]
         impl GroupExt for $pm::Group {}
+
+        #[cfg(feature = $feature)]
+        impl Parse<crate::base::$pm::PM> for $pm::Group {
+            #[inline]
+            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+                buf.match_prefix(|token| {
+                    if let Some(token) = token.downcast_ref::<Self>() {
+                        Match::Complete(Self::with_span(token.delimiter(), token.stream(), token.span()))
+                    } else {
+                        Match::NoMatch
+                    }
+                })
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl Token<crate::base::$pm::PM> for $pm::Group {
@@ -649,6 +689,20 @@ macro_rules! impl_token_tree {
         impl IdentExt for $pm::Ident {}
 
         #[cfg(feature = $feature)]
+        impl Parse<crate::base::$pm::PM> for $pm::Ident {
+            #[inline]
+            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+                buf.match_prefix(|token| {
+                    if let Some(token) = token.downcast_ref::<Self>() {
+                        Match::Complete(Self::new(&token.to_string(), token.span()))
+                    } else {
+                        Match::NoMatch
+                    }
+                })
+            }
+        }
+
+        #[cfg(feature = $feature)]
         impl Token<crate::base::$pm::PM> for $pm::Ident {
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
@@ -697,6 +751,20 @@ macro_rules! impl_token_tree {
 
         #[cfg(feature = $feature)]
         impl PunctExt for $pm::Punct {}
+
+        #[cfg(feature = $feature)]
+        impl Parse<crate::base::$pm::PM> for $pm::Punct {
+            #[inline]
+            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+                buf.match_prefix(|token| {
+                    if let Some(token) = token.downcast_ref::<Self>() {
+                        Match::Complete(Self::with_span(token.as_char(), token.spacing(), token.span()))
+                    } else {
+                        Match::NoMatch
+                    }
+                })
+            }
+        }
 
         #[cfg(feature = $feature)]
         impl Token<crate::base::$pm::PM> for $pm::Punct {
