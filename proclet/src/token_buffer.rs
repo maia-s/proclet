@@ -1,5 +1,6 @@
 use crate::{AsToken, Match, PMExt, Token, TokenTreeExt, PM};
 use std::{
+    borrow::{Borrow, BorrowMut},
     marker::PhantomData,
     mem::transmute,
     ops::{
@@ -80,15 +81,14 @@ impl<T: PM, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
 #[derive(Debug, Default)]
 pub struct TokenBuffer<T: PM>(Vec<Box<dyn AsToken<T>>>);
 
-impl<T: PM> Clone for TokenBuffer<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.iter().map(|i| i.clone_boxed()).collect())
-    }
-}
-
 impl<T: PM> TokenBuffer<T> {
     #[inline]
     pub fn as_buf(&self) -> &TokenBuf<T> {
+        self
+    }
+
+    #[inline]
+    pub fn as_buf_mut(&mut self) -> &mut TokenBuf<T> {
         self
     }
 }
@@ -115,6 +115,41 @@ impl<T: PMExt> TokenBuffer<T> {
                 Box::new(t) as Box<dyn AsToken<T>>
             })
             .collect()
+    }
+}
+
+impl<T: PM> AsRef<TokenBuf<T>> for TokenBuffer<T> {
+    #[inline]
+    fn as_ref(&self) -> &TokenBuf<T> {
+        self.as_buf()
+    }
+}
+
+impl<T: PM> AsMut<TokenBuf<T>> for TokenBuffer<T> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut TokenBuf<T> {
+        self.as_buf_mut()
+    }
+}
+
+impl<T: PM> Borrow<TokenBuf<T>> for TokenBuffer<T> {
+    #[inline]
+    fn borrow(&self) -> &TokenBuf<T> {
+        self.as_buf()
+    }
+}
+
+impl<T: PM> BorrowMut<TokenBuf<T>> for TokenBuffer<T> {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut TokenBuf<T> {
+        self.as_buf_mut()
+    }
+}
+
+impl<T: PM> Clone for TokenBuffer<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self(self.0.iter().map(|i| i.clone_boxed()).collect())
     }
 }
 
@@ -464,6 +499,15 @@ impl<'a, T: PM> IntoIterator for &'a mut TokenBuf<T> {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter_mut()
+    }
+}
+
+impl<T: PM> ToOwned for TokenBuf<T> {
+    type Owned = TokenBuffer<T>;
+
+    #[inline]
+    fn to_owned(&self) -> Self::Owned {
+        TokenBuffer(self.0.iter().map(|i| i.clone_boxed()).collect())
     }
 }
 
