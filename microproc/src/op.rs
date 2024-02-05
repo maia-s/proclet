@@ -122,6 +122,7 @@ impl<S: Span> From<&'static str> for Op<S> {
 
 #[cfg(feature = "token-buffer")]
 impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
+    /// Generic op parser. This doesn't check against valid ops.
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<S::TokenTree>) -> Option<Self> {
         let mut str = String::new();
@@ -131,17 +132,17 @@ impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
                 str.push(punct.as_char());
                 spans.push(punct.span());
                 if punct.spacing().is_joint() {
-                    Match::Partial(str.len())
+                    Match::Partial((str.len(), spans.len()))
                 } else {
-                    Match::Complete(str.len())
+                    Match::Complete((str.len(), spans.len()))
                 }
             } else {
                 Match::NoMatch
             }
         })
-        .map(|len| {
-            str.truncate(len);
-            spans.truncate(len);
+        .map(|(strlen, spanslen)| {
+            str.truncate(strlen);
+            spans.truncate(spanslen);
             Op::with_spans(str, spans)
         })
     }
