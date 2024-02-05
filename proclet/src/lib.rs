@@ -52,7 +52,7 @@ pub use base::{PMExt, ProcMacro, ProcMacroExt, PM, PM1, PM2};
 pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
-pub use literal::{LiteralValue, Suffixed};
+pub use literal::{LiteralToken, LiteralValue, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};

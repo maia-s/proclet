@@ -25,15 +25,14 @@ use proc_macro2::TokenStream;
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use std::iter;
-
+    use proclet::LiteralToken;
     let input: TokenStream = input.into();
     let mut output = TokenStream::new();
     for mut token in input {
         token.flatten_group();
         if let Some(lit) = token.literal_mut() {
-            lit.set_value(lit.value());
-            output.extend(iter::once(lit.to_token_tree()));
+            *lit = LiteralToken::from(lit.clone()).into();
+            output.extend(lit.to_token_trees());
         } else {
             panic!("literal_roundtrip only accepts literals");
         }

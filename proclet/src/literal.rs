@@ -1,4 +1,4 @@
-use crate::{ProcMacro, ProcMacroExt, ToTokenTrees, Token, TokenTrees};
+use crate::{PMExt, ProcMacro, ProcMacroExt, Span, ToTokenTrees, Token, TokenTreeExt, TokenTrees};
 use std::{any::Any, fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
@@ -619,6 +619,86 @@ impl FromStr for LiteralValue {
     }
 }
 
+#[cfg(feature = "literal-value")]
+#[derive(Clone, Debug)]
+pub struct LiteralToken<S: Span> {
+    value: LiteralValue,
+    span: S,
+}
+
+#[cfg(feature = "literal-value")]
+impl<S: Span> LiteralToken<S> {
+    #[inline]
+    pub fn new(value: LiteralValue) -> Self {
+        Self {
+            value,
+            span: S::call_site(),
+        }
+    }
+
+    #[inline]
+    pub const fn with_span(value: LiteralValue, span: S) -> Self {
+        Self { value, span }
+    }
+
+    #[inline]
+    pub const fn value(&self) -> &LiteralValue {
+        &self.value
+    }
+
+    #[inline]
+    pub fn value_mut(&mut self) -> &mut LiteralValue {
+        &mut self.value
+    }
+
+    #[inline]
+    pub const fn span(&self) -> S {
+        self.span
+    }
+
+    #[inline]
+    pub fn set_span(&mut self, span: S) {
+        self.span = span;
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<T: PMExt> Token<T> for LiteralToken<T::Span> {
+    #[inline]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    #[inline]
+    fn clone_boxed(&self) -> Box<dyn Token<T>> {
+        Box::new(self.clone())
+    }
+
+    #[inline]
+    fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
+        if let Some(other) = other.downcast_ref::<Self>() {
+            self.value() == other.value()
+        } else if let Some(other) = other.downcast_ref::<T::Literal>() {
+            self.value() == &other.to_value()
+        } else {
+            false
+        }
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<T: TokenTreeExt> ToTokenTrees<T> for LiteralToken<T::Span> {
+    #[inline]
+    fn to_token_trees(&self) -> TokenTrees<T> {
+        TokenTrees::from(T::TokenTree::from(T::Literal::from(self.clone())))
+    }
+}
+
 macro_rules! def {
     ($([$what:tt] $($id:ident: $t:ty),* $(,)?)*) => { $(
         $( def!(@ $what $id: $t); )*
@@ -712,25 +792,60 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
     fn set_span(&mut self, span: Self::Span);
 }
 
+#[cfg(not(feature = "literal-value"))]
 /// Extensions for [`Literal`].
 ///
 /// This trait is implemented for `Literal` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal + Token<Self::PM> {
-    #[cfg(feature = "literal-value")]
-    fn value(&self) -> LiteralValue;
+pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal + Token<Self::PM> {}
 
-    #[cfg(feature = "literal-value")]
+#[cfg(feature = "literal-value")]
+/// Extensions for [`Literal`].
+///
+/// This trait is implemented for `Literal` in `proc_macro` and `proc_macro2` if the
+/// corresponding feature is enabled.
+pub trait LiteralExt:
+    ProcMacroExt<LiteralExt = Self>
+    + Literal
+    + Token<Self::PM>
+    + From<LiteralToken<Self::Span>>
+    + Into<LiteralToken<Self::Span>>
+{
+    fn to_value(&self) -> LiteralValue;
     fn set_value(&mut self, value: LiteralValue);
 
     #[inline]
     fn to_token_tree(&self) -> Self::TokenTree {
         self.clone().into()
     }
+
+    #[inline]
+    fn into_token_tree(self) -> Self::TokenTree {
+        self.into()
+    }
 }
 
 macro_rules! impl_literal {
     ($($pm:ident: $feature:literal),*) => { $(
+        #[cfg(all(feature = $feature, feature = "literal-value"))]
+        impl From<$pm::Literal> for LiteralToken<$pm::Span> {
+            #[inline]
+            fn from(value: $pm::Literal) -> Self {
+                Self::with_span(value.to_value(), value.span())
+            }
+        }
+
+        #[cfg(all(feature = $feature, feature = "literal-value"))]
+        impl From<LiteralToken<$pm::Span>> for $pm::Literal {
+            #[inline]
+            fn from(value: LiteralToken<$pm::Span>) -> Self {
+                let mut lit = $pm::Literal::u8_unsuffixed(0);
+                lit.set_span(value.span());
+                lit.set_value(value.value);
+                lit
+            }
+        }
+
         #[cfg(feature = $feature)]
         impl Literal for $pm::Literal {
             impl_literal! { @ $pm
@@ -787,7 +902,7 @@ macro_rules! impl_literal {
         impl LiteralExt for $pm::Literal {
             #[cfg(feature = "literal-value")]
             #[inline]
-            fn value(&self) -> LiteralValue {
+            fn to_value(&self) -> LiteralValue {
                 self.to_string().parse().unwrap()
             }
 
@@ -819,7 +934,16 @@ macro_rules! impl_literal {
 
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
-                other.downcast_ref::<Self>().map(|other| self.value() == other.value()).unwrap_or(false)
+                #[cfg(feature = "literal-value")]
+                if let Some(other) = other.downcast_ref::<LiteralToken<$pm::Span>>() {
+                    return &self.to_value() == other.value();
+                }
+
+                if let Some(other) = other.downcast_ref::<Self>() {
+                    self.to_value() == other.to_value()
+                } else {
+                    false
+                }
             }
         }
 
