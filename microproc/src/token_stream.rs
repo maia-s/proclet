@@ -1,4 +1,4 @@
-use crate::{FromStrDebug, ProcMacro, Token, TokenTree};
+use crate::{FromStrDebug, ProcMacro, TokenTree, TokenTreeExt};
 use std::{fmt::Display, iter, str::FromStr};
 
 /// `TokenStream` API trait. See [`proc_macro::TokenStream`](https://doc.rust-lang.org/stable/proc_macro/struct.TokenStream.html).

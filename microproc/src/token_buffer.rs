@@ -1,4 +1,4 @@
-use crate::{Match, Token, TokenTree, TokenTreeExt, TokenTreeKind};
+use crate::{Match, Token, TokenTree, TokenTreeExt};
 use std::{
     mem::transmute,
     ops::{
@@ -65,14 +65,7 @@ impl<T: TokenTreeExt> TokenBuffer<T> {
         ts.into_iter()
             .map(|mut t| {
                 t.flatten_group();
-                match t.kind() {
-                    TokenTreeKind::Group => Box::new(t.into_group().unwrap()) as Box<dyn Token<T>>,
-                    TokenTreeKind::Ident => Box::new(t.into_ident().unwrap()) as Box<dyn Token<T>>,
-                    TokenTreeKind::Punct => Box::new(t.into_punct().unwrap()) as Box<dyn Token<T>>,
-                    TokenTreeKind::Literal => {
-                        Box::new(t.into_literal().unwrap()) as Box<dyn Token<T>>
-                    }
-                }
+                t.into_token()
             })
             .collect()
     }

@@ -34,7 +34,11 @@ pub trait TokenTree:
 ///
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Token<Self> {
+pub trait TokenTreeExt:
+    crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Into<Box<dyn Token<Self>>>
+{
+    fn into_token(self) -> Box<dyn Token<Self>>;
+
     fn kind(&self) -> TokenTreeKind;
 
     #[inline]
@@ -72,6 +76,8 @@ pub trait TokenTreeExt: crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + T
     fn literal(&self) -> Option<&Self::Literal>;
     fn literal_mut(&mut self) -> Option<&mut Self::Literal>;
     fn into_literal(self) -> Option<Self::Literal>;
+
+    fn eq_except_span(&self, other: &Self) -> bool;
 
     /// If the `TokenTree` is a group with delimiter `None` containing a single item,
     /// replace the group with that item, recursively.
@@ -305,7 +311,25 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
+        impl From<$pm::TokenTree> for Box<dyn Token<$pm::TokenTree>> {
+            #[inline]
+            fn from(value: $pm::TokenTree) -> Self {
+                value.into_token()
+            }
+        }
+
+        #[cfg(feature = $feature)]
         impl TokenTreeExt for $pm::TokenTree {
+            #[inline]
+            fn into_token(self) -> Box<dyn Token<$pm::TokenTree>> {
+                match self {
+                    Self::Group(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
+                    Self::Ident(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
+                    Self::Punct(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
+                    Self::Literal(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
+                }
+            }
+
             #[inline]
             fn kind(&self) -> TokenTreeKind {
                 match self {
@@ -423,31 +447,16 @@ macro_rules! impl_token_tree {
                     None
                 }
             }
-        }
-
-        #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::TokenTree {
-            #[inline]
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
 
             #[inline]
-            fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-
-            #[inline]
-            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
-                other.downcast_ref::<Self>().map(|other| {
-                    match (self, other) {
-                        (Self::Group(s), Self::Group(o)) => s.eq_except_span(o),
-                        (Self::Ident(s), Self::Ident(o)) => s.eq_except_span(o),
-                        (Self::Punct(s), Self::Punct(o)) => s.eq_except_span(o),
-                        (Self::Literal(s), Self::Literal(o)) => s.eq_except_span(o),
-                        _ => false,
-                    }
-                }).unwrap_or(false)
+            fn eq_except_span(&self, other: &Self) -> bool {
+                match (self, other) {
+                    (Self::Group(s), Self::Group(o)) => s.eq_except_span(o),
+                    (Self::Ident(s), Self::Ident(o)) => s.eq_except_span(o),
+                    (Self::Punct(s), Self::Punct(o)) => s.eq_except_span(o),
+                    (Self::Literal(s), Self::Literal(o)) => s.eq_except_span(o),
+                    _ => false,
+                }
             }
         }
 
