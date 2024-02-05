@@ -1,4 +1,4 @@
-use crate::{Match, PMExt, Token, TokenTreeExt, PM};
+use crate::{AsToken, Match, PMExt, Token, TokenTreeExt, PM};
 use std::{
     mem::transmute,
     ops::{
@@ -37,7 +37,7 @@ pub trait Parser<T: PM>: Sized {
 }
 
 #[derive(Debug, Default)]
-pub struct TokenBuffer<T: PM>(Vec<Box<dyn Token<T>>>);
+pub struct TokenBuffer<T: PM>(Vec<Box<dyn AsToken<T>>>);
 
 impl<T: PM> TokenBuffer<T> {
     #[inline]
@@ -54,8 +54,8 @@ impl<T: PM> TokenBuffer<T> {
     }
 
     #[inline]
-    pub fn from_tokens<I: IntoIterator<Item = impl Token<T>>>(iter: I) -> Self {
-        Self::from_iter(iter.into_iter().map(|i| Box::new(i) as Box<dyn Token<T>>))
+    pub fn from_tokens<I: IntoIterator<Item = impl AsToken<T>>>(iter: I) -> Self {
+        Self::from_iter(iter.into_iter().map(|i| Box::new(i) as Box<dyn AsToken<T>>))
     }
 }
 
@@ -65,7 +65,7 @@ impl<T: PMExt> TokenBuffer<T> {
         ts.into_iter()
             .map(|mut t| {
                 t.flatten_group();
-                t.into_token()
+                Box::new(t) as Box<dyn AsToken<T>>
             })
             .collect()
     }
@@ -119,16 +119,16 @@ impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
     }
 }
 
-impl<T: PM> FromIterator<Box<dyn Token<T>>> for TokenBuffer<T> {
+impl<T: PM> FromIterator<Box<dyn AsToken<T>>> for TokenBuffer<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = Box<dyn Token<T>>>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = Box<dyn AsToken<T>>>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
 impl<T: PM> IntoIterator for TokenBuffer<T> {
-    type IntoIter = <Vec<Box<dyn Token<T>>> as IntoIterator>::IntoIter;
-    type Item = Box<dyn Token<T>>;
+    type IntoIter = <Vec<Box<dyn AsToken<T>>> as IntoIterator>::IntoIter;
+    type Item = Box<dyn AsToken<T>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -138,24 +138,24 @@ impl<T: PM> IntoIterator for TokenBuffer<T> {
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct TokenBuf<T: PM>([Box<dyn Token<T>>]);
+pub struct TokenBuf<T: PM>([Box<dyn AsToken<T>>]);
 
 impl<T: PM> TokenBuf<T> {
     #[inline]
-    fn from_ref(r: &[Box<dyn Token<T>>]) -> &Self {
+    fn from_ref(r: &[Box<dyn AsToken<T>>]) -> &Self {
         unsafe {
             // # Safety
             // It's a reference to the same type in a transparent struct
-            transmute::<&[Box<dyn Token<T>>], &Self>(r)
+            transmute::<&[Box<dyn AsToken<T>>], &Self>(r)
         }
     }
 
     #[inline]
-    fn from_mut(r: &mut [Box<dyn Token<T>>]) -> &mut Self {
+    fn from_mut(r: &mut [Box<dyn AsToken<T>>]) -> &mut Self {
         unsafe {
             // # Safety
             // It's a reference to the same type in a transparent struct
-            transmute::<&mut [Box<dyn Token<T>>], &mut Self>(r)
+            transmute::<&mut [Box<dyn AsToken<T>>], &mut Self>(r)
         }
     }
 
@@ -174,17 +174,29 @@ impl<T: PM> TokenBuf<T> {
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
     ) -> Option<M> {
-        self.match_prefix_buf(|x, _| match_fn(x[x.len() - 1].deref()))
+        self.match_prefix_buf(|_, token, _| match_fn(token))
+    }
+
+    #[inline]
+    pub fn match_prefix_next<'a, M: 'a>(
+        self: &mut &'a Self,
+        mut match_fn: impl FnMut(&dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
+    ) -> Option<M> {
+        self.match_prefix_buf(|_, token, next| match_fn(token, next))
     }
 
     #[inline]
     pub fn match_prefix_buf<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&'a Self, Option<&dyn Token<T>>) -> Match<M>,
+        mut match_fn: impl FnMut(&'a Self, &dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<M> {
         let mut result = None;
         for i in 1..=self.len() {
-            match match_fn(&self[..i], self.get(i).map(|x| x.deref())) {
+            match match_fn(
+                &self[..i],
+                self[i - 1].as_token(),
+                self.get(i).map(|x| x.as_token()),
+            ) {
                 Match::Complete(m) => {
                     *self = &self[i..];
                     return Some(m);
@@ -206,9 +218,9 @@ impl<T: PM> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&'a Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_prefix_buf(move |buf, _| {
+        self.match_prefix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
-                if buf[buf.len() - 1].eq_except_span(t.as_ref()) {
+                if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
                         Match::NeedMore
                     } else {
@@ -230,9 +242,9 @@ impl<T: PM> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_prefix_buf(move |buf, _| {
+        self.match_prefix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
-                if buf[buf.len() - 1].eq_except_span(t.as_ref()) {
+                if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
                         Match::Partial(buf)
                     } else {
@@ -253,17 +265,29 @@ impl<T: PM> TokenBuf<T> {
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
     ) -> Option<M> {
-        self.match_suffix_buf(|x, _| match_fn(x[0].deref()))
+        self.match_suffix_buf(|_, token, _| match_fn(token))
+    }
+
+    #[inline]
+    pub fn match_suffix_next<'a, M: 'a>(
+        self: &mut &'a Self,
+        mut match_fn: impl FnMut(&dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
+    ) -> Option<M> {
+        self.match_suffix_buf(|_, token, next| match_fn(token, next))
     }
 
     #[inline]
     pub fn match_suffix_buf<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&'a Self, Option<&dyn Token<T>>) -> Match<M>,
+        mut match_fn: impl FnMut(&'a Self, &dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<M> {
         let mut result = None;
         for i in (0..self.len()).rev() {
-            match match_fn(&self[i..], (i > 0).then(|| self[i - 1].deref())) {
+            match match_fn(
+                &self[i..],
+                self[i].as_token(),
+                (i > 0).then(|| self[i - 1].as_token()),
+            ) {
                 Match::Complete(m) => {
                     *self = &self[..i];
                     return Some(m);
@@ -293,9 +317,9 @@ impl<T: PM> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_suffix_buf(move |buf, _| {
+        self.match_suffix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
-                if buf[0].eq_except_span(t.as_ref()) {
+                if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
                         Match::NeedMore
                     } else {
@@ -325,9 +349,9 @@ impl<T: PM> TokenBuf<T> {
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_suffix_buf(move |buf, _| {
+        self.match_suffix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
-                if buf[0].eq_except_span(t.as_ref()) {
+                if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
                         Match::Partial(buf)
                     } else {
@@ -345,7 +369,7 @@ impl<T: PM> TokenBuf<T> {
 }
 
 impl<T: PM> Deref for TokenBuf<T> {
-    type Target = [Box<dyn Token<T>>];
+    type Target = [Box<dyn AsToken<T>>];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -377,8 +401,8 @@ impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuf<T> {
 }
 
 impl<'a, T: PM> IntoIterator for &'a TokenBuf<T> {
-    type IntoIter = slice::Iter<'a, Box<dyn Token<T>>>;
-    type Item = &'a Box<dyn Token<T>>;
+    type IntoIter = slice::Iter<'a, Box<dyn AsToken<T>>>;
+    type Item = &'a Box<dyn AsToken<T>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -387,8 +411,8 @@ impl<'a, T: PM> IntoIterator for &'a TokenBuf<T> {
 }
 
 impl<'a, T: PM> IntoIterator for &'a mut TokenBuf<T> {
-    type IntoIter = slice::IterMut<'a, Box<dyn Token<T>>>;
-    type Item = &'a mut Box<dyn Token<T>>;
+    type IntoIter = slice::IterMut<'a, Box<dyn AsToken<T>>>;
+    type Item = &'a mut Box<dyn AsToken<T>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -398,20 +422,20 @@ impl<'a, T: PM> IntoIterator for &'a mut TokenBuf<T> {
 
 pub trait TokenBufferIndex<T: PM> {
     type Output: ?Sized;
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output;
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output;
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output;
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output;
 }
 
 impl<T: PM> TokenBufferIndex<T> for usize {
-    type Output = Box<dyn Token<T>>;
+    type Output = Box<dyn AsToken<T>>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output {
         &slice[self]
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output {
         &mut slice[self]
     }
 }
@@ -420,12 +444,12 @@ impl<T: PM> TokenBufferIndex<T> for Range<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[self.start..self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[self.start..self.end])
     }
 }
@@ -434,12 +458,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeFrom<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[self.start..])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[self.start..])
     }
 }
@@ -448,12 +472,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeFull {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output {
         TokenBuf::from_ref(slice)
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output {
         TokenBuf::from_mut(slice)
     }
 }
@@ -462,12 +486,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[*self.start()..=*self.end()])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[*self.start()..=*self.end()])
     }
 }
@@ -476,12 +500,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeTo<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[..self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[..self.end])
     }
 }
@@ -490,12 +514,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeToInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[Box<dyn AsToken<T>>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[..=self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [Box<dyn AsToken<T>>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[..=self.end])
     }
 }

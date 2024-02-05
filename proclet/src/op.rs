@@ -321,11 +321,9 @@ impl<P: PunctExt, F: OpParserFn> crate::Parser<P::PM> for OpParser<P, F> {
         &'p self,
         buf: &mut &'b crate::TokenBuf<P::PM>,
     ) -> Option<Self::Output<'p, 'b>> {
-        use std::ops::Deref;
         let mut string = String::new();
         let mut spans = Vec::new();
-        buf.match_prefix_buf(move |buf, next| {
-            let token = buf[buf.len() - 1].deref();
+        buf.match_prefix_next(move |token, next| {
             if let Some(punct) = token.downcast_ref::<P::Punct>() {
                 let next = if punct.spacing().is_joint() {
                     next.and_then(|next| next.downcast_ref::<P::Punct>().map(|next| next.as_char()))
