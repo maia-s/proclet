@@ -281,7 +281,7 @@ pub struct OpParser<P: PunctExt, F: OpParserFn>(F, PhantomData<fn() -> P>);
 
 impl<P: PunctExt, F: OpParserFn> OpParser<P, F> {
     #[inline]
-    pub fn new(f: F) -> Self {
+    pub const fn new(f: F) -> Self {
         Self(f, PhantomData)
     }
 
@@ -452,39 +452,14 @@ impl<P: PunctExt, F: OpParserFn> OpParserInstance<P, F> {
     }
 }
 
-#[doc(hidden)]
 #[macro_export]
-macro_rules! __define_ops_private {
-    (type new $ident:ident[$($tt:tt)*]) => {
-        #[doc = ::core::concat!("`", ::core::stringify!($($tt)*), "`")]
-        #[allow(non_snake_case)]
-        pub fn $ident<S: $crate::Span>() -> $crate::Op<S> {
-            $crate::Op::new(::core::stringify!($($tt)*))
-        }
-    };
-
-    (type $($tt:tt)*) => {};
-
-    (macro macro $(#[$attr:meta])* $macro:ident, $($ident:ident[$($tt:tt)*],)*) => {
-        $(#[$attr])*
-        macro_rules! $macro {$(
-            ($($tt)*) => { $crate::Op::new(::core::stringify!($($tt)*)) };
-        )*}
-    };
-
-    (macro , $($tt:tt)*) => {};
-
-    (
-        fn fn $fn:ident
-        $($($first:literal($follow:pat))? $($ident:ident[$($tt:tt)*])?,)*
-    ) => {
+macro_rules! define_ops {
+    ($fn:ident, $($($first:literal($follow:pat))? $([$($tt:tt)*])*,)*) => {
         #[inline]
         pub fn $fn<P: $crate::PunctExt>() -> $crate::OpParser<
             P,
-            impl ::core::clone::Clone + ::core::ops::Fn(
-                &::core::primitive::str,
-                ::core::option::Option<::core::primitive::char>
-            ) -> $crate::Match<&'static ::core::primitive::str>
+            fn(&::core::primitive::str, ::core::option::Option<::core::primitive::char>)
+                -> $crate::Match<&'static ::core::primitive::str>
         > {
             fn $fn(
                 str: &::core::primitive::str,
@@ -507,18 +482,71 @@ macro_rules! __define_ops_private {
             $crate::OpParser::new($fn)
         }
     };
-
-    (fn $($tt:tt)*) => {};
 }
 
-#[macro_export]
-macro_rules! define_ops {
-    (
-        $([$(#[$attr:meta])* $macro:ident!])? $([$fn:ident()])?
-        $($($first:literal($follow:pat))? $($ident:ident[$($tt:tt)*] $($new:ident)?)?,)*
-    ) => {
-        $($( $crate::__define_ops_private!(type $($new)? $ident[$($tt)*]); )?)*
-        $crate::__define_ops_private!(macro $(macro $(#[$attr])* $macro)?, $($($ident[$($tt)*],)?)*);
-        $crate::__define_ops_private!(fn $(fn $fn)? $($($first($follow))? $($ident[$($tt)*])?,)*);
-    };
+crate::define_ops! {
+    rust_op_parser,
+    "!"('='),
+    [!],
+    [!=],
+    [#],
+    [$],
+    "%"('='),
+    [%],
+    [%=],
+    "&"('&' | '='),
+    [&],
+    [&&],
+    [&=],
+    "*"('='),
+    [*],
+    [*=],
+    "+"('='),
+    [+],
+    [+=],
+    [,],
+    "-"('=' | '>'),
+    [-],
+    [-=],
+    [->],
+    "."('.'),
+    [.],
+    ".."('.' | '='),
+    [..],
+    [...],
+    [..=],
+    "/"('='),
+    [/],
+    [/=],
+    ":"(':'),
+    [:],
+    [::],
+    [;],
+    "<"('-' | '<' | '='),
+    [<],
+    [<-],
+    "<<"('='),
+    [<<],
+    [<<=],
+    [<=],
+    "="('=' | '>'),
+    [=],
+    [==],
+    [=>],
+    ">"('=' | '>'),
+    [>],
+    [>=],
+    ">>"('='),
+    [>>],
+    [>>=],
+    [?],
+    [@],
+    "^"('='),
+    [^],
+    [^=],
+    "|"('=' | '|'),
+    [|],
+    [|=],
+    [||],
+    [~],
 }

@@ -39,8 +39,6 @@ mod error;
 mod literal;
 #[cfg(feature = "op")]
 mod op;
-#[cfg(feature = "op")]
-pub mod ops;
 mod span;
 mod token;
 #[cfg(feature = "token-buffer")]
@@ -54,7 +52,7 @@ pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralValue, Suffixed};
 #[cfg(feature = "op")]
-pub use op::{Op, OpParser, OpParserInstance, Puncts};
+pub use op::{rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 pub use token::{AsToken, ToTokenTrees, Token, TokenTrees};
 #[cfg(feature = "token-buffer")]
