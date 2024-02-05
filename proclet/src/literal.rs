@@ -813,16 +813,6 @@ pub trait LiteralExt:
 {
     fn to_value(&self) -> LiteralValue;
     fn set_value(&mut self, value: LiteralValue);
-
-    #[inline]
-    fn to_token_tree(&self) -> Self::TokenTree {
-        self.clone().into()
-    }
-
-    #[inline]
-    fn into_token_tree(self) -> Self::TokenTree {
-        self.into()
-    }
 }
 
 macro_rules! impl_literal {
@@ -951,7 +941,7 @@ macro_rules! impl_literal {
         impl ToTokenTrees<$pm::TokenTree> for $pm::Literal {
             #[inline]
             fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
-                self.to_token_tree().into()
+                $pm::TokenTree::from(self.clone()).into()
             }
         }
     )* };
