@@ -75,6 +75,8 @@ use internal::*;
 mod internal {
     use std::{fmt::Debug, str::FromStr};
 
+    pub trait Sealed {}
+
     pub trait FromStrDebug: FromStr<Err = Self::ErrDbg> {
         type ErrDbg: Debug;
     }

@@ -1,4 +1,6 @@
-use crate::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+use crate::{
+    Delimiter, Group, Ident, Literal, Punct, Sealed, Spacing, Span, TokenStream, TokenTree,
+};
 use std::fmt::Debug;
 
 #[cfg(feature = "proc-macro")]
@@ -44,7 +46,7 @@ macro_rules! impl_base {
     (@t1 {$($t:ident: $ts:ident),* $(,)?} $t2:tt) => {
         /// Base trait with associated type aliases for types from `proc-macro`/`proc-macro2`.
         /// See also [`ProcMacroExt`].
-        pub trait ProcMacro: 'static + Clone + Debug {
+        pub trait ProcMacro: 'static + Clone + Debug + Sealed {
             $( impl_base!(@t2 $t: $ts, $t2); )*
             type TokenStreamIntoIter: Clone + Iterator<Item = Self::TokenTree>;
         }
@@ -81,6 +83,9 @@ macro_rules! impl_base {
     };
 
     (@i2 $pm:ident: $feature:literal: $t:ident, {$($t2:ident: $t2s:ident),* $(,)?}) => {
+        #[cfg(feature = $feature)]
+        impl Sealed for $pm::$t {}
+
         #[cfg(feature = $feature)]
         impl ProcMacro for $pm::$t {
             $( type $t2 = $pm::$t2; )*
