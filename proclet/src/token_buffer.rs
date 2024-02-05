@@ -1,5 +1,6 @@
 use crate::{AsToken, Match, PMExt, Token, TokenTreeExt, PM};
 use std::{
+    marker::PhantomData,
     mem::transmute,
     ops::{
         Deref, DerefMut, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo,
@@ -8,7 +9,7 @@ use std::{
     slice,
 };
 
-pub trait Parse<T: PM>: Sized {
+pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, Self>> {
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self>;
 
     #[inline]
@@ -33,6 +34,46 @@ pub trait Parser<T: PM>: Sized {
             Some(result) if buf.is_empty() => Some(result),
             _ => None,
         }
+    }
+}
+
+pub trait DefaultParser<T: PM> {
+    type Parser: Parser<T> + Copy + Default;
+
+    #[inline(always)]
+    fn parser() -> Self::Parser {
+        Self::Parser::default()
+    }
+}
+
+impl<T: PM, X: Parse<T>> DefaultParser<T> for X {
+    type Parser = DefaultParserImpl<T, X>;
+}
+
+pub struct DefaultParserImpl<T: PM, X: Parse<T>>(PhantomData<fn() -> (T, X)>);
+
+impl<T: PM, X: Parse<T>> Clone for DefaultParserImpl<T, X> {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: PM, X: Parse<T>> Copy for DefaultParserImpl<T, X> {}
+
+impl<T: PM, X: Parse<T>> Default for DefaultParserImpl<T, X> {
+    #[inline(always)]
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<T: PM, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
+    type Output<'p, 'b> = X where Self: 'p;
+
+    #[inline]
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+        X::parse(buf)
     }
 }
 
