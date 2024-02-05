@@ -1,34 +1,10 @@
 use crate::{TokenTree, PM};
 use std::{any::Any, fmt::Debug, iter};
 
-pub trait Token<T: PM>: Any + Debug + ToTokenTrees<T::TokenTree> {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn clone_boxed(&self) -> Box<dyn Token<T>>;
+pub trait Token<T: PM>:
+    TokenAuto<T> + AsToken<T> + Any + Debug + ToTokenTrees<T::TokenTree>
+{
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
-}
-
-pub trait AsToken<T: PM>: 'static + Debug {
-    fn as_token(&self) -> &dyn Token<T>;
-    fn as_token_mut(&mut self) -> &mut dyn Token<T>;
-    fn clone_boxed(&self) -> Box<dyn AsToken<T>>;
-}
-
-impl<T: PM, X: Clone + Token<T>> AsToken<T> for X {
-    #[inline]
-    fn as_token(&self) -> &dyn Token<T> {
-        self
-    }
-
-    #[inline]
-    fn as_token_mut(&mut self) -> &mut dyn Token<T> {
-        self
-    }
-
-    #[inline]
-    fn clone_boxed(&self) -> Box<dyn AsToken<T>> {
-        Box::new(self.clone())
-    }
 }
 
 impl<T: PM> dyn Token<T> {
@@ -45,6 +21,59 @@ impl<T: PM> dyn Token<T> {
     #[inline]
     pub fn downcast_mut<X: Token<T>>(&mut self) -> Option<&mut X> {
         self.as_any_mut().downcast_mut::<X>()
+    }
+}
+
+/// Automatically implemented methods for [`Token`]
+pub trait TokenAuto<T: PM> {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn clone_boxed(&self) -> Box<dyn Token<T>>;
+}
+
+impl<T: PM, X: Clone + Token<T>> TokenAuto<T> for X {
+    #[inline]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    #[inline]
+    fn clone_boxed(&self) -> Box<dyn Token<T>> {
+        Box::new(self.clone())
+    }
+}
+
+pub trait AsToken<T: PM>: AsTokenAuto<T> + 'static + Debug {
+    fn as_token(&self) -> &dyn Token<T>;
+    fn as_token_mut(&mut self) -> &mut dyn Token<T>;
+}
+
+impl<T: PM, X: Clone + Token<T>> AsToken<T> for X {
+    #[inline]
+    fn as_token(&self) -> &dyn Token<T> {
+        self
+    }
+
+    #[inline]
+    fn as_token_mut(&mut self) -> &mut dyn Token<T> {
+        self
+    }
+}
+
+/// Automatically implemented methods for [`AsToken`]
+pub trait AsTokenAuto<T: PM> {
+    fn clone_boxed(&self) -> Box<dyn AsToken<T>>;
+}
+
+impl<T: PM, X: Clone + AsToken<T>> AsTokenAuto<T> for X {
+    #[inline]
+    fn clone_boxed(&self) -> Box<dyn AsToken<T>> {
+        Box::new(self.clone())
     }
 }
 

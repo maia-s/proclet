@@ -88,21 +88,6 @@ impl<S: SpanExt> Op<S> {
 
 impl<S: SpanExt> Token<S::PM> for Op<S> {
     #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn clone_boxed(&self) -> Box<dyn Token<S::PM>> {
-        Box::new(self.clone())
-    }
-
-    #[inline]
     fn eq_except_span(&self, other: &dyn Token<S::PM>) -> bool {
         other
             .downcast_ref::<Self>()

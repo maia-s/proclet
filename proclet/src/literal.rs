@@ -1,5 +1,5 @@
 use crate::{PMExt, ProcMacro, ProcMacroExt, Span, ToTokenTrees, Token, TokenTreeExt, TokenTrees};
-use std::{any::Any, fmt::Display, str::FromStr};
+use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
 use std::{error::Error, fmt};
@@ -665,21 +665,6 @@ impl<S: Span> LiteralToken<S> {
 #[cfg(feature = "literal-value")]
 impl<T: PMExt> Token<T> for LiteralToken<T::Span> {
     #[inline]
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    #[inline]
-    fn clone_boxed(&self) -> Box<dyn Token<T>> {
-        Box::new(self.clone())
-    }
-
-    #[inline]
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
         if let Some(other) = other.downcast_ref::<Self>() {
             self.value() == other.value()
@@ -907,21 +892,6 @@ macro_rules! impl_literal {
 
         #[cfg(feature = $feature)]
         impl Token<crate::base::$pm::PM> for $pm::Literal {
-            #[inline]
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-
-            #[inline]
-            fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-
-            #[inline]
-            fn clone_boxed(&self) -> Box<dyn Token<crate::base::$pm::PM>> {
-                Box::new(self.clone())
-            }
-
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 #[cfg(feature = "literal-value")]
