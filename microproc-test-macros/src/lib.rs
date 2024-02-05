@@ -77,3 +77,28 @@ pub fn parse_rust_ops(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     let output: TokenStream = ops.parse().unwrap();
     output.into()
 }
+
+#[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
+#[proc_macro]
+#[allow(clippy::useless_conversion)]
+pub fn parse_rust_ops_with_buffer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    use microproc::{ops::rust_op_parser, ProcMacro, TokenBuffer};
+    let input: TokenStream = input.into();
+    let input: TokenBuffer<_> = input.into();
+    let parser = rust_op_parser::<<TokenStream as ProcMacro>::Punct>();
+    let mut ops = String::new();
+    ops.push('[');
+    let mut buf = input.as_buf();
+    while !buf.is_empty() {
+        if let Some(op) = parser.parse(&mut buf) {
+            ops.push_str(&format!("{:?}", op.as_str()));
+            ops.push(',');
+        } else {
+            dbg!(&buf);
+            panic!("invalid op");
+        }
+    }
+    ops.push(']');
+    let output: TokenStream = ops.parse().unwrap();
+    output.into()
+}

@@ -1,4 +1,4 @@
-use crate::{Match, Token, TokenTree};
+use crate::{Match, Token, TokenTree, TokenTreeExt, TokenTreeKind};
 use std::{
     mem::transmute,
     ops::{
@@ -36,13 +36,61 @@ pub trait Parser<T: TokenTree>: Sized {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct TokenBuffer<T: TokenTree>(Vec<Box<dyn Token<T>>>);
+
+impl<T: TokenTree> TokenBuffer<T> {
+    #[inline]
+    pub fn as_buf(&self) -> &TokenBuf<T> {
+        self
+    }
+}
 
 impl<T: TokenTree> TokenBuffer<T> {
     // this can't be FromIterator bc it conflicts
     #[inline]
+    pub const fn new() -> Self {
+        Self(Vec::new())
+    }
+
+    #[inline]
     pub fn from_tokens<I: IntoIterator<Item = impl Token<T>>>(iter: I) -> Self {
         Self::from_iter(iter.into_iter().map(|i| Box::new(i) as Box<dyn Token<T>>))
+    }
+}
+
+impl<T: TokenTreeExt> TokenBuffer<T> {
+    #[inline]
+    pub fn from_token_stream(ts: T::TokenStream) -> Self {
+        ts.into_iter()
+            .map(|mut t| {
+                t.flatten_group();
+                match t.kind() {
+                    TokenTreeKind::Group => Box::new(t.into_group().unwrap()) as Box<dyn Token<T>>,
+                    TokenTreeKind::Ident => Box::new(t.into_ident().unwrap()) as Box<dyn Token<T>>,
+                    TokenTreeKind::Punct => Box::new(t.into_punct().unwrap()) as Box<dyn Token<T>>,
+                    TokenTreeKind::Literal => {
+                        Box::new(t.into_literal().unwrap()) as Box<dyn Token<T>>
+                    }
+                }
+            })
+            .collect()
+    }
+}
+
+#[cfg(feature = "proc-macro")]
+impl From<proc_macro::TokenStream> for TokenBuffer<proc_macro::TokenTree> {
+    #[inline]
+    fn from(value: proc_macro::TokenStream) -> Self {
+        Self::from_token_stream(value)
+    }
+}
+
+#[cfg(feature = "proc-macro2")]
+impl From<proc_macro2::TokenStream> for TokenBuffer<proc_macro2::TokenTree> {
+    #[inline]
+    fn from(value: proc_macro2::TokenStream) -> Self {
+        Self::from_token_stream(value)
     }
 }
 
@@ -95,6 +143,7 @@ impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
     }
 }
 
+#[derive(Debug)]
 #[repr(transparent)]
 pub struct TokenBuf<T: TokenTree>([Box<dyn Token<T>>]);
 

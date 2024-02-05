@@ -12,7 +12,7 @@ proc-macro2 = ["microproc/proc-macro2", "dep:proc-macro2"]
 prefer-pm1 = ["proc-macro", "proc-macro2"]
 
 [dependencies]
-microproc = { path = "../microproc", default-features = false, features = ["literal-value", "op"] }
+microproc = { path = "../microproc", default-features = false, features = ["literal-value", "op", "token-buffer"] }
 proc-macro2 = { version = "1.0", optional = true }
 
 [package.metadata.docs.rs]
