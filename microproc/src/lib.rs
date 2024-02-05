@@ -47,7 +47,7 @@ mod token_buffer;
 mod token_stream;
 mod token_tree;
 
-pub use base::{ProcMacro, ProcMacroExt};
+pub use base::{PMExt, ProcMacro, ProcMacroExt, PM, PM1, PM2};
 pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]

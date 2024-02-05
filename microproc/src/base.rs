@@ -1,6 +1,35 @@
 use crate::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use std::fmt::Debug;
 
+#[cfg(feature = "proc-macro")]
+pub mod proc_macro {
+    #[derive(Clone, Copy, Debug)]
+    pub struct PM;
+    impl crate::PM for PM {}
+    impl crate::PMExt for PM {}
+
+    pub use ::proc_macro::*;
+}
+
+#[cfg(feature = "proc-macro2")]
+pub mod proc_macro2 {
+    #[derive(Clone, Copy, Debug)]
+    pub struct PM;
+    impl crate::PM for PM {}
+    impl crate::PMExt for PM {}
+
+    pub use ::proc_macro2::*;
+}
+
+#[cfg(feature = "proc-macro")]
+pub use proc_macro::PM as PM1;
+
+#[cfg(feature = "proc-macro2")]
+pub use proc_macro2::PM as PM2;
+
+pub trait PM: ProcMacro<PM = Self> {}
+pub trait PMExt: ProcMacroExt<PMExt = Self> + PM {}
+
 // There are simpler and more contained ways to do this, but they fail type inference more.
 // For example, having the types in a fully bounded associated type instead of a base trait
 // fails type inference.
@@ -67,6 +96,7 @@ macro_rules! impl_base {
 }
 
 impl_base!({
+    PM: PMExt,
     Delimiter: DelimiterExt,
     Group: GroupExt,
     Ident: IdentExt,
