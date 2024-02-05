@@ -1,4 +1,4 @@
-use crate::{Match, Token, TokenTree, TokenTreeExt};
+use crate::{Match, PMExt, Token, TokenTreeExt, PM};
 use std::{
     mem::transmute,
     ops::{
@@ -8,7 +8,7 @@ use std::{
     slice,
 };
 
-pub trait Parse<T: TokenTree>: Sized {
+pub trait Parse<T: PM>: Sized {
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self>;
 
     #[inline]
@@ -20,7 +20,7 @@ pub trait Parse<T: TokenTree>: Sized {
     }
 }
 
-pub trait Parser<T: TokenTree>: Sized {
+pub trait Parser<T: PM>: Sized {
     type Output<'p, 'b>
     where
         Self: 'p;
@@ -37,16 +37,16 @@ pub trait Parser<T: TokenTree>: Sized {
 }
 
 #[derive(Debug, Default)]
-pub struct TokenBuffer<T: TokenTree>(Vec<Box<dyn Token<T>>>);
+pub struct TokenBuffer<T: PM>(Vec<Box<dyn Token<T>>>);
 
-impl<T: TokenTree> TokenBuffer<T> {
+impl<T: PM> TokenBuffer<T> {
     #[inline]
     pub fn as_buf(&self) -> &TokenBuf<T> {
         self
     }
 }
 
-impl<T: TokenTree> TokenBuffer<T> {
+impl<T: PM> TokenBuffer<T> {
     // this can't be FromIterator bc it conflicts
     #[inline]
     pub const fn new() -> Self {
@@ -59,7 +59,7 @@ impl<T: TokenTree> TokenBuffer<T> {
     }
 }
 
-impl<T: TokenTreeExt> TokenBuffer<T> {
+impl<T: PMExt> TokenBuffer<T> {
     #[inline]
     pub fn from_token_stream(ts: T::TokenStream) -> Self {
         ts.into_iter()
@@ -72,7 +72,7 @@ impl<T: TokenTreeExt> TokenBuffer<T> {
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<proc_macro::TokenStream> for TokenBuffer<proc_macro::TokenTree> {
+impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
     #[inline]
     fn from(value: proc_macro::TokenStream) -> Self {
         Self::from_token_stream(value)
@@ -80,14 +80,14 @@ impl From<proc_macro::TokenStream> for TokenBuffer<proc_macro::TokenTree> {
 }
 
 #[cfg(feature = "proc-macro2")]
-impl From<proc_macro2::TokenStream> for TokenBuffer<proc_macro2::TokenTree> {
+impl From<proc_macro2::TokenStream> for TokenBuffer<crate::PM2> {
     #[inline]
     fn from(value: proc_macro2::TokenStream) -> Self {
         Self::from_token_stream(value)
     }
 }
 
-impl<T: TokenTree> Deref for TokenBuffer<T> {
+impl<T: PM> Deref for TokenBuffer<T> {
     type Target = TokenBuf<T>;
 
     #[inline]
@@ -96,14 +96,14 @@ impl<T: TokenTree> Deref for TokenBuffer<T> {
     }
 }
 
-impl<T: TokenTree> DerefMut for TokenBuffer<T> {
+impl<T: PM> DerefMut for TokenBuffer<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         TokenBuf::from_mut(&mut self.0[..])
     }
 }
 
-impl<T: TokenTree, I: TokenBufferIndex<T>> Index<I> for TokenBuffer<T> {
+impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuffer<T> {
     type Output = I::Output;
 
     #[inline]
@@ -112,21 +112,21 @@ impl<T: TokenTree, I: TokenBufferIndex<T>> Index<I> for TokenBuffer<T> {
     }
 }
 
-impl<T: TokenTree, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
+impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         index.index_mut(&mut self.0)
     }
 }
 
-impl<T: TokenTree> FromIterator<Box<dyn Token<T>>> for TokenBuffer<T> {
+impl<T: PM> FromIterator<Box<dyn Token<T>>> for TokenBuffer<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = Box<dyn Token<T>>>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
-impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
+impl<T: PM> IntoIterator for TokenBuffer<T> {
     type IntoIter = <Vec<Box<dyn Token<T>>> as IntoIterator>::IntoIter;
     type Item = Box<dyn Token<T>>;
 
@@ -138,9 +138,9 @@ impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct TokenBuf<T: TokenTree>([Box<dyn Token<T>>]);
+pub struct TokenBuf<T: PM>([Box<dyn Token<T>>]);
 
-impl<T: TokenTree> TokenBuf<T> {
+impl<T: PM> TokenBuf<T> {
     #[inline]
     fn from_ref(r: &[Box<dyn Token<T>>]) -> &Self {
         unsafe {
@@ -344,7 +344,7 @@ impl<T: TokenTree> TokenBuf<T> {
     }
 }
 
-impl<T: TokenTree> Deref for TokenBuf<T> {
+impl<T: PM> Deref for TokenBuf<T> {
     type Target = [Box<dyn Token<T>>];
 
     #[inline]
@@ -353,14 +353,14 @@ impl<T: TokenTree> Deref for TokenBuf<T> {
     }
 }
 
-impl<T: TokenTree> DerefMut for TokenBuf<T> {
+impl<T: PM> DerefMut for TokenBuf<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T: TokenTree, I: TokenBufferIndex<T>> Index<I> for TokenBuf<T> {
+impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuf<T> {
     type Output = I::Output;
 
     #[inline]
@@ -369,14 +369,14 @@ impl<T: TokenTree, I: TokenBufferIndex<T>> Index<I> for TokenBuf<T> {
     }
 }
 
-impl<T: TokenTree, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuf<T> {
+impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuf<T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         index.index_mut(&mut self.0)
     }
 }
 
-impl<'a, T: TokenTree> IntoIterator for &'a TokenBuf<T> {
+impl<'a, T: PM> IntoIterator for &'a TokenBuf<T> {
     type IntoIter = slice::Iter<'a, Box<dyn Token<T>>>;
     type Item = &'a Box<dyn Token<T>>;
 
@@ -386,7 +386,7 @@ impl<'a, T: TokenTree> IntoIterator for &'a TokenBuf<T> {
     }
 }
 
-impl<'a, T: TokenTree> IntoIterator for &'a mut TokenBuf<T> {
+impl<'a, T: PM> IntoIterator for &'a mut TokenBuf<T> {
     type IntoIter = slice::IterMut<'a, Box<dyn Token<T>>>;
     type Item = &'a mut Box<dyn Token<T>>;
 
@@ -396,13 +396,13 @@ impl<'a, T: TokenTree> IntoIterator for &'a mut TokenBuf<T> {
     }
 }
 
-pub trait TokenBufferIndex<T: TokenTree> {
+pub trait TokenBufferIndex<T: PM> {
     type Output: ?Sized;
     fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output;
     fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output;
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for usize {
+impl<T: PM> TokenBufferIndex<T> for usize {
     type Output = Box<dyn Token<T>>;
 
     #[inline]
@@ -416,7 +416,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for usize {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for Range<usize> {
+impl<T: PM> TokenBufferIndex<T> for Range<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -430,7 +430,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for Range<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeFrom<usize> {
+impl<T: PM> TokenBufferIndex<T> for RangeFrom<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -444,7 +444,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeFrom<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeFull {
+impl<T: PM> TokenBufferIndex<T> for RangeFull {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -458,7 +458,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeFull {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeInclusive<usize> {
+impl<T: PM> TokenBufferIndex<T> for RangeInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -472,7 +472,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeInclusive<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeTo<usize> {
+impl<T: PM> TokenBufferIndex<T> for RangeTo<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -486,7 +486,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeTo<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeToInclusive<usize> {
+impl<T: PM> TokenBufferIndex<T> for RangeToInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]

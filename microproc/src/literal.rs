@@ -716,7 +716,7 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
 ///
 /// This trait is implemented for `Literal` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal + Token<Self::TokenTree> {
+pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal + Token<Self::PM> {
     #[cfg(feature = "literal-value")]
     fn value(&self) -> LiteralValue;
 
@@ -801,7 +801,7 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Literal {
+        impl Token<crate::base::$pm::PM> for $pm::Literal {
             #[inline]
             fn as_any(&self) -> &dyn Any {
                 self
@@ -813,7 +813,7 @@ macro_rules! impl_literal {
             }
 
             #[inline]
-            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+            fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 other.downcast_ref::<Self>().map(|other| self.value() == other.value()).unwrap_or(false)
             }
         }

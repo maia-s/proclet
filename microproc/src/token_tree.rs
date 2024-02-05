@@ -35,9 +35,9 @@ pub trait TokenTree:
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait TokenTreeExt:
-    crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Into<Box<dyn Token<Self>>>
+    crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Into<Box<dyn Token<Self::PM>>>
 {
-    fn into_token(self) -> Box<dyn Token<Self>>;
+    fn into_token(self) -> Box<dyn Token<Self::PM>>;
 
     fn kind(&self) -> TokenTreeKind;
 
@@ -131,7 +131,7 @@ pub trait Group: ProcMacro<Group = Self> + Display {
 ///
 /// This trait is implemented for `Group` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group + Token<Self::TokenTree> {
+pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group + Token<Self::PM> {
     /// Get the delimiter of this `Group` as a matchable enum.
     #[inline]
     fn delimiter_kind(&self) -> DelimiterKind {
@@ -222,7 +222,7 @@ pub trait Ident: ProcMacro<Ident = Self> + Display {
 ///
 /// This trait is implemented for `Ident` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait IdentExt: crate::ProcMacroExt<IdentExt = Self> + Ident + Token<Self::TokenTree> {}
+pub trait IdentExt: crate::ProcMacroExt<IdentExt = Self> + Ident + Token<Self::PM> {}
 
 /// `Punct` API trait. See [`proc_macro::Punct`](https://doc.rust-lang.org/stable/proc_macro/struct.Punct.html).
 ///
@@ -251,7 +251,7 @@ pub trait Punct: ProcMacro<Punct = Self> + Display {
 ///
 /// This trait is implemented for `Punct` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct + Token<Self::TokenTree> {
+pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct + Token<Self::PM> {
     /// Create a new `Punct` with a custom `Span`.
     #[inline]
     fn with_span(ch: char, spacing: Self::Spacing, span: Self::Span) -> Self {
@@ -311,7 +311,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl From<$pm::TokenTree> for Box<dyn Token<$pm::TokenTree>> {
+        impl From<$pm::TokenTree> for Box<dyn Token<crate::base::$pm::PM>> {
             #[inline]
             fn from(value: $pm::TokenTree) -> Self {
                 value.into_token()
@@ -321,12 +321,12 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl TokenTreeExt for $pm::TokenTree {
             #[inline]
-            fn into_token(self) -> Box<dyn Token<$pm::TokenTree>> {
+            fn into_token(self) -> Box<dyn Token<crate::base::$pm::PM>> {
                 match self {
-                    Self::Group(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
-                    Self::Ident(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
-                    Self::Punct(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
-                    Self::Literal(t) => Box::new(t) as Box<dyn Token<$pm::TokenTree>>,
+                    Self::Group(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
+                    Self::Ident(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
+                    Self::Punct(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
+                    Self::Literal(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
                 }
             }
 
@@ -510,7 +510,7 @@ macro_rules! impl_token_tree {
         impl GroupExt for $pm::Group {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Group {
+        impl Token<crate::base::$pm::PM> for $pm::Group {
             #[inline]
             fn as_any(&self) -> &dyn Any {
                 self
@@ -522,7 +522,7 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
-            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+            fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 other.downcast_ref::<Self>().map(|other|
                     self.delimiter() == other.delimiter() && self.stream().eq_except_span(other.stream())
                 ).unwrap_or(false)
@@ -618,7 +618,7 @@ macro_rules! impl_token_tree {
         impl IdentExt for $pm::Ident {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Ident {
+        impl Token<crate::base::$pm::PM> for $pm::Ident {
             #[inline]
             fn as_any(&self) -> &dyn Any {
                 self
@@ -630,7 +630,7 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
-            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+            fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 #[allow(clippy::cmp_owned)] // it's the only way to get their value, clippy
                 other.downcast_ref::<Self>().map(
                     |other| self.to_string() == other.to_string()
@@ -678,7 +678,7 @@ macro_rules! impl_token_tree {
         impl PunctExt for $pm::Punct {}
 
         #[cfg(feature = $feature)]
-        impl Token<$pm::TokenTree> for $pm::Punct {
+        impl Token<crate::base::$pm::PM> for $pm::Punct {
             #[inline]
             fn as_any(&self) -> &dyn Any {
                 self
@@ -690,7 +690,7 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
-            fn eq_except_span(&self, other: &dyn Token<$pm::TokenTree>) -> bool {
+            fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 other.downcast_ref::<Self>().map(|other| self.as_char() == other.as_char()).unwrap_or(false)
             }
         }

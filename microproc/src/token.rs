@@ -1,13 +1,13 @@
-use crate::TokenTree;
+use crate::{TokenTree, PM};
 use std::{any::Any, fmt::Debug, iter};
 
-pub trait Token<T: TokenTree>: Any + Debug + ToTokens<T> {
+pub trait Token<T: PM>: Any + Debug + ToTokens<T::TokenTree> {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
 }
 
-impl<T: TokenTree> dyn Token<T> {
+impl<T: PM> dyn Token<T> {
     #[inline]
     pub fn is<X: Token<T>>(&self) -> bool {
         self.as_any().is::<X>()

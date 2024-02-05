@@ -86,7 +86,7 @@ impl<S: SpanExt> Op<S> {
     }
 }
 
-impl<S: SpanExt> Token<S::TokenTree> for Op<S> {
+impl<S: SpanExt> Token<S::PM> for Op<S> {
     #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -98,7 +98,7 @@ impl<S: SpanExt> Token<S::TokenTree> for Op<S> {
     }
 
     #[inline]
-    fn eq_except_span(&self, other: &dyn Token<S::TokenTree>) -> bool {
+    fn eq_except_span(&self, other: &dyn Token<S::PM>) -> bool {
         other
             .downcast_ref::<Self>()
             .map(|other| self.as_str() == other.as_str())
@@ -121,10 +121,10 @@ impl<S: Span> From<&'static str> for Op<S> {
 }
 
 #[cfg(feature = "token-buffer")]
-impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
+impl<S: SpanExt> crate::Parse<S::PM> for Op<S> {
     /// Generic op parser. This doesn't check against valid ops.
     #[inline]
-    fn parse(buf: &mut &crate::TokenBuf<S::TokenTree>) -> Option<Self> {
+    fn parse(buf: &mut &crate::TokenBuf<S::PM>) -> Option<Self> {
         let mut str = String::new();
         let mut spans = Vec::new();
         buf.match_prefix(|token| {
@@ -313,13 +313,13 @@ impl<P: PunctExt, F: OpParserFn> OpParser<P, F> {
 }
 
 #[cfg(feature = "token-buffer")]
-impl<P: PunctExt, F: OpParserFn> crate::Parser<P::TokenTree> for OpParser<P, F> {
+impl<P: PunctExt, F: OpParserFn> crate::Parser<P::PM> for OpParser<P, F> {
     type Output<'p, 'b> = Op<P::Span> where Self:'p;
 
     #[inline]
     fn parse<'p, 'b>(
         &'p self,
-        buf: &mut &'b crate::TokenBuf<P::TokenTree>,
+        buf: &mut &'b crate::TokenBuf<P::PM>,
     ) -> Option<Self::Output<'p, 'b>> {
         use std::ops::Deref;
         let mut string = String::new();
