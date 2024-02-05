@@ -3,12 +3,17 @@ compile_error!("at least one of `proc-macro` or `proc-macro2` must be enabled");
 
 #[cfg(all(test, any(feature = "proc-macro", feature = "proc-macro2")))]
 mod tests {
-    use proclet_test_macros::{literal_roundtrip, parse_rust_ops, parse_rust_ops_with_buffer};
+    use proclet_test_macros::{
+        literal_roundtrip, literal_roundtrip_with_parse, parse_rust_ops, parse_rust_ops_with_buffer,
+    };
 
     macro_rules! test_literal {
         ($($lit:literal),*) => { $(
             let lit2 = literal_roundtrip!($lit);
             assert_eq!(lit2, $lit);
+
+            let lit2_buf = literal_roundtrip_with_parse!($lit);
+            assert_eq!(lit2_buf, $lit);
         )* };
     }
 

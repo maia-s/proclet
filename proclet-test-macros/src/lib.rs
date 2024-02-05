@@ -43,6 +43,26 @@ pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 #[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
+pub fn literal_roundtrip_with_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    use proclet::{LiteralToken, ProcMacro, ToTokenTrees, TokenBuffer, TokenTrees};
+    let input: TokenStream = input.into();
+    let input: TokenBuffer<_> = input.into();
+    let mut input = input.as_buf();
+    let mut output = TokenStream::new();
+    while !input.is_empty() {
+        if let Some(lit) = LiteralToken::parse(&mut input) {
+            let tt: TokenTrees<<TokenStream as ProcMacro>::TokenTree> = lit.to_token_trees();
+            output.extend(tt);
+        } else {
+            panic!("invalid literal");
+        }
+    }
+    output.into()
+}
+
+#[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
+#[proc_macro]
+#[allow(clippy::useless_conversion)]
 pub fn parse_rust_ops(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     use proclet::rust_op_parser;
     let input: TokenStream = input.into();
