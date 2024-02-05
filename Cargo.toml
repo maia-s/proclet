@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "microproc",
-    "microproc-tests",
-    "microproc-test-macros",
+    "proclet",
+    "proclet-tests",
+    "proclet-test-macros",
 ]
 resolver = "2"

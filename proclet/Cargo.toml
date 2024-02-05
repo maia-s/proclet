@@ -1,12 +1,12 @@
 [package]
-name = "microproc"
+name = "proclet"
 version = "0.1.0"
 edition = "2021"
 authors = ["Maia S. R."]
 license = "MIT OR Apache-2.0 OR Zlib"
 description = "Make lightweight proc macros"
-repository = "https://github.com/maia-s/microproc"
-documentation = "https://docs.rs/microproc"
+repository = "https://github.com/maia-s/proclet"
+documentation = "https://docs.rs/proclet"
 keywords = ["macros", "proc-macro", "lightweight"]
 categories = ["parsing", "development-tools::procedural-macro-helpers"]
 
