@@ -86,17 +86,10 @@ pub trait TokenTreeExt:
     /// replace the group with that item, recursively.
     #[inline]
     fn flatten_group(&mut self) {
-        while let Some(group) = self.group() {
-            if group.delimiter().is_none() {
-                let mut stream = group.stream().into_iter();
-                if let Some(tt) = stream.next() {
-                    if stream.next().is_none() {
-                        *self = tt;
-                        continue;
-                    }
-                }
+        if let Some(group) = self.group() {
+            if let Some(tt) = group.flatten() {
+                *self = tt;
             }
-            break;
         }
     }
 }
@@ -139,6 +132,27 @@ pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group + Token<Self::P
     #[inline]
     fn delimiter_kind(&self) -> DelimiterKind {
         self.delimiter().into()
+    }
+
+    /// If the group has delimiter `None` and contains a single item, extract that item,
+    /// and if that item is a group, flatten that too, recursively. Then return the item,
+    /// or `None` if the conditions weren't met.
+    #[inline]
+    fn flatten(&self) -> Option<Self::TokenTree> {
+        if self.delimiter().is_none() {
+            let mut stream = self.stream().into_iter();
+            if let Some(tt) = stream.next() {
+                if stream.next().is_none() {
+                    if let Some(group) = tt.group() {
+                        if let Some(tt) = group.flatten() {
+                            return Some(tt);
+                        }
+                    }
+                    return Some(tt);
+                }
+            }
+        }
+        None
     }
 }
 
