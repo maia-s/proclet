@@ -813,6 +813,11 @@ macro_rules! impl_literal {
             }
 
             #[inline]
+            fn clone_boxed(&self) -> Box<dyn Token<crate::base::$pm::PM>> {
+                Box::new(self.clone())
+            }
+
+            #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 other.downcast_ref::<Self>().map(|other| self.value() == other.value()).unwrap_or(false)
             }

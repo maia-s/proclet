@@ -98,6 +98,11 @@ impl<S: SpanExt> Token<S::PM> for Op<S> {
     }
 
     #[inline]
+    fn clone_boxed(&self) -> Box<dyn Token<S::PM>> {
+        Box::new(self.clone())
+    }
+
+    #[inline]
     fn eq_except_span(&self, other: &dyn Token<S::PM>) -> bool {
         other
             .downcast_ref::<Self>()

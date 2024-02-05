@@ -39,6 +39,12 @@ pub trait Parser<T: PM>: Sized {
 #[derive(Debug, Default)]
 pub struct TokenBuffer<T: PM>(Vec<Box<dyn AsToken<T>>>);
 
+impl<T: PM> Clone for TokenBuffer<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.iter().map(|i| i.clone_boxed()).collect())
+    }
+}
+
 impl<T: PM> TokenBuffer<T> {
     #[inline]
     pub fn as_buf(&self) -> &TokenBuf<T> {

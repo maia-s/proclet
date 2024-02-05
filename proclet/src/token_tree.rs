@@ -485,6 +485,11 @@ macro_rules! impl_token_tree {
                     Self::Literal(t) => t as &mut dyn Token<crate::base::$pm::PM>,
                 }
             }
+
+            #[inline]
+            fn clone_boxed(&self) -> Box<dyn AsToken<crate::base::$pm::PM>> {
+                Box::new(self.clone())
+            }
         }
 
         #[cfg(feature = $feature)]
@@ -546,6 +551,11 @@ macro_rules! impl_token_tree {
             #[inline]
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
+            }
+
+            #[inline]
+            fn clone_boxed(&self) -> Box<dyn Token<crate::base::$pm::PM>> {
+                Box::new(self.clone())
             }
 
             #[inline]
@@ -657,6 +667,11 @@ macro_rules! impl_token_tree {
             }
 
             #[inline]
+            fn clone_boxed(&self) -> Box<dyn Token<crate::base::$pm::PM>> {
+                Box::new(self.clone())
+            }
+
+            #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 #[allow(clippy::cmp_owned)] // it's the only way to get their value, clippy
                 other.downcast_ref::<Self>().map(
@@ -714,6 +729,11 @@ macro_rules! impl_token_tree {
             #[inline]
             fn as_any_mut(&mut self) -> &mut dyn Any {
                 self
+            }
+
+            #[inline]
+            fn clone_boxed(&self) -> Box<dyn Token<crate::base::$pm::PM>> {
+                Box::new(self.clone())
             }
 
             #[inline]

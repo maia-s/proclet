@@ -4,15 +4,17 @@ use std::{any::Any, fmt::Debug, iter};
 pub trait Token<T: PM>: Any + Debug + ToTokenTrees<T::TokenTree> {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn clone_boxed(&self) -> Box<dyn Token<T>>;
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
 }
 
 pub trait AsToken<T: PM>: 'static + Debug {
     fn as_token(&self) -> &dyn Token<T>;
     fn as_token_mut(&mut self) -> &mut dyn Token<T>;
+    fn clone_boxed(&self) -> Box<dyn AsToken<T>>;
 }
 
-impl<T: PM, X: Token<T>> AsToken<T> for X {
+impl<T: PM, X: Clone + Token<T>> AsToken<T> for X {
     #[inline]
     fn as_token(&self) -> &dyn Token<T> {
         self
@@ -21,6 +23,11 @@ impl<T: PM, X: Token<T>> AsToken<T> for X {
     #[inline]
     fn as_token_mut(&mut self) -> &mut dyn Token<T> {
         self
+    }
+
+    #[inline]
+    fn clone_boxed(&self) -> Box<dyn AsToken<T>> {
+        Box::new(self.clone())
     }
 }
 
