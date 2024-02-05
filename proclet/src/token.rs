@@ -7,6 +7,23 @@ pub trait Token<T: PM>: Any + Debug + ToTokenTrees<T::TokenTree> {
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
 }
 
+pub trait AsToken<T: PM>: 'static + Debug {
+    fn as_token(&self) -> &dyn Token<T>;
+    fn as_token_mut(&mut self) -> &mut dyn Token<T>;
+}
+
+impl<T: PM, X: Token<T>> AsToken<T> for X {
+    #[inline]
+    fn as_token(&self) -> &dyn Token<T> {
+        self
+    }
+
+    #[inline]
+    fn as_token_mut(&mut self) -> &mut dyn Token<T> {
+        self
+    }
+}
+
 impl<T: PM> dyn Token<T> {
     #[inline]
     pub fn is<X: Token<T>>(&self) -> bool {

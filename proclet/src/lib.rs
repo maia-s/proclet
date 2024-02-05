@@ -5,6 +5,7 @@
 extern crate proc_macro;
 
 pub mod prelude {
+    pub use crate::AsToken as _;
     pub use crate::Delimiter as _;
     pub use crate::DelimiterExt as _;
     pub use crate::Group as _;
@@ -55,7 +56,7 @@ pub use literal::{LiteralValue, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-pub use token::{ToTokenTrees, Token, TokenTrees};
+pub use token::{AsToken, ToTokenTrees, Token, TokenTrees};
 #[cfg(feature = "token-buffer")]
 pub use token_buffer::{Parse, Parser, TokenBuf, TokenBuffer};
 pub use token_stream::{TokenStream, TokenStreamExt};
