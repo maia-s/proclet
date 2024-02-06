@@ -148,22 +148,6 @@ impl<T: PM> Clone for TokenBuffer<T> {
     }
 }
 
-#[cfg(feature = "proc-macro")]
-impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
-    #[inline]
-    fn from(value: proc_macro::TokenStream) -> Self {
-        Self::from_token_stream(value)
-    }
-}
-
-#[cfg(feature = "proc-macro2")]
-impl From<proc_macro2::TokenStream> for TokenBuffer<crate::PM2> {
-    #[inline]
-    fn from(value: proc_macro2::TokenStream) -> Self {
-        Self::from_token_stream(value)
-    }
-}
-
 impl<T: PM> Deref for TokenBuffer<T> {
     type Target = TokenBuf<T>;
 
@@ -180,6 +164,29 @@ impl<T: PM> DerefMut for TokenBuffer<T> {
     }
 }
 
+#[cfg(feature = "proc-macro")]
+impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
+    #[inline]
+    fn from(value: proc_macro::TokenStream) -> Self {
+        Self::from_token_stream(value)
+    }
+}
+
+#[cfg(feature = "proc-macro2")]
+impl From<proc_macro2::TokenStream> for TokenBuffer<crate::PM2> {
+    #[inline]
+    fn from(value: proc_macro2::TokenStream) -> Self {
+        Self::from_token_stream(value)
+    }
+}
+
+impl<T: PM, X: Into<Box<dyn Token<T>>>> FromIterator<X> for TokenBuffer<T> {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = X>>(iter: I) -> Self {
+        Self(iter.into_iter().map(|x| x.into()).collect())
+    }
+}
+
 impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuffer<T> {
     type Output = I::Output;
 
@@ -193,13 +200,6 @@ impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         index.index_mut(&mut self.0)
-    }
-}
-
-impl<T: PM, X: Into<Box<dyn Token<T>>>> FromIterator<X> for TokenBuffer<T> {
-    #[inline]
-    fn from_iter<I: IntoIterator<Item = X>>(iter: I) -> Self {
-        Self(iter.into_iter().map(|x| x.into()).collect())
     }
 }
 
