@@ -32,7 +32,7 @@ pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStr
         token.flatten_group();
         if let Some(lit) = token.literal_mut() {
             *lit = LiteralToken::from(lit.clone()).into();
-            output.extend(lit.to_token_trees());
+            output.extend(lit.to_token_stream());
         } else {
             panic!("literal_roundtrip only accepts literals");
         }
@@ -44,15 +44,15 @@ pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn literal_roundtrip_with_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use proclet::{LiteralToken, ProcMacro, ToTokenTrees, TokenBuffer, TokenTrees};
+    use proclet::{LiteralToken, ToTokenStream, TokenBuffer};
     let input: TokenStream = input.into();
     let input: TokenBuffer<_> = input.into();
     let mut input = input.as_buf();
     let mut output = TokenStream::new();
     while !input.is_empty() {
         if let Some(lit) = LiteralToken::parse(&mut input) {
-            let tt: TokenTrees<<TokenStream as ProcMacro>::TokenTree> = lit.to_token_trees();
-            output.extend(tt);
+            let ts: TokenStream = lit.to_token_stream();
+            output.extend(ts);
         } else {
             panic!("invalid literal");
         }

@@ -1,6 +1,5 @@
 use crate::{
-    Match, PMExt, Parse, ProcMacro, ProcMacroExt, Span, ToTokenTrees, Token, TokenTreeExt,
-    TokenTrees,
+    Match, PMExt, Parse, ProcMacro, ProcMacroExt, Span, ToTokenStream, Token, TokenStreamExt,
 };
 use std::{fmt::Display, str::FromStr};
 
@@ -696,10 +695,10 @@ impl<T: PMExt> Token<T> for LiteralToken<T::Span> {
 }
 
 #[cfg(feature = "literal-value")]
-impl<T: TokenTreeExt> ToTokenTrees<T> for LiteralToken<T::Span> {
+impl<T: TokenStreamExt> ToTokenStream<T> for LiteralToken<T::Span> {
     #[inline]
-    fn to_token_trees(&self) -> TokenTrees<T> {
-        TokenTrees::from(T::TokenTree::from(T::Literal::from(self.clone())))
+    fn extend_token_stream(&self, token_stream: &mut T) {
+        token_stream.extend([T::TokenTree::from(T::Literal::from(self.clone()))])
     }
 }
 
@@ -944,10 +943,10 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenTrees<$pm::TokenTree> for $pm::Literal {
+        impl ToTokenStream<$pm::TokenStream> for $pm::Literal {
             #[inline]
-            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
-                $pm::TokenTree::from(self.clone()).into()
+            fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream)  {
+                token_stream.extend([$pm::TokenTree::from(self.clone())]);
             }
         }
     )* };

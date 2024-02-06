@@ -1,7 +1,7 @@
-use crate::{TokenTree, PM};
-use std::{any::Any, fmt::Debug, iter};
+use crate::{TokenStream, PM};
+use std::{any::Any, fmt::Debug};
 
-pub trait Token<T: PM>: TokenAuto<T> + Any + Debug + ToTokenTrees<T::TokenTree> {
+pub trait Token<T: PM>: TokenAuto<T> + Any + Debug + ToTokenStream<T::TokenStream> {
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
 }
 
@@ -46,63 +46,22 @@ impl<T: PM, X: Clone + Token<T>> TokenAuto<T> for X {
     }
 }
 
-pub trait ToTokenTrees<T: TokenTree> {
-    fn to_token_trees(&self) -> TokenTrees<T>;
+pub trait ToTokenStream<T: TokenStream> {
+    fn extend_token_stream(&self, token_stream: &mut T);
 
     #[inline]
-    fn to_token_stream(&self) -> T::TokenStream {
-        self.to_token_trees().collect()
+    fn to_token_stream(&self) -> T {
+        let mut ts = T::new();
+        self.extend_token_stream(&mut ts);
+        ts
     }
 }
 
-impl<T: TokenTree, X: ToTokenTrees<T>> ToTokenTrees<T> for [X] {
-    fn to_token_trees(&self) -> TokenTrees<T> {
-        TokenTrees::new(self.iter().flat_map(|t| t.to_token_trees()))
-    }
-}
-
-pub struct TokenTrees<'a, T: TokenTree>(Box<dyn Iterator<Item = T> + 'a>);
-
-impl<'a, T: TokenTree> TokenTrees<'a, T> {
+impl<T: TokenStream, X: ToTokenStream<T>> ToTokenStream<T> for [X] {
     #[inline]
-    pub fn new(value: impl Iterator<Item = T> + 'a) -> Self {
-        Self(Box::new(value))
-    }
-}
-
-impl<T: TokenTree> From<T> for TokenTrees<'static, T> {
-    #[inline]
-    fn from(value: T) -> Self {
-        Self::new(iter::once(value))
-    }
-}
-
-impl<'a, T: TokenTree> From<&'a [T]> for TokenTrees<'a, T> {
-    #[inline]
-    fn from(value: &'a [T]) -> Self {
-        Self::new(value.iter().cloned())
-    }
-}
-
-impl<T: TokenTree> From<Vec<T>> for TokenTrees<'static, T> {
-    #[inline]
-    fn from(value: Vec<T>) -> Self {
-        Self::new(value.into_iter())
-    }
-}
-
-impl<T: TokenTree> From<Box<[T]>> for TokenTrees<'static, T> {
-    #[inline]
-    fn from(value: Box<[T]>) -> Self {
-        value.into_vec().into()
-    }
-}
-
-impl<T: TokenTree> Iterator for TokenTrees<'_, T> {
-    type Item = T;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
+    fn extend_token_stream(&self, token_stream: &mut T) {
+        for i in self {
+            i.extend_token_stream(token_stream);
+        }
     }
 }

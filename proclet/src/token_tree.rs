@@ -1,4 +1,4 @@
-use crate::{Match, Parse, ProcMacro, ToTokenTrees, Token, TokenBuf, TokenStreamExt, TokenTrees};
+use crate::{Match, Parse, ProcMacro, ToTokenStream, Token, TokenBuf, TokenStreamExt};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -500,10 +500,10 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenTrees<$pm::TokenTree> for $pm::TokenTree {
+        impl ToTokenStream<$pm::TokenStream> for $pm::TokenTree {
             #[inline]
-            fn to_token_trees(&self) -> TokenTrees<Self> {
-                self.clone().into()
+            fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
+                token_stream.extend([self.clone()])
             }
         }
 
@@ -573,10 +573,10 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenTrees<$pm::TokenTree> for $pm::Group {
+        impl ToTokenStream<$pm::TokenStream> for $pm::Group {
             #[inline]
-            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
-                $pm::TokenTree::from(self.clone()).into()
+            fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
+                token_stream.extend([$pm::TokenTree::from(self.clone())])
             }
         }
 
@@ -686,10 +686,10 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenTrees<$pm::TokenTree> for $pm::Ident {
+        impl ToTokenStream<$pm::TokenStream> for $pm::Ident {
             #[inline]
-            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
-                $pm::TokenTree::from(self.clone()).into()
+            fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
+                token_stream.extend([$pm::TokenTree::from(self.clone())])
             }
         }
 
@@ -747,10 +747,10 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenTrees<$pm::TokenTree> for $pm::Punct {
+        impl ToTokenStream<$pm::TokenStream> for $pm::Punct {
             #[inline]
-            fn to_token_trees(&self) -> TokenTrees<$pm::TokenTree> {
-                $pm::TokenTree::from(self.clone()).into()
+            fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
+                token_stream.extend([$pm::TokenTree::from(self.clone())])
             }
         }
 
