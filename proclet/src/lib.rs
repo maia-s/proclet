@@ -5,8 +5,6 @@
 extern crate proc_macro;
 
 pub mod prelude {
-    pub use crate::AsToken as _;
-    pub use crate::AsTokenAuto as _;
     #[cfg(feature = "token-buffer")]
     pub use crate::DefaultParser as _;
     pub use crate::Delimiter as _;
@@ -58,7 +56,7 @@ pub use literal::{LiteralToken, LiteralValue, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-pub use token::{AsToken, AsTokenAuto, ToTokenTrees, Token, TokenAuto, TokenTrees};
+pub use token::{ToTokenTrees, Token, TokenAuto, TokenTrees};
 #[cfg(feature = "token-buffer")]
 pub use token_buffer::{DefaultParser, Parse, Parser, TokenBuf, TokenBuffer};
 pub use token_stream::{TokenStream, TokenStreamExt};

@@ -1,6 +1,4 @@
-use crate::{
-    AsToken, Match, Parse, ProcMacro, ToTokenTrees, Token, TokenBuf, TokenStreamExt, TokenTrees,
-};
+use crate::{Match, Parse, ProcMacro, ToTokenTrees, Token, TokenBuf, TokenStreamExt, TokenTrees};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,10 +35,7 @@ pub trait TokenTree:
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait TokenTreeExt:
-    crate::ProcMacroExt<TokenTreeExt = Self>
-    + TokenTree
-    + Into<Box<dyn Token<Self::PM>>>
-    + AsToken<Self::PM>
+    crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Into<Box<dyn Token<Self::PM>>>
 {
     fn into_token(self) -> Box<dyn Token<Self::PM>>;
 
@@ -474,29 +469,6 @@ macro_rules! impl_token_tree {
                     (Self::Punct(s), Self::Punct(o)) => s.eq_except_span(o),
                     (Self::Literal(s), Self::Literal(o)) => s.eq_except_span(o),
                     _ => false,
-                }
-            }
-        }
-
-        #[cfg(feature = $feature)]
-        impl AsToken<crate::base::$pm::PM> for $pm::TokenTree {
-            #[inline]
-            fn as_token(&self) -> &dyn Token<crate::base::$pm::PM> {
-                match self {
-                    Self::Group(t) => t as &dyn Token<crate::base::$pm::PM>,
-                    Self::Ident(t) => t as &dyn Token<crate::base::$pm::PM>,
-                    Self::Punct(t) => t as &dyn Token<crate::base::$pm::PM>,
-                    Self::Literal(t) => t as &dyn Token<crate::base::$pm::PM>,
-                }
-            }
-
-            #[inline]
-            fn as_token_mut(&mut self) -> &mut dyn Token<crate::base::$pm::PM> {
-                match self {
-                    Self::Group(t) => t as &mut dyn Token<crate::base::$pm::PM>,
-                    Self::Ident(t) => t as &mut dyn Token<crate::base::$pm::PM>,
-                    Self::Punct(t) => t as &mut dyn Token<crate::base::$pm::PM>,
-                    Self::Literal(t) => t as &mut dyn Token<crate::base::$pm::PM>,
                 }
             }
         }
