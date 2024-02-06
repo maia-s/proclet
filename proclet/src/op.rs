@@ -1,40 +1,50 @@
-use crate::{prelude::*, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream, Token};
-use std::{
-    fmt::Display,
-    iter::{self, FusedIterator, Peekable},
-    marker::PhantomData,
-    mem, slice,
-    str::Chars,
+use crate::{
+    prelude::*, Match, PMExt, Parser, Punct, PunctExt, Span, SpanExt, ToTokenStream, Token,
 };
+use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
 
-pub trait OpParserFn: Clone + Fn(&str, Option<char>) -> Match<&'static str> {}
-impl<T> OpParserFn for T where T: Clone + Fn(&str, Option<char>) -> Match<&'static str> {}
+pub trait OpParserFn: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
+impl<T> OpParserFn for T where T: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
 
 #[derive(Clone, Debug)]
 pub struct Op<S: Span> {
-    str: Box<str>,
-    spans: Box<[S]>,
+    str: Cow<'static, str>,
+    spans: Option<Box<[S]>>,
 }
 
 impl<S: Span> Op<S> {
     #[inline]
-    pub fn new(str: impl Into<String>) -> Self {
-        Self::with_span(str, S::call_site())
+    pub fn new(str: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            str: str.into(),
+            spans: None,
+        }
     }
 
     #[inline]
-    pub fn with_span(str: impl Into<String>, span: S) -> Self {
-        let str = str.into().into_boxed_str();
-        let spans = vec![span; str.chars().count()].into_boxed_slice();
+    pub const fn new_static(str: &'static str) -> Self {
+        Self {
+            str: Cow::Borrowed(str),
+            spans: None,
+        }
+    }
+
+    #[inline]
+    pub fn with_span(str: impl Into<Cow<'static, str>>, span: S) -> Self {
+        let str = str.into();
+        let spans = Some(vec![span; str.chars().count()].into_boxed_slice());
         Self { str, spans }
     }
 
     #[inline]
-    pub fn with_spans(str: impl Into<String>, spans: Vec<S>) -> Self {
-        let str = str.into().into_boxed_str();
+    pub fn with_spans(str: impl Into<Cow<'static, str>>, spans: Vec<S>) -> Self {
+        let str = str.into();
         let spans = spans.into_boxed_slice();
         assert_eq!(str.chars().count(), spans.len());
-        Self { str, spans }
+        Self {
+            str,
+            spans: Some(spans),
+        }
     }
 
     #[inline]
@@ -44,33 +54,41 @@ impl<S: Span> Op<S> {
 
     #[inline]
     pub fn puncts(&self) -> Puncts<S::Punct> {
-        Puncts::new(self.as_str(), &self.spans)
+        Puncts::new(self.as_str(), self.spans.as_deref())
     }
 
     #[inline]
-    pub const fn spans(&self) -> &[S] {
-        &self.spans
+    fn alloced_spans(&mut self) -> &mut [S] {
+        if self.spans.is_none() {
+            self.spans = Some(vec![S::call_site(); self.str.chars().count()].into_boxed_slice());
+        }
+        self.spans.as_mut().unwrap()
+    }
+
+    #[inline]
+    pub fn spans(&self) -> Option<&[S]> {
+        self.spans.as_ref().map(|s| s as _)
     }
 
     #[inline]
     pub fn set_spans(&mut self, spans: &[S]) {
         // rust-analyzer incorrectly marks this code as an error without this mut
         #[allow(unused_mut)]
-        for (mut s, span) in self.spans.iter_mut().zip(spans.iter().cycle()) {
+        for (mut s, span) in self.alloced_spans().iter_mut().zip(spans.iter().cycle()) {
             *s = *span;
         }
     }
 
     #[inline]
-    pub const fn span(&self) -> S {
-        self.spans[0]
+    pub fn span(&self) -> Option<S> {
+        self.spans.as_ref().map(|s| s[0])
     }
 
     #[inline]
     pub fn set_span(&mut self, span: S) {
         // rust-analyzer incorrectly marks this code as an error without this mut
         #[allow(unused_mut)]
-        for mut s in self.spans.iter_mut() {
+        for mut s in self.alloced_spans().iter_mut() {
             *s = span;
         }
     }
@@ -83,6 +101,29 @@ impl<S: SpanExt> Op<S> {
         parser: &OpParser<S::Punct, impl OpParserFn>,
     ) -> ParseOps<S, Puncts<S::Punct>, impl OpParserFn> {
         parser.parse_ops(self.puncts())
+    }
+}
+
+#[cfg(feature = "token-buffer")]
+impl<T: PMExt> Parser<T> for Op<T::Span> {
+    type Output<'p, 'b> = Op<T::Span> where Self: 'p;
+
+    #[inline]
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b crate::TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+        OpParser::<T::Punct, _>::new(|str, next| {
+            if self.str == str {
+                Match::Complete(self.str.clone())
+            } else if let Some(rest) = self.str.strip_prefix(str) {
+                if rest.chars().next() == next {
+                    Match::NeedMore
+                } else {
+                    Match::NoMatch
+                }
+            } else {
+                Match::NoMatch
+            }
+        })
+        .parse(buf)
     }
 }
 
@@ -140,46 +181,11 @@ impl<S: SpanExt> crate::Parse<S::PM> for Op<S> {
 
 impl<S: SpanExt> IntoIterator for Op<S> {
     type Item = S::Punct;
-    type IntoIter = OpIntoIter<S>;
+    type IntoIter = Puncts<'static, S::Punct>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        OpIntoIter {
-            op: self,
-            ci: 0,
-            si: 0,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct OpIntoIter<S: Span> {
-    op: Op<S>,
-    ci: usize,
-    si: usize,
-}
-
-impl<S: SpanExt> FusedIterator for OpIntoIter<S> {}
-
-impl<S: SpanExt> Iterator for OpIntoIter<S> {
-    type Item = S::Punct;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.op.str[self.ci..].chars().next().map(|ch| {
-            let span = self.op.spans[self.si];
-            self.ci += ch.len_utf8();
-            self.si += 1;
-            S::Punct::with_span(
-                ch,
-                if self.ci < self.op.str.len() {
-                    S::Spacing::Joint
-                } else {
-                    S::Spacing::Alone
-                },
-                span,
-            )
-        })
+        Puncts::new(self.str, self.spans.map(|s| s.into_vec()))
     }
 }
 
@@ -207,20 +213,22 @@ impl<S: SpanExt, I: Iterator<Item = S::Punct>, F: OpParserFn> Iterator for Parse
 
 /// Iterator over `Punct`s.
 #[derive(Clone, Debug)]
-pub struct Puncts<'a, P: Punct>(
-    Peekable<Chars<'a>>,
-    iter::Cycle<iter::Copied<slice::Iter<'a, P::Span>>>,
-    PhantomData<fn() -> P>,
-);
+pub struct Puncts<'a, P: Punct> {
+    str: Cow<'a, str>,
+    spans: Option<Cow<'a, [P::Span]>>,
+    stri: usize,
+    spansi: usize,
+}
 
 impl<'a, P: Punct> Puncts<'a, P> {
     #[inline]
-    pub fn new(str: &'a str, span: &'a [P::Span]) -> Self {
-        Self(
-            str.chars().peekable(),
-            span.iter().copied().cycle(),
-            PhantomData,
-        )
+    pub fn new(str: impl Into<Cow<'a, str>>, spans: Option<impl Into<Cow<'a, [P::Span]>>>) -> Self {
+        Self {
+            str: str.into(),
+            spans: spans.map(|s| s.into()),
+            stri: 0,
+            spansi: 0,
+        }
     }
 }
 
@@ -231,17 +239,26 @@ impl<'a, P: PunctExt> Iterator for Puncts<'a, P> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|ch| {
-            P::with_span(
+        if let Some(ch) = self.str[self.stri..].chars().next() {
+            let span = if let Some(spans) = &self.spans {
+                spans[self.spansi]
+            } else {
+                P::Span::call_site()
+            };
+            self.stri += ch.len_utf8();
+            self.spansi += 1;
+            Some(P::with_span(
                 ch,
-                if self.0.peek().is_some() {
+                if self.str.len() > self.stri {
                     P::Spacing::Joint
                 } else {
                     P::Spacing::Alone
                 },
-                self.1.next().unwrap(),
-            )
-        })
+                span,
+            ))
+        } else {
+            None
+        }
     }
 }
 
@@ -297,7 +314,7 @@ impl<P: PunctExt, F: OpParserFn> OpParser<P, F> {
     /// - `match_op("-", None)` returns `Match::None`
     /// - `match_op("-=", None)` returns `Match::Complete("-=")`
     #[inline]
-    pub fn match_op(&self, str: &str, next: Option<char>) -> Match<&'static str> {
+    pub fn match_op(&self, str: &str, next: Option<char>) -> Match<Cow<'static, str>> {
         (self.0)(str, next)
     }
 }
@@ -444,12 +461,12 @@ macro_rules! define_ops {
         pub fn $fn<P: $crate::PunctExt>() -> $crate::OpParser<
             P,
             fn(&::core::primitive::str, ::core::option::Option<::core::primitive::char>)
-                -> $crate::Match<&'static ::core::primitive::str>
+                -> $crate::Match<::std::borrow::Cow<'static, ::core::primitive::str>>
         > {
             fn $fn(
                 str: &::core::primitive::str,
                 next: ::core::option::Option<::core::primitive::char>
-            ) -> $crate::Match<&'static ::core::primitive::str> {
+            ) -> $crate::Match<::std::borrow::Cow<'static, ::core::primitive::str>> {
                 match (str, next) {
                     $(
                         $(($first, ::core::option::Option::Some($follow)) => {
@@ -459,7 +476,7 @@ macro_rules! define_ops {
                                 $crate::Match::NeedMore
                             }
                         })?
-                        $((::core::stringify!($($tt)*), _) => $crate::Match::Complete(::core::stringify!($($tt)*)),)?
+                        $((::core::stringify!($($tt)*), _) => $crate::Match::Complete(::core::stringify!($($tt)*).into()),)?
                     )*
                     _ => $crate::Match::NoMatch,
                 }
