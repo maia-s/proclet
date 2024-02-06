@@ -1,4 +1,4 @@
-use crate::{Match, PMExt, Token, TokenTreeExt, PM};
+use crate::{Match, PMExt, ToTokenStream, Token, TokenStream, TokenTreeExt, PM};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -184,6 +184,22 @@ impl From<proc_macro2::TokenStream> for TokenBuffer<crate::PM2> {
     #[inline]
     fn from(value: proc_macro2::TokenStream) -> Self {
         Self::from_token_stream(value)
+    }
+}
+
+#[cfg(feature = "proc-macro")]
+impl From<TokenBuffer<crate::PM1>> for proc_macro::TokenStream {
+    #[inline]
+    fn from(value: TokenBuffer<crate::PM1>) -> Self {
+        value.to_token_stream()
+    }
+}
+
+#[cfg(feature = "proc-macro2")]
+impl From<TokenBuffer<crate::PM2>> for proc_macro2::TokenStream {
+    #[inline]
+    fn from(value: TokenBuffer<crate::PM2>) -> Self {
+        value.to_token_stream()
     }
 }
 
@@ -468,6 +484,38 @@ impl<T: PM> DerefMut for TokenBuf<T> {
     }
 }
 
+#[cfg(feature = "proc-macro")]
+impl From<&TokenBuf<crate::PM1>> for proc_macro::TokenStream {
+    #[inline]
+    fn from(value: &TokenBuf<crate::PM1>) -> Self {
+        value.to_token_stream()
+    }
+}
+
+#[cfg(feature = "proc-macro")]
+impl From<&mut TokenBuf<crate::PM1>> for proc_macro::TokenStream {
+    #[inline]
+    fn from(value: &mut TokenBuf<crate::PM1>) -> Self {
+        value.to_token_stream()
+    }
+}
+
+#[cfg(feature = "proc-macro2")]
+impl From<&TokenBuf<crate::PM2>> for proc_macro2::TokenStream {
+    #[inline]
+    fn from(value: &TokenBuf<crate::PM2>) -> Self {
+        value.to_token_stream()
+    }
+}
+
+#[cfg(feature = "proc-macro2")]
+impl From<&mut TokenBuf<crate::PM2>> for proc_macro2::TokenStream {
+    #[inline]
+    fn from(value: &mut TokenBuf<crate::PM2>) -> Self {
+        value.to_token_stream()
+    }
+}
+
 impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuf<T> {
     type Output = I::Output;
 
@@ -510,6 +558,15 @@ impl<T: PM> ToOwned for TokenBuf<T> {
     #[inline]
     fn to_owned(&self) -> Self::Owned {
         TokenBuffer(self.0.iter().map(|i| i.clone_boxed()).collect())
+    }
+}
+
+impl<T: TokenStream<TokenStream = T>> ToTokenStream<T> for TokenBuf<T::PM> {
+    #[inline]
+    fn extend_token_stream(&self, token_stream: &mut T) {
+        for i in self.0.iter() {
+            i.extend_token_stream(token_stream);
+        }
     }
 }
 
