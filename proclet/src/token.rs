@@ -55,6 +55,12 @@ pub trait ToTokenTrees<T: TokenTree> {
     }
 }
 
+impl<T: TokenTree, X: ToTokenTrees<T>> ToTokenTrees<T> for [X] {
+    fn to_token_trees(&self) -> TokenTrees<T> {
+        TokenTrees::new(self.iter().flat_map(|t| t.to_token_trees()))
+    }
+}
+
 pub struct TokenTrees<'a, T: TokenTree>(Box<dyn Iterator<Item = T> + 'a>);
 
 impl<'a, T: TokenTree> TokenTrees<'a, T> {
