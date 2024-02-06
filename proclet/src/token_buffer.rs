@@ -164,6 +164,13 @@ impl<T: PM> DerefMut for TokenBuffer<T> {
     }
 }
 
+impl<T: PM, X: Into<Box<dyn Token<T>>>> Extend<X> for TokenBuffer<T> {
+    #[inline]
+    fn extend<I: IntoIterator<Item = X>>(&mut self, iter: I) {
+        self.0.extend(iter.into_iter().map(|x| x.into()));
+    }
+}
+
 #[cfg(feature = "proc-macro")]
 impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
     #[inline]
