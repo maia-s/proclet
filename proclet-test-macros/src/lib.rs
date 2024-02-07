@@ -121,3 +121,28 @@ pub fn parse_rust_ops_with_buffer(input: proc_macro::TokenStream) -> proc_macro:
     let output: TokenStream = ops.parse().unwrap();
     output.into()
 }
+
+#[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
+#[proc_macro]
+#[allow(clippy::useless_conversion)]
+pub fn parse_delimited(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    use proclet::{delimited, op, DelimiterKind, LiteralToken, ProcMacro, TokenBuffer};
+    let input: TokenStream = input.into();
+    let input: TokenBuffer<_> = input.into();
+    let mut input = input.as_buf();
+    let args = delimited(LiteralToken::parser(), op(","))
+        .parse(&mut input)
+        .unwrap();
+    let mut output = TokenStream::new();
+    for (lit, comma) in args.iter() {
+        let ts: TokenStream = lit.to_token_stream();
+        output.extend(ts);
+        let ts: TokenStream = comma.to_token_stream();
+        output.extend(ts);
+    }
+    <TokenStream as ProcMacro>::TokenTree::from(<TokenStream as ProcMacro>::Group::new(
+        DelimiterKind::Parenthesis.into(),
+        output,
+    ))
+    .into()
+}
