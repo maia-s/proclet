@@ -78,6 +78,7 @@ pub trait TokenStreamExt:
         Some((matched, Self::from_iter(it)))
     }
 
+    /// Compare the contents of this `TokenStream` with another, ignoring spans.
     #[inline]
     fn eq_except_span(self, other: Self) -> bool {
         let mut oi = other.into_iter();

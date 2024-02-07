@@ -1,10 +1,12 @@
 use crate::{Parse, Parser, ToTokenStream, TokenStream, PM};
 use std::{marker::PhantomData, ops::Deref};
 
+/// Parsed delimited values.
 #[derive(Clone, Default, Debug)]
 pub struct Delimited<M, D>(Vec<(M, Option<D>)>);
 
 impl<M, D> Delimited<M, D> {
+    /// Create a new empty set of delimited values.
     pub const fn new() -> Self {
         Self(Vec::new())
     }
@@ -37,10 +39,13 @@ impl<T: TokenStream, M: ToTokenStream<T>, D: ToTokenStream<T>> ToTokenStream<T>
     }
 }
 
+/// Parser for delimited values.
 #[derive(Clone, Debug)]
 pub struct DelimitedParser<T: PM, M, D>(M, D, PhantomData<fn() -> T>);
 
 impl<T: PM, M: Parser<T>, D: Parser<T>> DelimitedParser<T, M, D> {
+    /// Create a new `DelimitedParser` using `main` as the parser for the main part and
+    /// `delim` as the parser for the delimiter.
     #[inline]
     pub const fn new(main: M, delim: D) -> Self {
         Self(main, delim, PhantomData)
@@ -65,6 +70,8 @@ impl<T: PM, M: Parser<T>, D: Parser<T>> Parser<T> for DelimitedParser<T, M, D> {
     }
 }
 
+/// Create a new parser for parsing things with `main` delimited by `delim`.
+/// Convenience function for calling [`DelimitedParser::new`].
 #[inline]
 pub const fn delimited<T: PM, M: Parser<T>, D: Parser<T>>(
     main: M,

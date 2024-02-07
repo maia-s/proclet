@@ -10,9 +10,13 @@ use std::{
     slice,
 };
 
+/// Parse from a `TokenBuf`.
 pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, Self>> {
+    /// Parse an object from a `TokenBuf`.
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self>;
 
+    /// Parse an object from a `TokenBuf`, but return `None` if there was
+    /// more data in the buffer after parsing.
     #[inline]
     fn parse_all(buf: &mut &TokenBuf<T>) -> Option<Self> {
         match Self::parse(buf) {
@@ -22,13 +26,18 @@ pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, S
     }
 }
 
+/// A parser for parsing objects from a `TokenBuf`.
 pub trait Parser<T: PM>: Sized {
+    /// The output type of this parser.
     type Output<'p, 'b>
     where
         Self: 'p;
 
+    /// Parse an object from a `TokenBuf` using this parser.
     fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>>;
 
+    /// Parse an object from a `TokenBuf` using this parser, but return `None` if there was
+    /// more data in the buffer after parsing.
     #[inline]
     fn parse_all<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
         match self.parse(buf) {
@@ -38,9 +47,13 @@ pub trait Parser<T: PM>: Sized {
     }
 }
 
+/// Trait for making a default parser. This is automatically implemented for objects
+/// that implement the `Parse` trait.
 pub trait DefaultParser<T: PM> {
+    /// The parser that will be created.
     type Parser: Parser<T> + Copy + Default;
 
+    /// Create a new parser.
     #[inline(always)]
     fn parser() -> Self::Parser {
         Self::Parser::default()
@@ -78,15 +91,18 @@ impl<T: PM, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
     }
 }
 
+/// An owned buffer of tokens.
 #[derive(Debug, Default)]
 pub struct TokenBuffer<T: PM>(Vec<Box<dyn Token<T>>>);
 
 impl<T: PM> TokenBuffer<T> {
+    /// Get this buffer as a `&TokenBuf`.
     #[inline]
     pub fn as_buf(&self) -> &TokenBuf<T> {
         self
     }
 
+    /// Get this buffer as a `&mut TokenBuf`.
     #[inline]
     pub fn as_buf_mut(&mut self) -> &mut TokenBuf<T> {
         self
@@ -94,7 +110,7 @@ impl<T: PM> TokenBuffer<T> {
 }
 
 impl<T: PM> TokenBuffer<T> {
-    // this can't be FromIterator bc it conflicts
+    /// Create a new `TokenBuffer`.
     #[inline]
     pub const fn new() -> Self {
         Self(Vec::new())
@@ -102,6 +118,7 @@ impl<T: PM> TokenBuffer<T> {
 }
 
 impl<T: PMExt> TokenBuffer<T> {
+    /// Create a new `TokenBuffer` from a `TokenStream`.
     #[inline]
     pub fn from_token_stream(ts: T::TokenStream) -> Self {
         ts.into_iter()
@@ -236,6 +253,7 @@ impl<T: PM> IntoIterator for TokenBuffer<T> {
     }
 }
 
+/// Borrowed version of [`TokenBuffer`].
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct TokenBuf<T: PM>([Box<dyn Token<T>>]);
@@ -259,16 +277,27 @@ impl<T: PM> TokenBuf<T> {
         }
     }
 
+    /// Parse a value from this buffer.
+    ///
+    /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
     pub fn parse<P: Parse<T>>(self: &mut &Self) -> Option<P> {
         P::parse(self)
     }
 
+    /// Parse a value from this buffer, but return `None` if there's data left in the buffer afterwards.
+    ///
+    /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
     pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Option<P> {
         P::parse_all(self)
     }
 
+    /// Parse a prefix from this buffer. `match_fn` is called for each token in the buffer
+    /// starting from the beginning. Parsing stops if `match_fn` returns `Match::Complete`
+    /// or `Match::NoMatch`, or if the buffer runs out of tokens.
+    ///
+    /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
     pub fn match_prefix<'a, M: 'a>(
         self: &mut &'a Self,
@@ -277,6 +306,13 @@ impl<T: PM> TokenBuf<T> {
         self.match_prefix_buf(|_, token, _| match_fn(token))
     }
 
+    /// Parse a prefix from this buffer. `match_fn` is called for each token in the buffer
+    /// starting from the beginning. Parsing stops if `match_fn` returns `Match::Complete`
+    /// or `Match::NoMatch`, or if the buffer runs out of tokens.
+    ///
+    /// `match_fn` is called with the token at the current position and the next token, if any.
+    ///
+    /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
     pub fn match_prefix_next<'a, M: 'a>(
         self: &mut &'a Self,
@@ -285,6 +321,14 @@ impl<T: PM> TokenBuf<T> {
         self.match_prefix_buf(|_, token, next| match_fn(token, next))
     }
 
+    /// Parse a prefix from this buffer. `match_fn` is called for each token in the buffer
+    /// starting from the beginning. Parsing stops if `match_fn` returns `Match::Complete`
+    /// or `Match::NoMatch`, or if the buffer runs out of tokens.
+    ///
+    /// `match_fn` is called with the currently matched buffer including the current token,
+    /// the token at the current position, and the next token, if any.
+    ///
+    /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
     pub fn match_prefix_buf<'a, M: 'a>(
         self: &mut &'a Self,
@@ -312,6 +356,10 @@ impl<T: PM> TokenBuf<T> {
         })
     }
 
+    /// Parse a specific set of tokens from this buffer. All of the tokens in the provided
+    /// iterator must match, or the buffer won't advance and this will return `None`.
+    ///
+    /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
     pub fn match_prefix_tokens<'a>(
         self: &mut &'a Self,
@@ -336,6 +384,10 @@ impl<T: PM> TokenBuf<T> {
         })
     }
 
+    /// Parse a specific set of tokens from this buffer. At least one of the tokens in the provided
+    /// iterator must match, or the buffer won't advance and this will return `None`.
+    ///
+    /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
     pub fn match_prefix_tokens_partial(
         self: &mut &Self,
@@ -360,6 +412,11 @@ impl<T: PM> TokenBuf<T> {
         })
     }
 
+    /// Parse a suffix from this buffer. `match_fn` is called for each token in the buffer
+    /// starting from the end. Parsing stops if `match_fn` returns `Match::Complete`
+    /// or `Match::NoMatch`, or if the buffer runs out of tokens.
+    ///
+    /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
     pub fn match_suffix<'a, M: 'a>(
         self: &mut &'a Self,
@@ -368,6 +425,13 @@ impl<T: PM> TokenBuf<T> {
         self.match_suffix_buf(|_, token, _| match_fn(token))
     }
 
+    /// Parse a suffix from this buffer. `match_fn` is called for each token in the buffer
+    /// starting from the end. Parsing stops if `match_fn` returns `Match::Complete`
+    /// or `Match::NoMatch`, or if the buffer runs out of tokens.
+    ///
+    /// `match_fn` is called with the token at the current position and the preceding token, if any.
+    ///
+    /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
     pub fn match_suffix_next<'a, M: 'a>(
         self: &mut &'a Self,
@@ -376,6 +440,14 @@ impl<T: PM> TokenBuf<T> {
         self.match_suffix_buf(|_, token, next| match_fn(token, next))
     }
 
+    /// Parse a suffix from this buffer. `match_fn` is called for each token in the buffer
+    /// starting from the end. Parsing stops if `match_fn` returns `Match::Complete`
+    /// or `Match::NoMatch`, or if the buffer runs out of tokens.
+    ///
+    /// `match_fn` is called with the currently matched buffer including the current token,
+    /// the token at the current position, and the preceding token, if any.
+    ///
+    /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
     pub fn match_suffix_buf<'a, M: 'a>(
         self: &mut &'a Self,
@@ -403,6 +475,14 @@ impl<T: PM> TokenBuf<T> {
         })
     }
 
+    /// Parse a specific set of tokens from this buffer. All of the tokens in the provided
+    /// iterator must match, or the buffer won't advance and this will return `None`.
+    ///
+    /// The matching starts from the end of the buffer against the end of the iterator
+    /// (i.e. this will match the iterator's sequence of tokens at the end of the
+    /// buffer in forwards order)
+    ///
+    /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
     pub fn match_suffix_tokens(
         self: &mut &Self,
@@ -411,6 +491,14 @@ impl<T: PM> TokenBuf<T> {
         self.match_suffix_tokens_reverse(tokens.into_iter().rev())
     }
 
+    /// Parse a specific set of tokens from this buffer. All of the tokens in the provided
+    /// iterator must match, or the buffer won't advance and this will return `None`.
+    ///
+    /// The matching starts from the end of the buffer against the start of the iterator
+    /// (i.e. this will match the iterator's sequence of tokens at the end of the
+    /// buffer in reverse order)
+    ///
+    /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
     pub fn match_suffix_tokens_reverse(
         self: &mut &Self,
@@ -435,6 +523,14 @@ impl<T: PM> TokenBuf<T> {
         })
     }
 
+    /// Parse a specific set of tokens from this buffer. At least one of the tokens in the provided
+    /// iterator must match, or the buffer won't advance and this will return `None`.
+    ///
+    /// The matching starts from the end of the buffer against the start of the iterator
+    /// (i.e. this will match the iterator's sequence of tokens at the end of the
+    /// buffer in reverse order)
+    ///
+    /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
     pub fn match_suffix_tokens_partial(
         self: &mut &Self,
@@ -443,6 +539,14 @@ impl<T: PM> TokenBuf<T> {
         self.match_suffix_tokens_reverse_partial(tokens.into_iter().rev())
     }
 
+    /// Parse a specific set of tokens from this buffer. At least one of the tokens in the provided
+    /// iterator must match, or the buffer won't advance and this will return `None`.
+    ///
+    /// The matching starts from the end of the buffer against the start of the iterator
+    /// (i.e. this will match the iterator's sequence of tokens at the end of the
+    /// buffer in reverse order)
+    ///
+    /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
     pub fn match_suffix_tokens_reverse_partial(
         self: &mut &Self,

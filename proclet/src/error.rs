@@ -4,6 +4,7 @@ use std::{
     fmt::{self, Display},
 };
 
+/// An error.
 #[derive(Debug)]
 pub struct Error {
     message: Cow<'static, str>,
@@ -11,6 +12,7 @@ pub struct Error {
 }
 
 impl Error {
+    /// Create a new error with the provided message.
     #[inline]
     pub fn new(message: impl Into<Cow<'static, str>>) -> Self {
         Self {
@@ -19,6 +21,7 @@ impl Error {
         }
     }
 
+    /// Create a new error with the provided message and span.
     #[inline]
     pub fn with_span(span: impl SpanExt, message: impl Into<Cow<'static, str>>) -> Self {
         Self {
@@ -27,11 +30,14 @@ impl Error {
         }
     }
 
+    /// Set the span of this error.
     #[inline]
     pub fn set_span(&mut self, span: impl SpanExt) {
         self.span = span.into();
     }
 
+    /// Convert this error into a `TokenStream` that will trigger a compile error
+    /// at the error's span.
     #[inline]
     pub fn to_compile_error<TokenStream: crate::TokenStreamExt>(&self) -> TokenStream {
         let ts: TokenStream = format!("::core::compile_error!({:?});", self.message)

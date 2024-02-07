@@ -58,44 +58,88 @@ impl Display for LiteralValueParseError {
     }
 }
 
+/// Suffixed value.
 #[cfg(feature = "literal-value")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Suffixed {
+    /// `i8`
     I8(i8),
+
+    /// `i16`
     I16(i16),
+
+    /// `i32`
     I32(i32),
+
+    /// `i64`
     I64(i64),
+
+    /// `i128`
     I128(i128),
+
+    /// `isize`
     Isize(isize),
+
+    /// `u8`
     U8(u8),
+
+    /// `u16`
     U16(u16),
+
+    /// `u32`
     U32(u32),
+
+    /// `u64`
     U64(u64),
+
+    /// `u128`
     U128(u128),
+
+    /// `usize`
     Usize(usize),
+
+    /// `f32`
     F32(f32),
+
+    /// `f64`
     F64(f64),
 }
 
+/// Literal value.
 #[cfg(feature = "literal-value")]
 #[derive(Clone, Debug, PartialEq)]
 pub enum LiteralValue {
+    /// String.
     String(String),
+
+    /// Byte string.
     ByteString(Vec<u8>),
+
+    /// Character.
     Character(char),
+
+    /// Byte character.
     ByteCharacter(u8),
+
+    /// Integer.
     Int(u128),
+
+    /// Floating-point value.
     Float(f64),
+
+    /// Suffixed value.
     Suffixed(Suffixed),
 }
 
 #[cfg(feature = "literal-value")]
 impl LiteralValue {
+    /// Returns true if the contained value is `Suffixed`.
     #[inline]
     pub const fn is_suffixed(&self) -> bool {
         matches!(self, Self::Suffixed(_))
     }
 
+    /// Convert a `Suffixed` value to `Int` or `Float` if possible.
     #[inline]
     pub fn remove_suffix(&mut self) -> Result<(), OutOfRangeError> {
         if let Self::Suffixed(s) = self {
@@ -608,6 +652,9 @@ impl FromStr for LiteralValue {
     }
 }
 
+/// A literal token. This is like `Literal` from `proc-macro*`, except that the value has
+/// already been parsed and is available at no cost. You can convert it to and from `Literal`
+/// with `into`.
 #[cfg(feature = "literal-value")]
 #[derive(Clone, Debug)]
 pub struct LiteralToken<S: crate::Span> {
@@ -617,6 +664,7 @@ pub struct LiteralToken<S: crate::Span> {
 
 #[cfg(feature = "literal-value")]
 impl<S: crate::Span> LiteralToken<S> {
+    /// Create a new `LiteralToken`.
     #[inline]
     pub fn new(value: LiteralValue) -> Self {
         Self {
@@ -625,26 +673,31 @@ impl<S: crate::Span> LiteralToken<S> {
         }
     }
 
+    /// Create a new `LiteralToken` with a custom span.
     #[inline]
     pub const fn with_span(value: LiteralValue, span: S) -> Self {
         Self { value, span }
     }
 
+    /// Get the value of this literal.
     #[inline]
     pub const fn value(&self) -> &LiteralValue {
         &self.value
     }
 
+    /// Get a mutable reference to the value of this literal.
     #[inline]
     pub fn value_mut(&mut self) -> &mut LiteralValue {
         &mut self.value
     }
 
+    /// Get the span of this literal.
     #[inline]
     pub const fn span(&self) -> S {
         self.span
     }
 
+    /// Set the span of this literal.
     #[inline]
     pub fn set_span(&mut self, span: S) {
         self.span = span;
@@ -801,7 +854,15 @@ pub trait LiteralExt:
     + From<LiteralToken<Self::Span>>
     + Into<LiteralToken<Self::Span>>
 {
+    /// Parse this literal and get its value. If you're going to do this more than once
+    /// it's better to convert the literal into a [`LiteralToken`].
+    ///
+    /// This is only available if the `literal-value` feature is enabled.
     fn to_value(&self) -> LiteralValue;
+
+    /// Set the literal's value.
+    ///
+    /// This is only available if the `literal-value` feature is enabled.
     fn set_value(&mut self, value: LiteralValue);
 }
 

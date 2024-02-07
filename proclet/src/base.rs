@@ -5,8 +5,10 @@ use std::fmt::Debug;
 
 #[cfg(feature = "proc-macro")]
 pub mod proc_macro {
+    /// Marker type for the `proc-macro` crate.
     #[derive(Clone, Copy, Debug)]
     pub struct PM;
+
     impl crate::PM for PM {}
     impl crate::PMExt for PM {}
 
@@ -15,6 +17,7 @@ pub mod proc_macro {
 
 #[cfg(feature = "proc-macro2")]
 pub mod proc_macro2 {
+    /// Marker type for the `proc-macro2` crate.
     #[derive(Clone, Copy, Debug)]
     pub struct PM;
     impl crate::PM for PM {}
@@ -29,7 +32,10 @@ pub use proc_macro::PM as PM1;
 #[cfg(feature = "proc-macro2")]
 pub use proc_macro2::PM as PM2;
 
+/// Proc-macro selector for when there isn't one specific proc-macro type to use.
 pub trait PM: ProcMacro<PM = Self> {}
+
+/// Enable extension traits for [`PM`].
 pub trait PMExt: ProcMacroExt<PMExt = Self> + PM {}
 
 // There are simpler and more contained ways to do this, but they fail type inference more.
@@ -48,6 +54,7 @@ macro_rules! impl_base {
         /// See also [`ProcMacroExt`].
         pub trait ProcMacro: 'static + Clone + Debug + Sealed {
             $( impl_base!(@t2 $t: $ts, $t2); )*
+            /// Proc macro selected type alias.
             type TokenStreamIntoIter: Clone + Iterator<Item = Self::TokenTree>;
         }
 
@@ -60,11 +67,13 @@ macro_rules! impl_base {
             TokenStreamIntoIter = Self::TokenStreamExtIntoIter
         > {
             $( impl_base!(@t3 $t: $ts, $t2); )*
+            /// Implementation detail to enable extension traits. Use [`ProcMacro::TokenStreamIntoIter`] instead.
             type TokenStreamExtIntoIter: Clone + Iterator<Item = Self::TokenTreeExt>;
         }
     };
 
     (@t2 $t:ident: $ts:ident, {$($t2:ident: $t2s:ident),* $(,)?}) => {
+        /// Proc macro selected type alias.
         type $t: $t<
             $( $t2 = Self::$t2, )*
             TokenStreamIntoIter = Self::TokenStreamIntoIter,
@@ -72,6 +81,7 @@ macro_rules! impl_base {
     };
 
     (@t3 $t:ident: $ts:ident, {$($t2:ident: $t2s:ident),* $(,)?}) => {
+        #[doc = concat!("Implementation detail to enable extension traits. Use [`ProcMacro::", stringify!($t), "`] instead.")]
         type $ts: crate::$ts<
             $( $t2s = Self::$t2s, )*
             TokenStreamExtIntoIter = Self::TokenStreamExtIntoIter,

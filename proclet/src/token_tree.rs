@@ -1,11 +1,20 @@
 use crate::{ProcMacro, Token};
 use std::fmt::Display;
 
+/// The kind of a `TokenTree`. This is like the enum in `proc_macro*::TokenTree`, but
+/// without any contained data. It doesn't depend on which proc-macro crate you use.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenTreeKind {
+    /// `TokenTree::Group`
     Group,
+
+    /// `TokenTree::Ident`
     Ident,
+
+    /// `TokenTree::Punct`
     Punct,
+
+    /// `TokenTree::Literal`
     Literal,
 }
 
@@ -37,46 +46,73 @@ pub trait TokenTree:
 pub trait TokenTreeExt:
     crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Into<Box<dyn Token<Self::PM>>>
 {
+    /// Turn this `TokenTree` into a `Token` trait object.
     fn into_token(self) -> Box<dyn Token<Self::PM>>;
 
+    /// Get the kind of this `TokenTree`.
     fn kind(&self) -> TokenTreeKind;
 
+    /// Check if this `TokenTree` is a `TokenTree::Group`.
     #[inline]
     fn is_group(&self) -> bool {
         self.kind() == TokenTreeKind::Group
     }
 
+    /// If this `TokenTree` is a `TokenTree::Group`, return a reference to the `Group`.
     fn group(&self) -> Option<&Self::Group>;
+
+    /// If this `TokenTree` is a `TokenTree::Group`, return a mutable reference to the `Group`.
     fn group_mut(&mut self) -> Option<&mut Self::Group>;
+
+    /// If this `TokenTree` is a `TokenTree::Group`, return the `Group`.
     fn into_group(self) -> Option<Self::Group>;
 
+    /// Check if this `TokenTree` is a `TokenTree::Ident`.
     #[inline]
     fn is_ident(&self) -> bool {
         self.kind() == TokenTreeKind::Ident
     }
 
+    /// If this `TokenTree` is a `TokenTree::Ident`, return a reference to the `Ident`.
     fn ident(&self) -> Option<&Self::Ident>;
+
+    /// If this `TokenTree` is a `TokenTree::Ident`, return a mutable reference to the `Ident`.
     fn ident_mut(&mut self) -> Option<&mut Self::Ident>;
+
+    /// If this `TokenTree` is a `TokenTree::Ident`, return the `Ident`.
     fn into_ident(self) -> Option<Self::Ident>;
 
+    /// Check if this `TokenTree` is a `TokenTree::Punct`.
     #[inline]
     fn is_punct(&self) -> bool {
         self.kind() == TokenTreeKind::Punct
     }
 
+    /// If this `TokenTree` is a `TokenTree::Punct`, return a reference to the `Punct`.
     fn punct(&self) -> Option<&Self::Punct>;
+
+    /// If this `TokenTree` is a `TokenTree::Punct`, return a mutable reference to the `Punct`.
     fn punct_mut(&mut self) -> Option<&mut Self::Punct>;
+
+    /// Check if this `TokenTree` is a `TokenTree::Punct`.
     fn into_punct(self) -> Option<Self::Punct>;
 
+    /// Check if this `TokenTree` is a `TokenTree::Literal`.
     #[inline]
     fn is_literal(&self) -> bool {
         self.kind() == TokenTreeKind::Literal
     }
 
+    /// If this `TokenTree` is a `TokenTree::Literal`, return a reference to the `Literal`.
     fn literal(&self) -> Option<&Self::Literal>;
+
+    /// If this `TokenTree` is a `TokenTree::Literal`, return a mutable reference to the `Literal`.
     fn literal_mut(&mut self) -> Option<&mut Self::Literal>;
+
+    /// Check if this `TokenTree` is a `TokenTree::Literal`.
     fn into_literal(self) -> Option<Self::Literal>;
 
+    /// Check if this `TokenTree` is equal to another, ignoring spans.
     fn eq_except_span(&self, other: &Self) -> bool;
 
     /// If the `TokenTree` is a group with delimiter `None` containing a single item,
@@ -160,11 +196,20 @@ pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group + Token<Self::P
     }
 }
 
+/// Delimiter. This is exactly like `proc_macro*::Delimiter`, but doesn't depend on
+/// which proc-macro crate you use.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DelimiterKind {
+    /// `(` ... `)`
     Parenthesis,
+
+    /// `{` ... `}`
     Brace,
+
+    /// `[` ... `]`
     Bracket,
+
+    /// No delimiter.
     None,
 }
 
@@ -176,9 +221,16 @@ pub enum DelimiterKind {
 /// See also [`DelimiterExt`].
 #[allow(non_upper_case_globals)]
 pub trait Delimiter: ProcMacro<Delimiter = Self> + Copy + Eq {
+    /// `proc_macro*::Delimiter::Parenthesis` (`(` ... `)`)
     const Parenthesis: Self;
+
+    /// `proc_macro*::Delimiter::Brace` `{` ... `}`
     const Brace: Self;
+
+    /// `proc_macro*::Delimiter::Bracket` `[` ...  `]`
     const Bracket: Self;
+
+    /// `proc_macro*::Delimiter::None` (No delimiter)
     const None: Self;
 }
 
@@ -193,26 +245,31 @@ pub trait DelimiterExt:
     + Into<DelimiterKind>
     + PartialEq<DelimiterKind>
 {
+    /// Get the kind of this `Delimiter`.
     #[inline]
     fn kind(&self) -> DelimiterKind {
         (*self).into()
     }
 
+    /// Check if this delimiter is `Delimiter::Parenthesis`.
     #[inline]
     fn is_parenthesis(&self) -> bool {
         *self == Self::Parenthesis
     }
 
+    /// Check if this delimiter is `Delimiter::Brace`.
     #[inline]
     fn is_brace(&self) -> bool {
         *self == Self::Brace
     }
 
+    /// Check if this delimiter is `Delimiter::Bracket`.
     #[inline]
     fn is_bracket(&self) -> bool {
         *self == Self::Bracket
     }
 
+    /// Check if this delimiter is `Delimiter::None`.
     #[inline]
     fn is_none(&self) -> bool {
         *self == Self::None
@@ -296,7 +353,10 @@ pub trait PunctExt: crate::ProcMacroExt<PunctExt = Self> + Punct + Token<Self::P
 /// See also [`SpacingExt`].
 #[allow(non_upper_case_globals)]
 pub trait Spacing: ProcMacro<Spacing = Self> + Copy + Eq {
+    /// `proc_macro*::Spacing::Joint`.
     const Joint: Self;
+
+    /// `proc_macro*::Spacing::Alone`.
     const Alone: Self;
 }
 
@@ -305,11 +365,13 @@ pub trait Spacing: ProcMacro<Spacing = Self> + Copy + Eq {
 /// This trait is implemented for `Spacing` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait SpacingExt: crate::ProcMacroExt<SpacingExt = Self> + Spacing {
+    /// Check if this is `Spacing::Joint`.
     #[inline]
     fn is_joint(&self) -> bool {
         *self == Self::Joint
     }
 
+    /// Check if this is `Spacing::Alone`.
     #[inline]
     fn is_alone(&self) -> bool {
         *self == Self::Alone

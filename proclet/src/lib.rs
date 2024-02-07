@@ -1,10 +1,12 @@
 #![cfg_attr(all(doc, not(doctest)), feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
+#![warn(missing_docs)]
 
 #[cfg(feature = "proc-macro")]
 extern crate proc_macro;
 
 pub mod prelude {
+    //! The prelude imports all the crate's traits with `use ... as _`.
     #[cfg(feature = "token-buffer")]
     pub use crate::DefaultParser as _;
     pub use crate::Delimiter as _;
@@ -73,10 +75,18 @@ pub use token_tree::{
     Spacing, SpacingExt, TokenTree, TokenTreeExt, TokenTreeKind,
 };
 
+/// Match results.
 pub enum Match<T> {
+    /// The match is complete; stop looking.
     Complete(T),
+
+    /// A match was found, but there may be more; keep looking.
     Partial(T),
+
+    /// More data is needed to find a match.
     NeedMore,
+
+    /// There's no more matches to be found. Stop looking.
     NoMatch,
 }
 
