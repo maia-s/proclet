@@ -65,3 +65,12 @@ impl<T: TokenStream, X: ToTokenStream<T>> ToTokenStream<T> for [X] {
         }
     }
 }
+
+impl<T: TokenStream, X: ToTokenStream<T>> ToTokenStream<T> for Option<X> {
+    #[inline]
+    fn extend_token_stream(&self, token_stream: &mut T) {
+        if let Some(x) = self {
+            x.extend_token_stream(token_stream);
+        }
+    }
+}
