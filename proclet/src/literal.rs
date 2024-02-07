@@ -130,17 +130,6 @@ impl LiteralValue {
         }
         Ok(())
     }
-
-    #[inline]
-    pub fn to_unsuffixed(&self) -> Result<Self, OutOfRangeError> {
-        self.clone().into_unsuffixed()
-    }
-
-    #[inline]
-    pub fn into_unsuffixed(mut self) -> Result<Self, OutOfRangeError> {
-        self.remove_suffix()?;
-        Ok(self)
-    }
 }
 
 #[cfg(feature = "literal-value")]
