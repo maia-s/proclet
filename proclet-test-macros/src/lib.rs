@@ -37,6 +37,7 @@ pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStr
             panic!("literal_roundtrip only accepts literals");
         }
     }
+    let output: TokenStream = output.into();
     output.into()
 }
 
@@ -57,6 +58,7 @@ pub fn literal_roundtrip_with_parse(input: proc_macro::TokenStream) -> proc_macr
             panic!("invalid literal");
         }
     }
+    let output: TokenStream = output.into();
     output.into()
 }
 
@@ -140,9 +142,9 @@ pub fn parse_delimited(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
         let ts: TokenStream = comma.to_token_stream();
         output.extend(ts);
     }
-    <TokenStream as ProcMacro>::TokenTree::from(<TokenStream as ProcMacro>::Group::new(
-        DelimiterKind::Parenthesis.into(),
-        output,
-    ))
-    .into()
+    let output: TokenStream = <TokenStream as ProcMacro>::TokenTree::from(
+        <TokenStream as ProcMacro>::Group::new(DelimiterKind::Parenthesis.into(), output),
+    )
+    .into();
+    output.into()
 }

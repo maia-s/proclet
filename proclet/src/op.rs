@@ -1,6 +1,4 @@
-use crate::{
-    prelude::*, Match, PMExt, Parser, Punct, PunctExt, Span, SpanExt, ToTokenStream, Token,
-};
+use crate::{prelude::*, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream, Token};
 use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
 
 pub trait OpParserFn: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
@@ -109,7 +107,7 @@ impl<S: SpanExt> Op<S> {
 }
 
 #[cfg(feature = "token-buffer")]
-impl<T: PMExt> Parser<T> for Op<T::Span> {
+impl<T: crate::PMExt> crate::Parser<T> for Op<T::Span> {
     type Output<'p, 'b> = Op<T::Span> where Self: 'p;
 
     #[inline]

@@ -1,4 +1,4 @@
-use crate::{Match, Parse, ProcMacro, ToTokenStream, Token, TokenBuf, TokenStreamExt};
+use crate::{ProcMacro, Token};
 use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -481,10 +481,10 @@ macro_rules! impl_token_tree {
             }
         }
 
-        #[cfg(feature = $feature)]
-        impl Parse<crate::base::$pm::PM> for $pm::TokenTree {
+        #[cfg(all(feature = $feature, feature = "token-buffer"))]
+        impl crate::Parse<crate::base::$pm::PM> for $pm::TokenTree {
             #[inline]
-            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
                 if let Some(group) = $pm::Group::parse(buf) {
                     Some(group.into())
                 } else if let Some(ident) = $pm::Ident::parse(buf) {
@@ -500,7 +500,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenStream<$pm::TokenStream> for $pm::TokenTree {
+        impl crate::ToTokenStream<$pm::TokenStream> for $pm::TokenTree {
             #[inline]
             fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
                 token_stream.extend([self.clone()])
@@ -548,15 +548,15 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl GroupExt for $pm::Group {}
 
-        #[cfg(feature = $feature)]
-        impl Parse<crate::base::$pm::PM> for $pm::Group {
+        #[cfg(all(feature = $feature, feature = "token-buffer"))]
+        impl crate::Parse<crate::base::$pm::PM> for $pm::Group {
             #[inline]
-            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
                 buf.match_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
-                        Match::Complete(Self::with_span(token.delimiter(), token.stream(), token.span()))
+                        crate::Match::Complete(Self::with_span(token.delimiter(), token.stream(), token.span()))
                     } else {
-                        Match::NoMatch
+                        crate::Match::NoMatch
                     }
                 })
             }
@@ -566,6 +566,7 @@ macro_rules! impl_token_tree {
         impl Token<crate::base::$pm::PM> for $pm::Group {
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
+                use crate::TokenStreamExt;
                 other.downcast_ref::<Self>().map(|other|
                     self.delimiter() == other.delimiter() && self.stream().eq_except_span(other.stream())
                 ).unwrap_or(false)
@@ -573,7 +574,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenStream<$pm::TokenStream> for $pm::Group {
+        impl crate::ToTokenStream<$pm::TokenStream> for $pm::Group {
             #[inline]
             fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
                 token_stream.extend([$pm::TokenTree::from(self.clone())])
@@ -660,15 +661,15 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl IdentExt for $pm::Ident {}
 
-        #[cfg(feature = $feature)]
-        impl Parse<crate::base::$pm::PM> for $pm::Ident {
+        #[cfg(all(feature = $feature, feature = "token-buffer"))]
+        impl crate::Parse<crate::base::$pm::PM> for $pm::Ident {
             #[inline]
-            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
                 buf.match_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
-                        Match::Complete(Self::new(&token.to_string(), token.span()))
+                        crate::Match::Complete(Self::new(&token.to_string(), token.span()))
                     } else {
-                        Match::NoMatch
+                        crate::Match::NoMatch
                     }
                 })
             }
@@ -686,7 +687,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenStream<$pm::TokenStream> for $pm::Ident {
+        impl crate::ToTokenStream<$pm::TokenStream> for $pm::Ident {
             #[inline]
             fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
                 token_stream.extend([$pm::TokenTree::from(self.clone())])
@@ -724,15 +725,15 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl PunctExt for $pm::Punct {}
 
-        #[cfg(feature = $feature)]
-        impl Parse<crate::base::$pm::PM> for $pm::Punct {
+        #[cfg(all(feature = $feature, feature = "token-buffer"))]
+        impl crate::Parse<crate::base::$pm::PM> for $pm::Punct {
             #[inline]
-            fn parse(buf: &mut &TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
                 buf.match_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
-                        Match::Complete(Self::with_span(token.as_char(), token.spacing(), token.span()))
+                        crate::Match::Complete(Self::with_span(token.as_char(), token.spacing(), token.span()))
                     } else {
-                        Match::NoMatch
+                        crate::Match::NoMatch
                     }
                 })
             }
@@ -747,7 +748,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenStream<$pm::TokenStream> for $pm::Punct {
+        impl crate::ToTokenStream<$pm::TokenStream> for $pm::Punct {
             #[inline]
             fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream) {
                 token_stream.extend([$pm::TokenTree::from(self.clone())])

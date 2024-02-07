@@ -1,6 +1,4 @@
-use crate::{
-    Match, PMExt, Parse, ProcMacro, ProcMacroExt, Span, ToTokenStream, Token, TokenStreamExt,
-};
+use crate::{ProcMacro, ProcMacroExt, Token};
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
@@ -623,13 +621,13 @@ impl FromStr for LiteralValue {
 
 #[cfg(feature = "literal-value")]
 #[derive(Clone, Debug)]
-pub struct LiteralToken<S: Span> {
+pub struct LiteralToken<S: crate::Span> {
     value: LiteralValue,
     span: S,
 }
 
 #[cfg(feature = "literal-value")]
-impl<S: Span> LiteralToken<S> {
+impl<S: crate::Span> LiteralToken<S> {
     #[inline]
     pub fn new(value: LiteralValue) -> Self {
         Self {
@@ -664,24 +662,24 @@ impl<S: Span> LiteralToken<S> {
     }
 }
 
-#[cfg(feature = "literal-value")]
-impl<T: PMExt> Parse<T> for LiteralToken<T::Span> {
+#[cfg(all(feature = "literal-value", feature = "token-buffer"))]
+impl<T: crate::PMExt> crate::Parse<T> for LiteralToken<T::Span> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
         buf.match_prefix(|token| {
             if let Some(token) = token.downcast_ref::<Self>() {
-                Match::Complete(token.clone())
+                crate::Match::Complete(token.clone())
             } else if let Some(token) = token.downcast_ref::<T::Literal>() {
-                Match::Complete(token.clone().into())
+                crate::Match::Complete(token.clone().into())
             } else {
-                Match::NoMatch
+                crate::Match::NoMatch
             }
         })
     }
 }
 
 #[cfg(feature = "literal-value")]
-impl<T: PMExt> Token<T> for LiteralToken<T::Span> {
+impl<T: crate::PMExt> Token<T> for LiteralToken<T::Span> {
     #[inline]
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
         if let Some(other) = other.downcast_ref::<Self>() {
@@ -695,7 +693,7 @@ impl<T: PMExt> Token<T> for LiteralToken<T::Span> {
 }
 
 #[cfg(feature = "literal-value")]
-impl<T: TokenStreamExt> ToTokenStream<T> for LiteralToken<T::Span> {
+impl<T: crate::TokenStreamExt> crate::ToTokenStream<T> for LiteralToken<T::Span> {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut T) {
         token_stream.extend([T::TokenTree::from(T::Literal::from(self.clone()))])
@@ -908,34 +906,42 @@ macro_rules! impl_literal {
             }
         }
 
-        #[cfg(feature = $feature)]
-        impl Parse<crate::base::$pm::PM> for $pm::Literal {
+        #[cfg(all(feature = $feature, feature = "token-buffer"))]
+        impl crate::Parse<crate::base::$pm::PM> for $pm::Literal {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
                 buf.match_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
-                        return Match::Complete(token.clone());
+                        return crate::Match::Complete(token.clone());
                     }
                     #[cfg(feature = "literal-value")]
                     if let Some(token) = token.downcast_ref::<LiteralToken<$pm::Span>>() {
-                        return Match::Complete(token.clone().into())
+                        return crate::Match::Complete(token.clone().into())
                     }
-                    Match::NoMatch
+                    crate::Match::NoMatch
                 })
             }
         }
 
         #[cfg(feature = $feature)]
         impl Token<crate::base::$pm::PM> for $pm::Literal {
+            #[cfg(feature = "literal-value")]
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
-                #[cfg(feature = "literal-value")]
                 if let Some(other) = other.downcast_ref::<LiteralToken<$pm::Span>>() {
                     return &self.to_value() == other.value();
-                }
-
-                if let Some(other) = other.downcast_ref::<Self>() {
+                } else if let Some(other) = other.downcast_ref::<Self>() {
                     self.to_value() == other.to_value()
+                } else {
+                    false
+                }
+            }
+
+            #[cfg(not(feature = "literal-value"))]
+            #[inline]
+            fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
+                if let Some(other) = other.downcast_ref::<Self>() {
+                    self.to_string() == other.to_string()
                 } else {
                     false
                 }
@@ -943,7 +949,7 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl ToTokenStream<$pm::TokenStream> for $pm::Literal {
+        impl crate::ToTokenStream<$pm::TokenStream> for $pm::Literal {
             #[inline]
             fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream)  {
                 token_stream.extend([$pm::TokenTree::from(self.clone())]);
