@@ -54,7 +54,7 @@ pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralToken, LiteralValue, Suffixed};
 #[cfg(feature = "op")]
-pub use op::{rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
+pub use op::{op, rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 pub use token::{ToTokenStream, Token, TokenAuto};
 #[cfg(feature = "token-buffer")]

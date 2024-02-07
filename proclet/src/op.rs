@@ -6,6 +6,10 @@ use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, m
 pub trait OpParserFn: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
 impl<T> OpParserFn for T where T: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
 
+pub const fn op<S: Span>(op: &'static str) -> Op<S> {
+    Op::new_static(op)
+}
+
 #[derive(Clone, Debug)]
 pub struct Op<S: Span> {
     str: Cow<'static, str>,
