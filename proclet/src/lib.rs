@@ -37,6 +37,8 @@ pub mod prelude {
 }
 
 mod base;
+#[cfg(feature = "token-buffer")]
+mod delimited;
 mod error;
 mod literal;
 #[cfg(feature = "op")]
@@ -49,6 +51,8 @@ mod token_stream;
 mod token_tree;
 
 pub use base::{PMExt, ProcMacro, ProcMacroExt, PM, PM1, PM2};
+#[cfg(feature = "token-buffer")]
+pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
