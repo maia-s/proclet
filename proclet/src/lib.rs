@@ -50,7 +50,11 @@ mod token_buffer;
 mod token_stream;
 mod token_tree;
 
-pub use base::{PMExt, ProcMacro, ProcMacroExt, PM, PM1, PM2};
+#[cfg(feature = "proc-macro")]
+pub use base::PM1;
+#[cfg(feature = "proc-macro2")]
+pub use base::PM2;
+pub use base::{PMExt, ProcMacro, ProcMacroExt, PM};
 #[cfg(feature = "token-buffer")]
 pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
