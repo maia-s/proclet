@@ -13,11 +13,15 @@ use std::{
 /// Parse from a `TokenBuf`.
 pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, Self>> {
     /// Parse a value from a `TokenBuf`.
+    ///
+    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self>;
 
     /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
     /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
     /// buffer is returned.
+    ///
+    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
     #[inline]
     fn parse_all<'b>(buf: &mut &'b TokenBuf<T>) -> Result<Self, &'b TokenBuf<T>> {
         match Self::parse(buf) {
@@ -28,7 +32,7 @@ pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, S
     }
 }
 
-/// A parser for parsing objects from a `TokenBuf`.
+/// A parser for parsing values from a `TokenBuf`.
 pub trait Parser<T: PM>: Sized {
     /// The output type of this parser.
     type Output<'p, 'b>
@@ -36,11 +40,15 @@ pub trait Parser<T: PM>: Sized {
         Self: 'p;
 
     /// Parse a value from a `TokenBuf` using this parser.
+    ///
+    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
     fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>>;
 
     /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
     /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
     /// buffer is returned.
+    ///
+    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
     #[inline]
     fn parse_all<'p, 'b>(
         &'p self,
