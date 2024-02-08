@@ -15,7 +15,7 @@ for cargo in "cargo"; do
                         if [ ! -z "$features" ]; then
                             features="--features $features"
                         fi
-                        run $cargo check -p proclet --no-default-features $features
+                        RUSTFLAGS="-D warnings" run $cargo check -p proclet --no-default-features $features
                     done
                 done
             done
