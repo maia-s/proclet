@@ -109,11 +109,4 @@ mod internal {
     impl<X, T: TryFrom<X, Error = E>, E: Debug> TryFromDebug<X> for T {
         type ErrDbg = E;
     }
-
-    pub trait TryIntoDebug<X>: TryInto<X, Error = Self::ErrDbg> {
-        type ErrDbg: Debug;
-    }
-    impl<X, T: TryInto<X, Error = E>, E: Debug> TryIntoDebug<X> for T {
-        type ErrDbg = E;
-    }
 }
