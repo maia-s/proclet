@@ -35,6 +35,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "proclet-utils"
+version = "0.1.0"
+dependencies = [
+ "proclet-utils-macros",
+]
+
+[[package]]
+name = "proclet-utils-macros"
+version = "0.1.0"
+dependencies = [
+ "proclet",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"

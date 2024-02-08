@@ -1,0 +1,7 @@
+[package]
+name = "proclet-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+proclet-utils-macros = { path = "../proclet-utils-macros" }

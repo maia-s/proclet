@@ -3,5 +3,7 @@ members = [
     "proclet",
     "proclet-tests",
     "proclet-test-macros",
+    "proclet-utils",
+    "proclet-utils-macros",
 ]
 resolver = "2"
