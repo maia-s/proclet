@@ -1,4 +1,6 @@
-use crate::{prelude::*, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream, Token};
+use crate::{
+    prelude::*, Match, PMExt, Punct, PunctExt, Span, SpanExt, ToTokenStream, ToTokens, Token,
+};
 use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
 
 #[cfg(doc)]
@@ -164,6 +166,13 @@ impl<S: SpanExt> ToTokenStream<S::TokenStream> for Op<S> {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut S::TokenStream) {
         token_stream.extend(self.puncts().map(S::TokenTree::from))
+    }
+}
+
+impl<T: PMExt> ToTokens<T> for Op<T::Span> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
+        self.into_iter().flat_map(|p| p.into_tokens())
     }
 }
 

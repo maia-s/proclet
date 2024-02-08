@@ -742,6 +742,14 @@ impl<T: crate::TokenStreamExt> crate::ToTokenStream<T> for LiteralToken<T::Span>
     }
 }
 
+#[cfg(feature = "literal-value")]
+impl<T: crate::PMExt> crate::ToTokens<T> for LiteralToken<T::Span> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
+        std::iter::once(Box::new(self) as Box<dyn Token<T>>)
+    }
+}
+
 macro_rules! def {
     ($([$what:tt] $($id:ident: $t:ty),* $(,)?)*) => { $(
         $( def!(@ $what $id: $t); )*
@@ -1003,6 +1011,19 @@ macro_rules! impl_literal {
             #[inline]
             fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream)  {
                 token_stream.extend([$pm::TokenTree::from(self.clone())]);
+            }
+        }
+
+        #[cfg(feature = $feature)]
+        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Literal {
+            #[inline]
+            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
+                #[cfg(feature = "literal-value")] {
+                    LiteralToken::from(self).into_tokens()
+                }
+                #[cfg(not(feature = "literal-value"))] {
+                    std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
+                }
             }
         }
     )* };

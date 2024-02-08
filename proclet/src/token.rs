@@ -2,7 +2,9 @@ use crate::{TokenStream, PM};
 use std::{any::Any, fmt::Debug};
 
 /// A token.
-pub trait Token<T: PM>: TokenAuto<T> + Any + Debug + ToTokenStream<T::TokenStream> {
+pub trait Token<T: PM>:
+    TokenAuto<T> + Any + Debug + ToTokens<T> + ToTokenStream<T::TokenStream>
+{
     /// Check two tokens for equality, not including their spans.
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
 }
@@ -53,6 +55,23 @@ impl<T: PM, X: Clone + Token<T>> TokenAuto<T> for X {
     #[inline]
     fn clone_boxed(&self) -> Box<dyn Token<T>> {
         Box::new(self.clone())
+    }
+}
+
+/// Trait for converting an object into its token representation.
+pub trait ToTokens<T: PM> {
+    /// Convert this object into an iterator of tokens representing the object.
+    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>>
+    where
+        Self: Sized;
+
+    /// Get an iterator of tokens representing this object.
+    #[inline]
+    fn to_tokens(&self) -> impl Iterator<Item = Box<dyn Token<T>>>
+    where
+        Self: Clone,
+    {
+        self.clone().into_tokens()
     }
 }
 

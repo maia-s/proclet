@@ -1,4 +1,4 @@
-use crate::{ProcMacro, Token};
+use crate::{ProcMacro, ToTokens, Token};
 use std::fmt::Display;
 
 /// The kind of a `TokenTree`. This is like the enum in `proc_macro*::TokenTree`, but
@@ -44,7 +44,10 @@ pub trait TokenTree:
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait TokenTreeExt:
-    crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + Into<Box<dyn Token<Self::PM>>>
+    crate::ProcMacroExt<TokenTreeExt = Self>
+    + TokenTree
+    + Into<Box<dyn Token<Self::PM>>>
+    + ToTokens<Self::PM>
 {
     /// Turn this `TokenTree` into a `Token` trait object.
     fn into_token(self) -> Box<dyn Token<Self::PM>>;
@@ -561,6 +564,45 @@ macro_rules! impl_token_tree {
             }
         }
 
+        #[cfg(all(feature = $feature))]
+        impl crate::ToTokens<crate::base::$pm::PM> for $pm::TokenTree {
+            #[inline]
+            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
+                enum Iter<G, I, P, L> {
+                    Group(G),
+                    Ident(I),
+                    Punct(P),
+                    Literal(L),
+                }
+
+                impl<
+                    G: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>,
+                    I: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>,
+                    P: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>,
+                    L: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>
+                > Iterator for Iter<G, I, P, L> {
+                    type Item = Box<dyn Token<crate::base::$pm::PM>>;
+
+                    #[inline]
+                    fn next(&mut self) -> Option<Self::Item> {
+                        match self {
+                            Self::Group(i) => i.next(),
+                            Self::Ident(i) => i.next(),
+                            Self::Punct(i) => i.next(),
+                            Self::Literal(i) => i.next(),
+                        }
+                    }
+                }
+
+                match self {
+                    Self::Group(t) => Iter::Group(t.into_tokens()),
+                    Self::Ident(t) => Iter::Ident(t.into_tokens()),
+                    Self::Punct(t) => Iter::Punct(t.into_tokens()),
+                    Self::Literal(t) => Iter::Literal(t.into_tokens()),
+                }
+            }
+        }
+
         #[cfg(feature = $feature)]
         impl crate::ToTokenStream<$pm::TokenStream> for $pm::TokenTree {
             #[inline]
@@ -632,6 +674,14 @@ macro_rules! impl_token_tree {
                 other.downcast_ref::<Self>().map(|other|
                     self.delimiter() == other.delimiter() && self.stream().eq_except_span(other.stream())
                 ).unwrap_or(false)
+            }
+        }
+
+        #[cfg(all(feature = $feature))]
+        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Group {
+            #[inline]
+            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
+                std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
             }
         }
 
@@ -748,6 +798,14 @@ macro_rules! impl_token_tree {
             }
         }
 
+        #[cfg(all(feature = $feature))]
+        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Ident {
+            #[inline]
+            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
+                std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
+            }
+        }
+
         #[cfg(feature = $feature)]
         impl crate::ToTokenStream<$pm::TokenStream> for $pm::Ident {
             #[inline]
@@ -806,6 +864,14 @@ macro_rules! impl_token_tree {
             #[inline]
             fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
                 other.downcast_ref::<Self>().map(|other| self.as_char() == other.as_char()).unwrap_or(false)
+            }
+        }
+
+        #[cfg(all(feature = $feature))]
+        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Punct {
+            #[inline]
+            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
+                std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
             }
         }
 

@@ -1,4 +1,4 @@
-use crate::{Match, PMExt, ToTokenStream, Token, TokenStream, TokenTreeExt, PM};
+use crate::{Match, PMExt, ToTokenStream, ToTokens, Token, TokenStream, TokenTreeExt, PM};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -106,6 +106,28 @@ impl<T: PM, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
     }
 }
 
+/// Methods for making or extending a `TokenBuffer` with tokens representing this object.
+/// This is automatically implemented for types that implement the [`ToTokens`] trait.
+pub trait ToTokenBuffer<T: PM> {
+    /// Extend the given `TokenBuffer` with tokens representing this object.
+    fn extend_token_buffer(&self, token_buffer: &mut TokenBuffer<T>);
+
+    /// Make a new `TokenBuffer` with tokens representing this object.
+    #[inline]
+    fn to_token_buffer(&self) -> TokenBuffer<T> {
+        let mut tb = TokenBuffer::new();
+        self.extend_token_buffer(&mut tb);
+        tb
+    }
+}
+
+impl<T: PM, X: ToTokens<T> + Clone> ToTokenBuffer<T> for X {
+    #[inline]
+    fn extend_token_buffer(&self, token_buffer: &mut TokenBuffer<T>) {
+        token_buffer.0.extend(self.to_tokens())
+    }
+}
+
 /// An owned buffer of tokens.
 #[derive(Debug, Default)]
 pub struct TokenBuffer<T: PM>(Vec<Box<dyn Token<T>>>);
@@ -196,10 +218,12 @@ impl<T: PM> DerefMut for TokenBuffer<T> {
     }
 }
 
-impl<T: PM, X: Into<Box<dyn Token<T>>>> Extend<X> for TokenBuffer<T> {
+impl<T: PM, X: ToTokenBuffer<T>> Extend<X> for TokenBuffer<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = X>>(&mut self, iter: I) {
-        self.0.extend(iter.into_iter().map(|x| x.into()));
+        for i in iter {
+            i.extend_token_buffer(self);
+        }
     }
 }
 
@@ -235,10 +259,14 @@ impl From<TokenBuffer<crate::PM2>> for proc_macro2::TokenStream {
     }
 }
 
-impl<T: PM, X: Into<Box<dyn Token<T>>>> FromIterator<X> for TokenBuffer<T> {
+impl<T: PM, X: ToTokenBuffer<T>> FromIterator<X> for TokenBuffer<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = X>>(iter: I) -> Self {
-        Self(iter.into_iter().map(|x| x.into()).collect())
+        let mut buf = TokenBuffer::new();
+        for i in iter {
+            i.extend_token_buffer(&mut buf);
+        }
+        buf
     }
 }
 
@@ -264,6 +292,16 @@ impl<T: PM> IntoIterator for TokenBuffer<T> {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<T: PM> ToTokens<T> for TokenBuffer<T> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>>
+    where
+        Self: Sized,
+    {
         self.0.into_iter()
     }
 }

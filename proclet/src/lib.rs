@@ -29,6 +29,8 @@ pub mod prelude {
     pub use crate::SpacingExt as _;
     pub use crate::Span as _;
     pub use crate::SpanExt as _;
+    #[cfg(feature = "token-buffer")]
+    pub use crate::ToTokenBuffer as _;
     pub use crate::ToTokenStream as _;
     pub use crate::Token as _;
     pub use crate::TokenAuto as _;
@@ -66,9 +68,9 @@ pub use literal::{LiteralToken, LiteralValue, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{op, rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-pub use token::{ToTokenStream, Token, TokenAuto};
+pub use token::{ToTokenStream, ToTokens, Token, TokenAuto};
 #[cfg(feature = "token-buffer")]
-pub use token_buffer::{DefaultParser, Parse, Parser, TokenBuf, TokenBuffer};
+pub use token_buffer::{DefaultParser, Parse, Parser, ToTokenBuffer, TokenBuf, TokenBuffer};
 pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
     Delimiter, DelimiterExt, DelimiterKind, Group, GroupExt, Ident, IdentExt, Punct, PunctExt,
