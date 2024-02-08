@@ -299,11 +299,11 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn match_prefix<'a, M: 'a>(
+    pub fn parse_prefix<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
     ) -> Option<M> {
-        self.match_prefix_buf(|_, token, _| match_fn(token))
+        self.parse_prefix_buf(|_, token, _| match_fn(token))
     }
 
     /// Parse a prefix from this buffer. `match_fn` is called for each token in the buffer
@@ -314,11 +314,11 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn match_prefix_next<'a, M: 'a>(
+    pub fn parse_prefix_next<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<M> {
-        self.match_prefix_buf(|_, token, next| match_fn(token, next))
+        self.parse_prefix_buf(|_, token, next| match_fn(token, next))
     }
 
     /// Parse a prefix from this buffer. `match_fn` is called for each token in the buffer
@@ -330,7 +330,7 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn match_prefix_buf<'a, M: 'a>(
+    pub fn parse_prefix_buf<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&'a Self, &dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<M> {
@@ -361,12 +361,12 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn match_prefix_tokens<'a>(
+    pub fn parse_prefix_tokens<'a>(
         self: &mut &'a Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&'a Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_prefix_buf(move |buf, token, _| {
+        self.parse_prefix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
                 if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
@@ -389,12 +389,12 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn match_prefix_tokens_partial(
+    pub fn parse_prefix_tokens_partial(
         self: &mut &Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_prefix_buf(move |buf, token, _| {
+        self.parse_prefix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
                 if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
@@ -418,11 +418,11 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
-    pub fn match_suffix<'a, M: 'a>(
+    pub fn parse_suffix<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
     ) -> Option<M> {
-        self.match_suffix_buf(|_, token, _| match_fn(token))
+        self.parse_suffix_buf(|_, token, _| match_fn(token))
     }
 
     /// Parse a suffix from this buffer. `match_fn` is called for each token in the buffer
@@ -433,11 +433,11 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
-    pub fn match_suffix_next<'a, M: 'a>(
+    pub fn parse_suffix_next<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<M> {
-        self.match_suffix_buf(|_, token, next| match_fn(token, next))
+        self.parse_suffix_buf(|_, token, next| match_fn(token, next))
     }
 
     /// Parse a suffix from this buffer. `match_fn` is called for each token in the buffer
@@ -449,7 +449,7 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
-    pub fn match_suffix_buf<'a, M: 'a>(
+    pub fn parse_suffix_buf<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&'a Self, &dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
     ) -> Option<M> {
@@ -484,11 +484,11 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
-    pub fn match_suffix_tokens(
+    pub fn parse_suffix_tokens(
         self: &mut &Self,
         tokens: impl IntoIterator<IntoIter = impl DoubleEndedIterator<Item = impl AsRef<dyn Token<T>>>>,
     ) -> Option<&Self> {
-        self.match_suffix_tokens_reverse(tokens.into_iter().rev())
+        self.parse_suffix_tokens_reverse(tokens.into_iter().rev())
     }
 
     /// Parse a specific set of tokens from this buffer. All of the tokens in the provided
@@ -500,12 +500,12 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
-    pub fn match_suffix_tokens_reverse(
+    pub fn parse_suffix_tokens_reverse(
         self: &mut &Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_suffix_buf(move |buf, token, _| {
+        self.parse_suffix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
                 if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {
@@ -532,11 +532,11 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
-    pub fn match_suffix_tokens_partial(
+    pub fn parse_suffix_tokens_partial(
         self: &mut &Self,
         tokens: impl IntoIterator<IntoIter = impl DoubleEndedIterator<Item = impl AsRef<dyn Token<T>>>>,
     ) -> Option<&Self> {
-        self.match_suffix_tokens_reverse_partial(tokens.into_iter().rev())
+        self.parse_suffix_tokens_reverse_partial(tokens.into_iter().rev())
     }
 
     /// Parse a specific set of tokens from this buffer. At least one of the tokens in the provided
@@ -548,12 +548,12 @@ impl<T: PM> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to end before the parsed tokens on success.
     #[inline]
-    pub fn match_suffix_tokens_reverse_partial(
+    pub fn parse_suffix_tokens_reverse_partial(
         self: &mut &Self,
         tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
     ) -> Option<&Self> {
         let mut tokens = tokens.into_iter().peekable();
-        self.match_suffix_buf(move |buf, token, _| {
+        self.parse_suffix_buf(move |buf, token, _| {
             if let Some(t) = tokens.next() {
                 if token.eq_except_span(t.as_ref()) {
                     if tokens.peek().is_some() {

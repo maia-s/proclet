@@ -708,7 +708,7 @@ impl<S: crate::Span> LiteralToken<S> {
 impl<T: crate::PMExt> crate::Parse<T> for LiteralToken<T::Span> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
-        buf.match_prefix(|token| {
+        buf.parse_prefix(|token| {
             if let Some(token) = token.downcast_ref::<Self>() {
                 crate::Match::Complete(token.clone())
             } else if let Some(token) = token.downcast_ref::<T::Literal>() {
@@ -960,7 +960,7 @@ macro_rules! impl_literal {
         impl crate::Parse<crate::base::$pm::PM> for $pm::Literal {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
-                buf.match_prefix(|token| {
+                buf.parse_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
                         return crate::Match::Complete(token.clone());
                     }

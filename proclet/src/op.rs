@@ -181,7 +181,7 @@ impl<S: SpanExt> crate::Parse<S::PM> for Op<S> {
     fn parse(buf: &mut &crate::TokenBuf<S::PM>) -> Option<Self> {
         let mut str = String::new();
         let mut spans = Vec::new();
-        buf.match_prefix(|token| {
+        buf.parse_prefix(|token| {
             if let Some(punct) = token.downcast_ref::<S::Punct>() {
                 str.push(punct.as_char());
                 spans.push(punct.span());
@@ -366,7 +366,7 @@ impl<P: PunctExt, F: OpParserFn> crate::Parser<P::PM> for OpParser<P, F> {
     ) -> Option<Self::Output<'p, 'b>> {
         let mut string = String::new();
         let mut spans = Vec::new();
-        buf.match_prefix_next(move |token, next| {
+        buf.parse_prefix_next(move |token, next| {
             if let Some(punct) = token.downcast_ref::<P::Punct>() {
                 let next = if punct.spacing().is_joint() {
                     next.and_then(|next| next.downcast_ref::<P::Punct>().map(|next| next.as_char()))

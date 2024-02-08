@@ -614,7 +614,7 @@ macro_rules! impl_token_tree {
         impl crate::Parse<crate::base::$pm::PM> for $pm::Group {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
-                buf.match_prefix(|token| {
+                buf.parse_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
                         crate::Match::Complete(Self::with_span(token.delimiter(), token.stream(), token.span()))
                     } else {
@@ -727,7 +727,7 @@ macro_rules! impl_token_tree {
         impl crate::Parse<crate::base::$pm::PM> for $pm::Ident {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
-                buf.match_prefix(|token| {
+                buf.parse_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
                         crate::Match::Complete(Self::new(&token.to_string(), token.span()))
                     } else {
@@ -791,7 +791,7 @@ macro_rules! impl_token_tree {
         impl crate::Parse<crate::base::$pm::PM> for $pm::Punct {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
-                buf.match_prefix(|token| {
+                buf.parse_prefix(|token| {
                     if let Some(token) = token.downcast_ref::<Self>() {
                         crate::Match::Complete(Self::with_span(token.as_char(), token.spacing(), token.span()))
                     } else {
