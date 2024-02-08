@@ -12,16 +12,18 @@ use std::{
 
 /// Parse from a `TokenBuf`.
 pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, Self>> {
-    /// Parse an object from a `TokenBuf`.
+    /// Parse a value from a `TokenBuf`.
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self>;
 
-    /// Parse an object from a `TokenBuf`, but return `None` if there was
-    /// more data in the buffer after parsing.
+    /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
+    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
+    /// buffer is returned.
     #[inline]
-    fn parse_all(buf: &mut &TokenBuf<T>) -> Option<Self> {
+    fn parse_all<'b>(buf: &mut &'b TokenBuf<T>) -> Result<Self, &'b TokenBuf<T>> {
         match Self::parse(buf) {
-            Some(result) if buf.is_empty() => Some(result),
-            _ => None,
+            Some(result) if buf.is_empty() => Ok(result),
+            None => Err(&buf[..0]),
+            _ => Err(buf),
         }
     }
 }
@@ -33,16 +35,21 @@ pub trait Parser<T: PM>: Sized {
     where
         Self: 'p;
 
-    /// Parse an object from a `TokenBuf` using this parser.
+    /// Parse a value from a `TokenBuf` using this parser.
     fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>>;
 
-    /// Parse an object from a `TokenBuf` using this parser, but return `None` if there was
-    /// more data in the buffer after parsing.
+    /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
+    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
+    /// buffer is returned.
     #[inline]
-    fn parse_all<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+    fn parse_all<'p, 'b>(
+        &'p self,
+        buf: &mut &'b TokenBuf<T>,
+    ) -> Result<Self::Output<'p, 'b>, &'b TokenBuf<T>> {
         match self.parse(buf) {
-            Some(result) if buf.is_empty() => Some(result),
-            _ => None,
+            Some(result) if buf.is_empty() => Ok(result),
+            None => Err(&buf[..0]),
+            _ => Err(buf),
         }
     }
 }
@@ -285,11 +292,13 @@ impl<T: PM> TokenBuf<T> {
         P::parse(self)
     }
 
-    /// Parse a value from this buffer, but return `None` if there's data left in the buffer afterwards.
+    /// Parse a value from this buffer, but return an error with the remaining tokens if
+    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
+    /// buffer is returned.
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Option<P> {
+    pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Result<P, &Self> {
         P::parse_all(self)
     }
 
