@@ -21,6 +21,16 @@ impl<M, D> Deref for Delimited<M, D> {
     }
 }
 
+impl<M, D> IntoIterator for Delimited<M, D> {
+    type Item = (M, Option<D>);
+    type IntoIter = <Vec<(M, Option<D>)> as IntoIterator>::IntoIter;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 impl<T: PM, M: Parse<T>, D: Parse<T>> Parse<T> for Delimited<M, D> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
