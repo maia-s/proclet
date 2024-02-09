@@ -499,6 +499,7 @@ impl<P: PunctExt, F: OpParserFn> OpParserInstance<P, F> {
     }
 }
 
+#[cfg(feature = "define-ops")]
 /// Macro for making a function that will create an `OpParser` for parsing a specific set of operators.
 #[macro_export]
 macro_rules! define_ops {
@@ -533,6 +534,7 @@ macro_rules! define_ops {
     };
 }
 
+#[cfg(feature = "define-ops")]
 crate::define_ops! {
     /// Parse operators defined by the Rust language.
     pub rust_op_parser,

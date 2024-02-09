@@ -8,8 +8,8 @@ run() {
 for cargo in "cargo"; do
     for pm in "" "proc-macro,"; do
         for pm2 in "" "proc-macro2,"; do
-            for lv in "" "literal-value,"; do
-                for op in "" "op,"; do
+            for op in "" "define-ops,"; do
+                for lv in "" "literal-value,"; do
                     for tb in "" "token-buffer,"; do
                         features="$pm$pm2$pv$op$tb"
                         if [ ! -z "$features" ]; then

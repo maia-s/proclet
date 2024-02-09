@@ -45,7 +45,6 @@ mod base;
 mod delimited;
 mod error;
 mod literal;
-#[cfg(feature = "op")]
 mod op;
 mod span;
 mod token;
@@ -65,8 +64,9 @@ pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralToken, LiteralValue, StringToken, Suffixed};
-#[cfg(feature = "op")]
-pub use op::{op, rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
+#[cfg(feature = "define-ops")]
+pub use op::rust_op_parser;
+pub use op::{op, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 use token::def_tokens;
 pub use token::{ToTokenStream, ToTokens, Token, TokenAuto};
