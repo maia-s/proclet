@@ -7,4 +7,4 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-proclet = { path = "../proclet", default-features = false, features = ["literal-value"] }
+proclet = { path = "../proclet", default-features = false, features = ["proc-macro", "literal-value"] }

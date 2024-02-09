@@ -66,7 +66,7 @@ pub fn literal_roundtrip_with_parse(input: proc_macro::TokenStream) -> proc_macr
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn parse_rust_ops(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use proclet::rust_op_parser;
+    use proclet_utils::rust_op_parser;
     let input: TokenStream = input.into();
     let mut parser = rust_op_parser().create();
     let mut ops = String::new();
@@ -103,7 +103,8 @@ pub fn parse_rust_ops(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn parse_rust_ops_with_buffer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use proclet::{rust_op_parser, ProcMacro, TokenBuffer};
+    use proclet::{ProcMacro, TokenBuffer};
+    use proclet_utils::rust_op_parser;
     let input: TokenStream = input.into();
     let input: TokenBuffer<_> = input.into();
     let parser = rust_op_parser::<<TokenStream as ProcMacro>::Punct>();

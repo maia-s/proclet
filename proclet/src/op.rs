@@ -3,9 +3,6 @@ use crate::{
 };
 use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
 
-#[cfg(doc)]
-use crate::{define_ops, Parser};
-
 pub trait OpParserFn: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
 impl<T> OpParserFn for T where T: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
 
@@ -497,108 +494,4 @@ impl<P: PunctExt, F: OpParserFn> OpParserInstance<P, F> {
             }
         })
     }
-}
-
-#[cfg(feature = "define-ops")]
-/// Macro for making a function that will create an `OpParser` for parsing a specific set of operators.
-#[macro_export]
-macro_rules! define_ops {
-    ($(#[$attr:meta])* $vis:vis $fn:ident, $($($first:literal($follow:pat))? $([$($tt:tt)*])*,)*) => {
-        $(#[$attr])*
-        #[inline]
-        $vis fn $fn<P: $crate::PunctExt>() -> $crate::OpParser<
-            P,
-            fn(&::core::primitive::str, ::core::option::Option<::core::primitive::char>)
-                -> $crate::Match<::std::borrow::Cow<'static, ::core::primitive::str>>
-        > {
-            fn $fn(
-                str: &::core::primitive::str,
-                next: ::core::option::Option<::core::primitive::char>
-            ) -> $crate::Match<::std::borrow::Cow<'static, ::core::primitive::str>> {
-                match (str, next) {
-                    $(
-                        $(($first, ::core::option::Option::Some($follow)) => {
-                            if let $crate::Match::Complete(m) = $fn(str, ::core::option::Option::None) {
-                                $crate::Match::Partial(m)
-                            } else {
-                                $crate::Match::NeedMore
-                            }
-                        })?
-                        $((::core::stringify!($($tt)*), _) => $crate::Match::Complete(::core::stringify!($($tt)*).into()),)?
-                    )*
-                    _ => $crate::Match::NoMatch,
-                }
-            }
-            $crate::OpParser::new($fn)
-        }
-    };
-}
-
-#[cfg(feature = "define-ops")]
-crate::define_ops! {
-    /// Parse operators defined by the Rust language.
-    pub rust_op_parser,
-    "!"('='),
-    [!],
-    [!=],
-    [#],
-    [$],
-    "%"('='),
-    [%],
-    [%=],
-    "&"('&' | '='),
-    [&],
-    [&&],
-    [&=],
-    "*"('='),
-    [*],
-    [*=],
-    "+"('='),
-    [+],
-    [+=],
-    [,],
-    "-"('=' | '>'),
-    [-],
-    [-=],
-    [->],
-    "."('.'),
-    [.],
-    ".."('.' | '='),
-    [..],
-    [...],
-    [..=],
-    "/"('='),
-    [/],
-    [/=],
-    ":"(':'),
-    [:],
-    [::],
-    [;],
-    "<"('-' | '<' | '='),
-    [<],
-    [<-],
-    "<<"('='),
-    [<<],
-    [<<=],
-    [<=],
-    "="('=' | '>'),
-    [=],
-    [==],
-    [=>],
-    ">"('=' | '>'),
-    [>],
-    [>=],
-    ">>"('='),
-    [>>],
-    [>>=],
-    [?],
-    [@],
-    "^"('='),
-    [^],
-    [^=],
-    "|"('=' | '|'),
-    [|],
-    [|=],
-    [||],
-    [~],
 }

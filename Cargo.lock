@@ -24,6 +24,7 @@ version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "proclet",
+ "proclet-utils",
 ]
 
 [[package]]
@@ -38,6 +39,7 @@ dependencies = [
 name = "proclet-utils"
 version = "0.1.0"
 dependencies = [
+ "proclet",
  "proclet-utils-macros",
 ]
 

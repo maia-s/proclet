@@ -64,8 +64,6 @@ pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralToken, LiteralValue, StringToken, Suffixed};
-#[cfg(feature = "define-ops")]
-pub use op::rust_op_parser;
 pub use op::{op, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 use token::def_tokens;

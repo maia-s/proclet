@@ -13,8 +13,7 @@ categories = ["parsing", "development-tools::procedural-macro-helpers"]
 [features]
 default = ["proc-macro", "all"]
 
-all = ["define-ops", "literal-value", "token-buffer"]
-define-ops = []
+all = ["literal-value", "token-buffer"]
 literal-value = []
 token-buffer = []
 
