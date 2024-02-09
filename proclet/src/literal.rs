@@ -652,56 +652,12 @@ impl FromStr for LiteralValue {
     }
 }
 
-/// A literal token. This is like `Literal` from `proc-macro*`, except that the value has
-/// already been parsed and is available at no cost. You can convert it to and from `Literal`
-/// with `into`.
-#[cfg(feature = "literal-value")]
-#[derive(Clone, Debug)]
-pub struct LiteralToken<S: crate::Span> {
-    value: LiteralValue,
-    span: S,
-}
-
-#[cfg(feature = "literal-value")]
-impl<S: crate::Span> LiteralToken<S> {
-    /// Create a new `LiteralToken`.
-    #[inline]
-    pub fn new(value: LiteralValue) -> Self {
-        Self {
-            value,
-            span: S::call_site(),
-        }
-    }
-
-    /// Create a new `LiteralToken` with a custom span.
-    #[inline]
-    pub const fn with_span(value: LiteralValue, span: S) -> Self {
-        Self { value, span }
-    }
-
-    /// Get the value of this literal.
-    #[inline]
-    pub const fn value(&self) -> &LiteralValue {
-        &self.value
-    }
-
-    /// Get a mutable reference to the value of this literal.
-    #[inline]
-    pub fn value_mut(&mut self) -> &mut LiteralValue {
-        &mut self.value
-    }
-
-    /// Get the span of this literal.
-    #[inline]
-    pub const fn span(&self) -> S {
-        self.span
-    }
-
-    /// Set the span of this literal.
-    #[inline]
-    pub fn set_span(&mut self, span: S) {
-        self.span = span;
-    }
+crate::def_tokens! {
+    ["literal-value"]
+    /// A literal token. This is like `Literal` from `proc-macro*`, except that the value has
+    /// already been parsed and is available at no cost. You can convert it to and from `Literal`
+    /// with `into`.
+    LiteralToken: LiteralValue,
 }
 
 #[cfg(all(feature = "literal-value", feature = "token-buffer"))]
@@ -739,14 +695,6 @@ impl<T: crate::TokenStreamExt> crate::ToTokenStream<T> for LiteralToken<T::Span>
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut T) {
         token_stream.extend([T::TokenTree::from(T::Literal::from(self.clone()))])
-    }
-}
-
-#[cfg(feature = "literal-value")]
-impl<T: crate::PMExt> crate::ToTokens<T> for LiteralToken<T::Span> {
-    #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
-        std::iter::once(Box::new(self) as Box<dyn Token<T>>)
     }
 }
 

@@ -68,6 +68,7 @@ pub use literal::{LiteralToken, LiteralValue, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{op, rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
+use token::def_tokens;
 pub use token::{ToTokenStream, ToTokens, Token, TokenAuto};
 #[cfg(feature = "token-buffer")]
 pub use token_buffer::{DefaultParser, Parse, Parser, ToTokenBuffer, TokenBuf, TokenBuffer};
