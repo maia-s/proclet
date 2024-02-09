@@ -795,7 +795,7 @@ impl<S: crate::SpanExt> From<StringToken<S>> for LiteralToken<S> {
     }
 }
 
-#[cfg(feature = "literal-value")]
+#[cfg(all(feature = "literal-value", feature = "token-buffer"))]
 impl<T: crate::PMExt> crate::Parse<T> for StringToken<T::Span> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
