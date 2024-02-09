@@ -64,7 +64,7 @@ pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
 pub use literal::{LiteralToken, LiteralValue, StringToken, Suffixed};
-pub use op::{op, Op, OpParser, OpParserInstance, Puncts};
+pub use op::{op, Op, OpParser, OpParserFn, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 use token::def_tokens;
 pub use token::{ToTokenStream, ToTokens, Token, TokenAuto};

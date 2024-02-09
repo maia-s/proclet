@@ -3,6 +3,7 @@ use crate::{
 };
 use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
 
+/// Function for OpParser to use to match operators.
 pub trait OpParserFn: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
 impl<T> OpParserFn for T where T: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
 

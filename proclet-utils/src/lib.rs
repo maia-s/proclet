@@ -1,5 +1,5 @@
 #[doc(hidden)]
-pub use proclet::{Match, OpParser, PunctExt};
+pub use proclet::{Match, OpParser, OpParserFn, PunctExt};
 #[doc(hidden)]
 pub use proclet_utils_macros::_define_ops;
 
@@ -9,11 +9,8 @@ macro_rules! define_ops {
     ($(#[$attr:meta])* $vis:vis $ident:ident, $($ops:literal),* $(,)?) => {
         $(#[$attr])*
         #[inline]
-        $vis const fn $ident<P: $crate::PunctExt>() -> $crate::OpParser<
-            P,
-            fn(&::core::primitive::str, ::core::option::Option<::core::primitive::char>)
-                -> $crate::Match<::std::borrow::Cow<'static, ::core::primitive::str>>
-        > {
+        // rust fails type inference if this function is const
+        $vis fn $ident<P: $crate::PunctExt>() -> $crate::OpParser<P, impl OpParserFn> {
             $crate::_define_ops!($($ops),*);
             $crate::OpParser::new(__proclet_define_ops)
         }
