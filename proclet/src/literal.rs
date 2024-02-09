@@ -658,6 +658,10 @@ crate::def_tokens! {
     /// already been parsed and is available at no cost. You can convert it to and from `Literal`
     /// with `into`.
     LiteralToken: LiteralValue,
+
+    ["literal-value"]
+    /// A string literal. This can be converted to and from `LiteralToken`.
+    StringToken: String,
 }
 
 #[cfg(all(feature = "literal-value", feature = "token-buffer"))]
@@ -667,6 +671,8 @@ impl<T: crate::PMExt> crate::Parse<T> for LiteralToken<T::Span> {
         buf.parse_prefix(|token| {
             if let Some(token) = token.downcast_ref::<Self>() {
                 crate::Match::Complete(token.clone())
+            } else if let Some(token) = token.downcast_ref::<StringToken<T::Span>>() {
+                crate::Match::Complete(token.clone().into())
             } else if let Some(token) = token.downcast_ref::<T::Literal>() {
                 crate::Match::Complete(token.clone().into())
             } else {
@@ -680,6 +686,15 @@ impl<T: crate::PMExt> crate::Parse<T> for LiteralToken<T::Span> {
 impl<T: crate::PMExt> Token<T> for LiteralToken<T::Span> {
     #[inline]
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
+        #[allow(clippy::single_match)]
+        match self.value() {
+            LiteralValue::String(s) => {
+                if let Some(other) = other.downcast_ref::<StringToken<T::Span>>() {
+                    return s == other.value();
+                }
+            }
+            _ => (),
+        }
         if let Some(other) = other.downcast_ref::<Self>() {
             self.value() == other.value()
         } else if let Some(other) = other.downcast_ref::<T::Literal>() {
@@ -691,10 +706,124 @@ impl<T: crate::PMExt> Token<T> for LiteralToken<T::Span> {
 }
 
 #[cfg(feature = "literal-value")]
+impl<T: crate::PMExt> crate::ToTokens<T> for LiteralToken<T::Span> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
+        enum Iter<S, O> {
+            String(S),
+            Other(O),
+        }
+
+        impl<
+                T: crate::PMExt,
+                S: Iterator<Item = Box<dyn Token<T>>>,
+                O: Iterator<Item = Box<dyn Token<T>>>,
+            > Iterator for Iter<S, O>
+        {
+            type Item = Box<dyn Token<T>>;
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
+                match self {
+                    Self::String(i) => i.next(),
+                    Self::Other(i) => i.next(),
+                }
+            }
+        }
+
+        let span = self.span();
+        match self.value {
+            LiteralValue::String(v) => Iter::String(StringToken::with_span(v, span).into_tokens()),
+            _ => Iter::Other(std::iter::once(Box::new(self) as Box<dyn Token<T>>)),
+        }
+    }
+}
+
+#[cfg(feature = "literal-value")]
 impl<T: crate::TokenStreamExt> crate::ToTokenStream<T> for LiteralToken<T::Span> {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut T) {
         token_stream.extend([T::TokenTree::from(T::Literal::from(self.clone()))])
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<T: crate::PMExt> Token<T> for StringToken<T::Span> {
+    #[inline]
+    fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
+        if let Some(other) = other.downcast_ref::<Self>() {
+            self.value() == other.value()
+        } else if let Some(other) = other.downcast_ref::<LiteralToken<T::Span>>() {
+            if let LiteralValue::String(other) = other.value() {
+                self.value() == other
+            } else {
+                false
+            }
+        } else if let Some(other) = other.downcast_ref::<T::Literal>() {
+            if let LiteralValue::String(other) = other.to_value() {
+                self.value() == &other
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<S: crate::SpanExt> TryFrom<LiteralToken<S>> for StringToken<S> {
+    type Error = ();
+
+    #[inline]
+    fn try_from(value: LiteralToken<S>) -> Result<Self, Self::Error> {
+        let span = value.span();
+        if let LiteralValue::String(s) = value.into_value() {
+            Ok(Self::with_span(s, span))
+        } else {
+            Err(())
+        }
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<S: crate::SpanExt> From<StringToken<S>> for LiteralToken<S> {
+    #[inline]
+    fn from(value: StringToken<S>) -> Self {
+        let span = value.span();
+        Self::with_span(LiteralValue::String(value.into_value()), span)
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<T: crate::PMExt> crate::Parse<T> for StringToken<T::Span> {
+    #[inline]
+    fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
+        let mut buf2: &crate::TokenBuf<T> = buf;
+        if let Some(token) = LiteralToken::parse(&mut buf2) {
+            if let Ok(token) = token.try_into() {
+                *buf = buf2;
+                return Some(token);
+            }
+        }
+        None
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<T: crate::PMExt> crate::ToTokens<T> for StringToken<T::Span> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
+        std::iter::once(Box::new(self) as Box<dyn Token<T>>)
+    }
+}
+
+#[cfg(feature = "literal-value")]
+impl<T: crate::TokenStreamExt> crate::ToTokenStream<T> for StringToken<T::Span> {
+    #[inline]
+    fn extend_token_stream(&self, token_stream: &mut T) {
+        LiteralToken::with_span(LiteralValue::String(self.value().clone()), self.span())
+            .extend_token_stream(token_stream);
     }
 }
 

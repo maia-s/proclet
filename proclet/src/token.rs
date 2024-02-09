@@ -163,14 +163,6 @@ macro_rules! def_tokens_ {
                 self.span = span;
             }
         }
-
-        $( #[cfg(feature = $feature)] )?
-        impl<T: crate::PMExt> crate::ToTokens<T> for $ident<T::Span> {
-            #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
-                std::iter::once(Box::new(self) as Box<dyn Token<T>>)
-            }
-        }
     )* };
 }
 pub(crate) use def_tokens_ as def_tokens;

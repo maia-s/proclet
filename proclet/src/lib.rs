@@ -64,7 +64,7 @@ pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
 pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
-pub use literal::{LiteralToken, LiteralValue, Suffixed};
+pub use literal::{LiteralToken, LiteralValue, StringToken, Suffixed};
 #[cfg(feature = "op")]
 pub use op::{op, rust_op_parser, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
