@@ -32,6 +32,53 @@ pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, S
     }
 }
 
+impl<T: PM> Parse<T> for Box<dyn Token<T>> {
+    #[inline]
+    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+        buf.first().map(|token| {
+            *buf = &buf[1..];
+            token.clone_boxed()
+        })
+    }
+}
+
+impl<T: PM, const LENGTH: usize> Parse<T> for [Box<dyn Token<T>>; LENGTH] {
+    #[inline]
+    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+        // can't use MaybeUninit for array init as rust claims the size is unknown when transmuting it
+        if buf.len() >= LENGTH {
+            let parsed = buf[..LENGTH]
+                .into_iter()
+                .map(|x| x.clone_boxed())
+                .collect::<Vec<Box<dyn Token<T>>>>()
+                .try_into()
+                .unwrap();
+            *buf = &buf[LENGTH..];
+            Some(parsed)
+        } else {
+            None
+        }
+    }
+}
+
+impl<T: PM, const LENGTH: usize> Parse<T> for Box<[Box<dyn Token<T>>; LENGTH]> {
+    #[inline]
+    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+        if buf.len() >= LENGTH {
+            let parsed = buf[..LENGTH]
+                .into_iter()
+                .map(|x| x.clone_boxed())
+                .collect::<Vec<Box<dyn Token<T>>>>()
+                .try_into()
+                .unwrap();
+            *buf = &buf[LENGTH..];
+            Some(parsed)
+        } else {
+            None
+        }
+    }
+}
+
 /// A parser for parsing values from a `TokenBuf`.
 pub trait Parser<T: PM>: Sized {
     /// The output type of this parser.
@@ -59,6 +106,41 @@ pub trait Parser<T: PM>: Sized {
             None => Err(&buf[..0]),
             _ => Err(buf),
         }
+    }
+}
+
+impl<T: PM> Parser<T> for Box<dyn Token<T>> {
+    type Output<'p, 'b> = Self where Self: 'p;
+
+    #[inline]
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+        buf.first().and_then(|token| {
+            if self.eq_except_span(token.deref()) {
+                *buf = &buf[1..];
+                Some(token.clone_boxed())
+            } else {
+                None
+            }
+        })
+    }
+}
+
+impl<T: PM> Parser<T> for &[Box<dyn Token<T>>] {
+    type Output<'p, 'b> = TokenBuffer<T> where Self: 'p;
+
+    #[inline]
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+        for (t, token) in self.iter().zip(buf.iter()) {
+            if !t.eq_except_span(token.deref()) {
+                return None;
+            }
+        }
+        let mut tokens = Vec::with_capacity(self.len());
+        for token in buf[..self.len()].iter() {
+            tokens.push(token.clone_boxed());
+        }
+        *buf = &buf[self.len()..];
+        Some(tokens.into())
     }
 }
 
@@ -259,6 +341,27 @@ impl From<TokenBuffer<crate::PM2>> for proc_macro2::TokenStream {
     }
 }
 
+impl<T: PM> From<TokenBuffer<T>> for Box<[Box<dyn Token<T>>]> {
+    #[inline]
+    fn from(value: TokenBuffer<T>) -> Self {
+        value.0.into()
+    }
+}
+
+impl<T: PM> From<TokenBuffer<T>> for Vec<Box<dyn Token<T>>> {
+    #[inline]
+    fn from(value: TokenBuffer<T>) -> Self {
+        value.0
+    }
+}
+
+impl<T: PM> From<Vec<Box<dyn Token<T>>>> for TokenBuffer<T> {
+    #[inline]
+    fn from(value: Vec<Box<dyn Token<T>>>) -> Self {
+        Self(value)
+    }
+}
+
 impl<T: PM, X: ToTokenBuffer<T>> FromIterator<X> for TokenBuffer<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = X>>(iter: I) -> Self {
@@ -303,6 +406,15 @@ impl<T: PM> ToTokens<T> for TokenBuffer<T> {
         Self: Sized,
     {
         self.0.into_iter()
+    }
+}
+
+impl<T: PM, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [Box<dyn Token<T>>; LENGTH] {
+    type Error = <Self as TryFrom<Vec<Box<dyn Token<T>>>>>::Error;
+
+    #[inline]
+    fn try_from(value: TokenBuffer<T>) -> Result<Self, Self::Error> {
+        value.0.try_into()
     }
 }
 
