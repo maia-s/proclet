@@ -72,6 +72,13 @@ mod tests {
 
             test_literal!("a string");
             test_literal!("a string with escapes: \' \" \\ \0 \n \r \t \x7f \u{0} \u{2728} \u{10ffff}");
+            // there's no way to disable the following warnings. even allow(warnings) or disabling the code with cfg won't do it
+            test_literal!(
+                "a string with an escaped newline\
+
+
+                "
+            );
             test_literal!(
                 "a string with an escaped newline\
 
@@ -94,6 +101,13 @@ mod tests {
 
             test_literal!(b"a byte string");
             test_literal!(b"a byte string with escapes: \' \" \\ \0 \n \r \t \xff");
+            // there's no way to disable the following warnings. even allow(warnings) or disabling the code with cfg won't do it
+            test_literal!(
+                b"a byte string with an escaped newline\
+
+
+                "
+            );
             test_literal!(
                 b"a byte string with an escaped newline\
 
