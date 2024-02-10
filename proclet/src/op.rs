@@ -21,18 +21,18 @@ pub struct Op<S: Span> {
 }
 
 impl<S: Span> Op<S> {
-    /// Create a new operator.
+    /// Create a new operator. `str` can't be empty.
     #[inline]
     pub fn new(str: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            str: str.into(),
-            spans: None,
-        }
+        let str = str.into();
+        assert!(!str.is_empty());
+        Self { str, spans: None }
     }
 
-    /// Create a new operator (const).
+    /// Create a new operator (const). `str` can't be empty.
     #[inline]
     pub const fn new_static(str: &'static str) -> Self {
+        assert!(!str.is_empty());
         Self {
             str: Cow::Borrowed(str),
             spans: None,
@@ -40,18 +40,22 @@ impl<S: Span> Op<S> {
     }
 
     /// Create a new operator with one specific span used for the whole operator.
+    /// `str` can't be empty.
     #[inline]
     pub fn with_span(str: impl Into<Cow<'static, str>>, span: S) -> Self {
         let str = str.into();
+        assert!(!str.is_empty());
         let spans = Some(vec![span; str.chars().count()].into_boxed_slice());
         Self { str, spans }
     }
 
     /// Create a new operator with a specific span for each character of the op.
     /// The length of `spans` must be the same as the number of characters in `str`.
+    /// `str` can't be empty.
     #[inline]
     pub fn with_spans(str: impl Into<Cow<'static, str>>, spans: Vec<S>) -> Self {
         let str = str.into();
+        assert!(!str.is_empty());
         let spans = spans.into_boxed_slice();
         assert_eq!(str.chars().count(), spans.len());
         Self {
