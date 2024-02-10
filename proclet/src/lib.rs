@@ -8,6 +8,10 @@ extern crate proc_macro;
 pub mod prelude {
     //! The prelude imports all the crate's traits with `use ... as _`.
     #[cfg(feature = "token-buffer")]
+    pub use crate::AsTokenBuf as _;
+    #[cfg(feature = "token-buffer")]
+    pub use crate::AsTokenBufMut as _;
+    #[cfg(feature = "token-buffer")]
     pub use crate::DefaultParser as _;
     pub use crate::Delimiter as _;
     pub use crate::DelimiterExt as _;
@@ -69,7 +73,9 @@ pub use span::{Span, SpanExt};
 use token::def_tokens;
 pub use token::{ToTokenStream, ToTokens, Token, TokenAuto, TokenObject};
 #[cfg(feature = "token-buffer")]
-pub use token_buffer::{DefaultParser, Parse, Parser, ToTokenBuffer, TokenBuf, TokenBuffer};
+pub use token_buffer::{
+    AsTokenBuf, AsTokenBufMut, DefaultParser, Parse, Parser, ToTokenBuffer, TokenBuf, TokenBuffer,
+};
 pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
     Delimiter, DelimiterExt, DelimiterKind, Group, GroupExt, Ident, IdentExt, Punct, PunctExt,

@@ -219,6 +219,38 @@ impl<T: PM, X: ToTokens<T> + Clone> ToTokenBuffer<T> for X {
     }
 }
 
+/// Automatically implemented for types that implement `Into<&TokenBuf>` for `&Type`.
+pub trait AsTokenBuf<'a, T: PM> {
+    /// Get a reference to this as a `TokenBuf`.
+    fn as_token_buf(&'a self) -> &'a TokenBuf<T>;
+}
+
+impl<'a, T: PM, X: 'a> AsTokenBuf<'a, T> for X
+where
+    &'a X: Into<&'a TokenBuf<T>>,
+{
+    #[inline]
+    fn as_token_buf(&'a self) -> &'a TokenBuf<T> {
+        self.into()
+    }
+}
+
+/// Automatically implemented for types that implement `Into<&mut TokenBuf>` for `&mut Type`.
+pub trait AsTokenBufMut<'a, T: PM> {
+    /// Get a mutable reference to this as a `TokenBuf`.
+    fn as_token_buf_mut(&'a mut self) -> &'a mut TokenBuf<T>;
+}
+
+impl<'a, T: PM, X: 'a> AsTokenBufMut<'a, T> for X
+where
+    &'a mut X: Into<&'a mut TokenBuf<T>>,
+{
+    #[inline]
+    fn as_token_buf_mut(&'a mut self) -> &'a mut TokenBuf<T> {
+        self.into()
+    }
+}
+
 /// An owned buffer of tokens.
 #[derive(Clone, Debug, Default)]
 pub struct TokenBuffer<T: PM>(Vec<TokenObject<T>>);
@@ -786,6 +818,34 @@ impl From<&mut TokenBuf<crate::PM2>> for proc_macro2::TokenStream {
     #[inline]
     fn from(value: &mut TokenBuf<crate::PM2>) -> Self {
         value.to_token_stream()
+    }
+}
+
+impl<'a, T: PM> From<&'a TokenBuffer<T>> for &'a TokenBuf<T> {
+    #[inline]
+    fn from(value: &'a TokenBuffer<T>) -> Self {
+        value.as_buf()
+    }
+}
+
+impl<'a, T: PM> From<&'a mut TokenBuffer<T>> for &'a mut TokenBuf<T> {
+    #[inline]
+    fn from(value: &'a mut TokenBuffer<T>) -> Self {
+        value.as_buf_mut()
+    }
+}
+
+impl<'a, T: PM> From<&'a [TokenObject<T>]> for &'a TokenBuf<T> {
+    #[inline]
+    fn from(value: &'a [TokenObject<T>]) -> Self {
+        TokenBuf::from_ref(value)
+    }
+}
+
+impl<'a, T: PM> From<&'a mut [TokenObject<T>]> for &'a mut TokenBuf<T> {
+    #[inline]
+    fn from(value: &'a mut [TokenObject<T>]) -> Self {
+        TokenBuf::from_mut(value)
     }
 }
 
