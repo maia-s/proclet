@@ -79,6 +79,13 @@ impl<T: PM, const LENGTH: usize> Parse<T> for Box<[Box<dyn Token<T>>; LENGTH]> {
     }
 }
 
+impl<T: PM, X: Parse<T>> Parse<T> for Option<X> {
+    #[inline]
+    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+        Some(X::parse(buf))
+    }
+}
+
 /// A parser for parsing values from a `TokenBuf`.
 pub trait Parser<T: PM>: Sized {
     /// The output type of this parser.
