@@ -708,7 +708,7 @@ impl<T: crate::PMExt> Token<T> for LiteralToken<T::Span> {
 #[cfg(feature = "literal-value")]
 impl<T: crate::PMExt> crate::ToTokens<T> for LiteralToken<T::Span> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
+    fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
         enum Iter<S, O> {
             String(S),
             Other(O),
@@ -716,11 +716,11 @@ impl<T: crate::PMExt> crate::ToTokens<T> for LiteralToken<T::Span> {
 
         impl<
                 T: crate::PMExt,
-                S: Iterator<Item = Box<dyn Token<T>>>,
-                O: Iterator<Item = Box<dyn Token<T>>>,
+                S: Iterator<Item = crate::TokenObject<T>>,
+                O: Iterator<Item = crate::TokenObject<T>>,
             > Iterator for Iter<S, O>
         {
-            type Item = Box<dyn Token<T>>;
+            type Item = crate::TokenObject<T>;
 
             #[inline]
             fn next(&mut self) -> Option<Self::Item> {
@@ -734,7 +734,7 @@ impl<T: crate::PMExt> crate::ToTokens<T> for LiteralToken<T::Span> {
         let span = self.span();
         match self.value {
             LiteralValue::String(v) => Iter::String(StringToken::with_span(v, span).into_tokens()),
-            _ => Iter::Other(std::iter::once(Box::new(self) as Box<dyn Token<T>>)),
+            _ => Iter::Other(std::iter::once(self.into_token_object())),
         }
     }
 }
@@ -813,8 +813,8 @@ impl<T: crate::PMExt> crate::Parse<T> for StringToken<T::Span> {
 #[cfg(feature = "literal-value")]
 impl<T: crate::PMExt> crate::ToTokens<T> for StringToken<T::Span> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>> {
-        std::iter::once(Box::new(self) as Box<dyn Token<T>>)
+    fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
+        std::iter::once(self.into_token_object())
     }
 }
 
@@ -1094,12 +1094,12 @@ macro_rules! impl_literal {
         #[cfg(feature = $feature)]
         impl crate::ToTokens<crate::base::$pm::PM> for $pm::Literal {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
+            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<crate::base::$pm::PM>> {
                 #[cfg(feature = "literal-value")] {
                     LiteralToken::from(self).into_tokens()
                 }
                 #[cfg(not(feature = "literal-value"))] {
-                    std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
+                    std::iter::once(self.into_token_object())
                 }
             }
         }

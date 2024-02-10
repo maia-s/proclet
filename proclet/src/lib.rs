@@ -67,7 +67,7 @@ pub use literal::{LiteralToken, LiteralValue, StringToken, Suffixed};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 use token::def_tokens;
-pub use token::{ToTokenStream, ToTokens, Token, TokenAuto};
+pub use token::{ToTokenStream, ToTokens, Token, TokenAuto, TokenObject};
 #[cfg(feature = "token-buffer")]
 pub use token_buffer::{DefaultParser, Parse, Parser, ToTokenBuffer, TokenBuf, TokenBuffer};
 pub use token_stream::{TokenStream, TokenStreamExt};

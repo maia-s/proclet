@@ -1,4 +1,4 @@
-use crate::{ProcMacro, ToTokens, Token};
+use crate::{ProcMacro, ToTokens, Token, TokenObject};
 use std::fmt::Display;
 
 /// The kind of a `TokenTree`. This is like the enum in `proc_macro*::TokenTree`, but
@@ -44,13 +44,10 @@ pub trait TokenTree:
 /// This trait is implemented for `TokenTree` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
 pub trait TokenTreeExt:
-    crate::ProcMacroExt<TokenTreeExt = Self>
-    + TokenTree
-    + Into<Box<dyn Token<Self::PM>>>
-    + ToTokens<Self::PM>
+    crate::ProcMacroExt<TokenTreeExt = Self> + TokenTree + ToTokens<Self::PM>
 {
     /// Turn this `TokenTree` into a `Token` trait object.
-    fn into_token(self) -> Box<dyn Token<Self::PM>>;
+    fn into_token_object(self) -> TokenObject<Self::PM>;
 
     /// Get the kind of this `TokenTree`.
     fn kind(&self) -> TokenTreeKind;
@@ -399,12 +396,12 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl TokenTreeExt for $pm::TokenTree {
             #[inline]
-            fn into_token(self) -> Box<dyn Token<crate::base::$pm::PM>> {
+            fn into_token_object(self) -> TokenObject<crate::base::$pm::PM> {
                 match self {
-                    Self::Group(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
-                    Self::Ident(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
-                    Self::Punct(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
-                    Self::Literal(t) => Box::new(t) as Box<dyn Token<crate::base::$pm::PM>>,
+                    Self::Group(t) => t.into_token_object(),
+                    Self::Ident(t) => t.into_token_object(),
+                    Self::Punct(t) => t.into_token_object(),
+                    Self::Literal(t) => t.into_token_object(),
                 }
             }
 
@@ -538,14 +535,6 @@ macro_rules! impl_token_tree {
             }
         }
 
-        #[cfg(feature = $feature)]
-        impl From<$pm::TokenTree> for Box<dyn Token<crate::base::$pm::PM>> {
-            #[inline]
-            fn from(value: $pm::TokenTree) -> Self {
-                value.into_token()
-            }
-        }
-
         #[cfg(all(feature = $feature, feature = "token-buffer"))]
         impl crate::Parse<crate::base::$pm::PM> for $pm::TokenTree {
             #[inline]
@@ -567,7 +556,7 @@ macro_rules! impl_token_tree {
         #[cfg(all(feature = $feature))]
         impl crate::ToTokens<crate::base::$pm::PM> for $pm::TokenTree {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
+            fn into_tokens(self) -> impl Iterator<Item = TokenObject<crate::base::$pm::PM>> {
                 enum Iter<G, I, P, L> {
                     Group(G),
                     Ident(I),
@@ -576,12 +565,12 @@ macro_rules! impl_token_tree {
                 }
 
                 impl<
-                    G: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>,
-                    I: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>,
-                    P: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>,
-                    L: Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>>
+                    G: Iterator<Item = TokenObject<crate::base::$pm::PM>>,
+                    I: Iterator<Item = TokenObject<crate::base::$pm::PM>>,
+                    P: Iterator<Item = TokenObject<crate::base::$pm::PM>>,
+                    L: Iterator<Item = TokenObject<crate::base::$pm::PM>>
                 > Iterator for Iter<G, I, P, L> {
-                    type Item = Box<dyn Token<crate::base::$pm::PM>>;
+                    type Item = TokenObject<crate::base::$pm::PM>;
 
                     #[inline]
                     fn next(&mut self) -> Option<Self::Item> {
@@ -680,8 +669,8 @@ macro_rules! impl_token_tree {
         #[cfg(all(feature = $feature))]
         impl crate::ToTokens<crate::base::$pm::PM> for $pm::Group {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
-                std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
+            fn into_tokens(self) -> impl Iterator<Item = TokenObject<crate::base::$pm::PM>> {
+                std::iter::once(self.into_token_object())
             }
         }
 
@@ -801,8 +790,8 @@ macro_rules! impl_token_tree {
         #[cfg(all(feature = $feature))]
         impl crate::ToTokens<crate::base::$pm::PM> for $pm::Ident {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
-                std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
+            fn into_tokens(self) -> impl Iterator<Item = TokenObject<crate::base::$pm::PM>> {
+                std::iter::once(self.into_token_object())
             }
         }
 
@@ -870,8 +859,8 @@ macro_rules! impl_token_tree {
         #[cfg(all(feature = $feature))]
         impl crate::ToTokens<crate::base::$pm::PM> for $pm::Punct {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<crate::base::$pm::PM>>> {
-                std::iter::once(Box::new(self) as Box<dyn Token<crate::base::$pm::PM>>)
+            fn into_tokens(self) -> impl Iterator<Item = TokenObject<crate::base::$pm::PM>> {
+                std::iter::once(self.into_token_object())
             }
         }
 

@@ -1,5 +1,8 @@
 use crate::{TokenStream, PM};
-use std::{any::Any, fmt::Debug};
+use std::{any::Any, fmt::Debug, rc::Rc};
+
+/// Owned trait object of [`Token`]
+pub type TokenObject<T> = Rc<dyn Token<T>>;
 
 /// A token.
 pub trait Token<T: PM>:
@@ -7,6 +10,15 @@ pub trait Token<T: PM>:
 {
     /// Check two tokens for equality, not including their spans.
     fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
+
+    /// Turn this token into a trait object.
+    #[inline]
+    fn into_token_object(self) -> TokenObject<T>
+    where
+        Self: Sized,
+    {
+        Rc::new(self)
+    }
 }
 
 impl<T: PM> dyn Token<T> {
@@ -36,9 +48,6 @@ pub trait TokenAuto<T: PM> {
 
     /// Get the token as `&mut dyn Any`.
     fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    /// Clone the token into a new `Box<dyn Token<T>>`.
-    fn clone_boxed(&self) -> Box<dyn Token<T>>;
 }
 
 impl<T: PM, X: Clone + Token<T>> TokenAuto<T> for X {
@@ -51,23 +60,18 @@ impl<T: PM, X: Clone + Token<T>> TokenAuto<T> for X {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-
-    #[inline]
-    fn clone_boxed(&self) -> Box<dyn Token<T>> {
-        Box::new(self.clone())
-    }
 }
 
 /// Trait for converting an object into its token representation.
 pub trait ToTokens<T: PM> {
     /// Convert this object into an iterator of tokens representing the object.
-    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>>
+    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
     where
         Self: Sized;
 
     /// Get an iterator of tokens representing this object.
     #[inline]
-    fn to_tokens(&self) -> impl Iterator<Item = Box<dyn Token<T>>>
+    fn to_tokens(&self) -> impl Iterator<Item = TokenObject<T>>
     where
         Self: Clone,
     {

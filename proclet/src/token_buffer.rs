@@ -1,4 +1,6 @@
-use crate::{Match, PMExt, ToTokenStream, ToTokens, Token, TokenStream, TokenTreeExt, PM};
+use crate::{
+    Match, PMExt, ToTokenStream, ToTokens, Token, TokenObject, TokenStream, TokenTreeExt, PM,
+};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -32,25 +34,25 @@ pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, S
     }
 }
 
-impl<T: PM> Parse<T> for Box<dyn Token<T>> {
+impl<T: PM> Parse<T> for TokenObject<T> {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         buf.first().map(|token| {
             *buf = &buf[1..];
-            token.clone_boxed()
+            token.clone()
         })
     }
 }
 
-impl<T: PM, const LENGTH: usize> Parse<T> for [Box<dyn Token<T>>; LENGTH] {
+impl<T: PM, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         // can't use MaybeUninit for array init as rust claims the size is unknown when transmuting it
         if buf.len() >= LENGTH {
             let parsed = buf[..LENGTH]
                 .into_iter()
-                .map(|x| x.clone_boxed())
-                .collect::<Vec<Box<dyn Token<T>>>>()
+                .cloned()
+                .collect::<Vec<TokenObject<T>>>()
                 .try_into()
                 .unwrap();
             *buf = &buf[LENGTH..];
@@ -61,14 +63,14 @@ impl<T: PM, const LENGTH: usize> Parse<T> for [Box<dyn Token<T>>; LENGTH] {
     }
 }
 
-impl<T: PM, const LENGTH: usize> Parse<T> for Box<[Box<dyn Token<T>>; LENGTH]> {
+impl<T: PM, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH]> {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         if buf.len() >= LENGTH {
             let parsed = buf[..LENGTH]
                 .into_iter()
-                .map(|x| x.clone_boxed())
-                .collect::<Vec<Box<dyn Token<T>>>>()
+                .cloned()
+                .collect::<Vec<TokenObject<T>>>()
                 .try_into()
                 .unwrap();
             *buf = &buf[LENGTH..];
@@ -116,7 +118,7 @@ pub trait Parser<T: PM>: Sized {
     }
 }
 
-impl<T: PM> Parser<T> for Box<dyn Token<T>> {
+impl<T: PM> Parser<T> for TokenObject<T> {
     type Output<'p, 'b> = Self where Self: 'p;
 
     #[inline]
@@ -124,7 +126,7 @@ impl<T: PM> Parser<T> for Box<dyn Token<T>> {
         buf.first().and_then(|token| {
             if self.eq_except_span(token.deref()) {
                 *buf = &buf[1..];
-                Some(token.clone_boxed())
+                Some(token.clone())
             } else {
                 None
             }
@@ -132,7 +134,7 @@ impl<T: PM> Parser<T> for Box<dyn Token<T>> {
     }
 }
 
-impl<T: PM> Parser<T> for &[Box<dyn Token<T>>] {
+impl<T: PM> Parser<T> for &[TokenObject<T>] {
     type Output<'p, 'b> = TokenBuffer<T> where Self: 'p;
 
     #[inline]
@@ -144,7 +146,7 @@ impl<T: PM> Parser<T> for &[Box<dyn Token<T>>] {
         }
         let mut tokens = Vec::with_capacity(self.len());
         for token in buf[..self.len()].iter() {
-            tokens.push(token.clone_boxed());
+            tokens.push(token.clone());
         }
         *buf = &buf[self.len()..];
         Some(tokens.into())
@@ -218,8 +220,8 @@ impl<T: PM, X: ToTokens<T> + Clone> ToTokenBuffer<T> for X {
 }
 
 /// An owned buffer of tokens.
-#[derive(Debug, Default)]
-pub struct TokenBuffer<T: PM>(Vec<Box<dyn Token<T>>>);
+#[derive(Clone, Debug, Default)]
+pub struct TokenBuffer<T: PM>(Vec<TokenObject<T>>);
 
 impl<T: PM> TokenBuffer<T> {
     /// Get this buffer as a `&TokenBuf`.
@@ -284,13 +286,6 @@ impl<T: PM> BorrowMut<TokenBuf<T>> for TokenBuffer<T> {
     }
 }
 
-impl<T: PM> Clone for TokenBuffer<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self(self.0.iter().map(|i| i.clone_boxed()).collect())
-    }
-}
-
 impl<T: PM> Deref for TokenBuffer<T> {
     type Target = TokenBuf<T>;
 
@@ -348,23 +343,23 @@ impl From<TokenBuffer<crate::PM2>> for proc_macro2::TokenStream {
     }
 }
 
-impl<T: PM> From<TokenBuffer<T>> for Box<[Box<dyn Token<T>>]> {
+impl<T: PM> From<TokenBuffer<T>> for Box<[TokenObject<T>]> {
     #[inline]
     fn from(value: TokenBuffer<T>) -> Self {
         value.0.into()
     }
 }
 
-impl<T: PM> From<TokenBuffer<T>> for Vec<Box<dyn Token<T>>> {
+impl<T: PM> From<TokenBuffer<T>> for Vec<TokenObject<T>> {
     #[inline]
     fn from(value: TokenBuffer<T>) -> Self {
         value.0
     }
 }
 
-impl<T: PM> From<Vec<Box<dyn Token<T>>>> for TokenBuffer<T> {
+impl<T: PM> From<Vec<TokenObject<T>>> for TokenBuffer<T> {
     #[inline]
-    fn from(value: Vec<Box<dyn Token<T>>>) -> Self {
+    fn from(value: Vec<TokenObject<T>>) -> Self {
         Self(value)
     }
 }
@@ -397,8 +392,8 @@ impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
 }
 
 impl<T: PM> IntoIterator for TokenBuffer<T> {
-    type IntoIter = <Vec<Box<dyn Token<T>>> as IntoIterator>::IntoIter;
-    type Item = Box<dyn Token<T>>;
+    type IntoIter = <Vec<TokenObject<T>> as IntoIterator>::IntoIter;
+    type Item = TokenObject<T>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -408,7 +403,7 @@ impl<T: PM> IntoIterator for TokenBuffer<T> {
 
 impl<T: PM> ToTokens<T> for TokenBuffer<T> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = Box<dyn Token<T>>>
+    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
     where
         Self: Sized,
     {
@@ -416,8 +411,8 @@ impl<T: PM> ToTokens<T> for TokenBuffer<T> {
     }
 }
 
-impl<T: PM, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [Box<dyn Token<T>>; LENGTH] {
-    type Error = <Self as TryFrom<Vec<Box<dyn Token<T>>>>>::Error;
+impl<T: PM, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [TokenObject<T>; LENGTH] {
+    type Error = <Self as TryFrom<Vec<TokenObject<T>>>>::Error;
 
     #[inline]
     fn try_from(value: TokenBuffer<T>) -> Result<Self, Self::Error> {
@@ -428,24 +423,24 @@ impl<T: PM, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [Box<dyn Token<T>>;
 /// Borrowed version of [`TokenBuffer`].
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct TokenBuf<T: PM>([Box<dyn Token<T>>]);
+pub struct TokenBuf<T: PM>([TokenObject<T>]);
 
 impl<T: PM> TokenBuf<T> {
     #[inline]
-    fn from_ref(r: &[Box<dyn Token<T>>]) -> &Self {
+    fn from_ref(r: &[TokenObject<T>]) -> &Self {
         unsafe {
             // # Safety
             // It's a reference to the same type in a transparent struct
-            transmute::<&[Box<dyn Token<T>>], &Self>(r)
+            transmute::<&[TokenObject<T>], &Self>(r)
         }
     }
 
     #[inline]
-    fn from_mut(r: &mut [Box<dyn Token<T>>]) -> &mut Self {
+    fn from_mut(r: &mut [TokenObject<T>]) -> &mut Self {
         unsafe {
             // # Safety
             // It's a reference to the same type in a transparent struct
-            transmute::<&mut [Box<dyn Token<T>>], &mut Self>(r)
+            transmute::<&mut [TokenObject<T>], &mut Self>(r)
         }
     }
 
@@ -747,7 +742,7 @@ impl<T: PM> TokenBuf<T> {
 }
 
 impl<T: PM> Deref for TokenBuf<T> {
-    type Target = [Box<dyn Token<T>>];
+    type Target = [TokenObject<T>];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -811,8 +806,8 @@ impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuf<T> {
 }
 
 impl<'a, T: PM> IntoIterator for &'a TokenBuf<T> {
-    type IntoIter = slice::Iter<'a, Box<dyn Token<T>>>;
-    type Item = &'a Box<dyn Token<T>>;
+    type IntoIter = slice::Iter<'a, TokenObject<T>>;
+    type Item = &'a TokenObject<T>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -821,8 +816,8 @@ impl<'a, T: PM> IntoIterator for &'a TokenBuf<T> {
 }
 
 impl<'a, T: PM> IntoIterator for &'a mut TokenBuf<T> {
-    type IntoIter = slice::IterMut<'a, Box<dyn Token<T>>>;
-    type Item = &'a mut Box<dyn Token<T>>;
+    type IntoIter = slice::IterMut<'a, TokenObject<T>>;
+    type Item = &'a mut TokenObject<T>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -835,7 +830,7 @@ impl<T: PM> ToOwned for TokenBuf<T> {
 
     #[inline]
     fn to_owned(&self) -> Self::Owned {
-        TokenBuffer(self.0.iter().map(|i| i.clone_boxed()).collect())
+        TokenBuffer(self.0.to_vec())
     }
 }
 
@@ -850,20 +845,20 @@ impl<T: TokenStream<TokenStream = T>> ToTokenStream<T> for TokenBuf<T::PM> {
 
 pub trait TokenBufferIndex<T: PM> {
     type Output: ?Sized;
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output;
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output;
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output;
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output;
 }
 
 impl<T: PM> TokenBufferIndex<T> for usize {
-    type Output = Box<dyn Token<T>>;
+    type Output = TokenObject<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
         &slice[self]
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
         &mut slice[self]
     }
 }
@@ -872,12 +867,12 @@ impl<T: PM> TokenBufferIndex<T> for Range<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[self.start..self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[self.start..self.end])
     }
 }
@@ -886,12 +881,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeFrom<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[self.start..])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[self.start..])
     }
 }
@@ -900,12 +895,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeFull {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
         TokenBuf::from_ref(slice)
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
         TokenBuf::from_mut(slice)
     }
 }
@@ -914,12 +909,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[*self.start()..=*self.end()])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[*self.start()..=*self.end()])
     }
 }
@@ -928,12 +923,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeTo<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[..self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[..self.end])
     }
 }
@@ -942,12 +937,12 @@ impl<T: PM> TokenBufferIndex<T> for RangeToInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[Box<dyn Token<T>>]) -> &Self::Output {
+    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
         TokenBuf::from_ref(&slice[..=self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [Box<dyn Token<T>>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[..=self.end])
     }
 }
