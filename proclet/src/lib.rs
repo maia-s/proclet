@@ -65,9 +65,12 @@ pub use base::{PMExt, ProcMacro, ProcMacroExt, PM};
 #[cfg(feature = "token-buffer")]
 pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
-pub use literal::{Literal, LiteralExt};
 #[cfg(feature = "literal-value")]
-pub use literal::{LiteralToken, LiteralValue, StringToken, Suffixed};
+pub use literal::{
+    ByteCharacterToken, ByteStringToken, CharacterToken, LiteralToken, LiteralValue, StringToken,
+    Suffixed,
+};
+pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
 use token::def_tokens;
