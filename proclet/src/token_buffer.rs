@@ -281,6 +281,16 @@ impl<T: PM> TokenBuffer<T> {
     pub fn as_buf_mut(&mut self) -> &mut TokenBuf<T> {
         self
     }
+
+    /// Parse a value from this buffer, but return an error with the remaining tokens if
+    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
+    /// buffer is returned.
+    ///
+    /// Unlike `TokenBuf::parse_all`, this doesn't modify the reference to self.
+    #[inline]
+    pub fn parse_all<P: Parse<T>>(&self) -> Result<P, &TokenBuf<T>> {
+        self.as_buf().parse_all()
+    }
 }
 
 impl<T: PM> TokenBuffer<T> {
