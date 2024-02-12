@@ -103,7 +103,7 @@ impl<T: PM, X: Parse<T>> Parse<T> for Vec<X> {
 }
 
 /// A parser for parsing values from a `TokenBuf`.
-pub trait Parser<T: PM>: Sized {
+pub trait Parser<T: PM> {
     /// The output type of this parser.
     type Output<'p, 'b>
     where
@@ -164,6 +164,27 @@ impl<T: PM> Parser<T> for &[TokenObject<T>] {
         }
         *buf = &buf[self.len()..];
         Some(tokens.into())
+    }
+}
+
+impl<T: PM, X: Parser<T>> Parser<T> for Option<X> {
+    type Output<'p, 'b> = Option<X::Output<'p, 'b>> where Self: 'p;
+
+    #[inline]
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+        match self {
+            Some(x) => Some(x.parse(buf)),
+            None => Some(None),
+        }
+    }
+}
+
+impl<T: PM, X: Parser<T>> Parser<T> for [X] {
+    type Output<'p, 'b> = Vec<X::Output<'p, 'b>> where Self: 'p;
+
+    #[inline]
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+        self.iter().map(|x| x.parse(buf)).collect()
     }
 }
 
