@@ -86,6 +86,22 @@ impl<T: PM, X: Parse<T>> Parse<T> for Option<X> {
     }
 }
 
+impl<T: PM, X: Parse<T>> Parse<T> for Vec<X> {
+    /// Parse a non-empty vector of items. If you want to accept an empty vector, use `Option<Vec<...>>::parse`.
+    #[inline]
+    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+        let mut vec = Vec::new();
+        while let Some(item) = X::parse(buf) {
+            vec.push(item);
+        }
+        if vec.is_empty() {
+            None
+        } else {
+            Some(vec)
+        }
+    }
+}
+
 /// A parser for parsing values from a `TokenBuf`.
 pub trait Parser<T: PM>: Sized {
     /// The output type of this parser.
