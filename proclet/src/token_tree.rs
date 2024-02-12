@@ -174,6 +174,10 @@ pub trait GroupExt: crate::ProcMacroExt<GroupExt = Self> + Group + Token<Self::P
         self.delimiter().into()
     }
 
+    #[cfg(feature = "token-buffer")]
+    /// Get the delimited `TokenStream` as a `TokenBuffer`, not including delimiters.
+    fn stream_buffer(&self) -> crate::TokenBuffer<Self::PM>;
+
     /// If the group has delimiter `None` and contains a single item, extract that item,
     /// and if that item is a group, flatten that too, recursively. Then return the item,
     /// or `None` if the conditions weren't met.
@@ -639,7 +643,13 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl GroupExt for $pm::Group {}
+        impl GroupExt for $pm::Group {
+            #[cfg(feature = "token-buffer")]
+            #[inline]
+            fn stream_buffer(&self) -> crate::TokenBuffer<crate::base::$pm::PM> {
+                crate::TokenBuffer::from(self.stream())
+            }
+        }
 
         #[cfg(all(feature = $feature, feature = "token-buffer"))]
         impl crate::Parse<crate::base::$pm::PM> for $pm::Group {
