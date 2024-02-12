@@ -67,13 +67,13 @@ pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
 #[cfg(feature = "literal-value")]
 pub use literal::{
-    ByteCharacterToken, ByteStringToken, CharacterToken, LiteralToken, LiteralValue, StringToken,
-    Suffixed,
+    ByteCharacterToken, ByteStringToken, CharacterToken, F32Token, F64Token, FloatToken, I128Token,
+    I16Token, I32Token, I64Token, I8Token, IntToken, IsizeToken, LiteralToken, StringToken,
+    U128Token, U16Token, U32Token, U64Token, U8Token, UsizeToken,
 };
 pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-use token::def_tokens;
 pub use token::{ToTokenStream, ToTokens, Token, TokenAuto, TokenObject};
 #[cfg(feature = "token-buffer")]
 pub use token_buffer::{
