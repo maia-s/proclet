@@ -664,6 +664,20 @@ macro_rules! impl_token_tree {
                     self.delimiter() == other.delimiter() && self.stream().eq_except_span(other.stream())
                 ).unwrap_or(false)
             }
+
+            #[inline]
+            fn into_token_object(self) -> TokenObject<crate::base::$pm::PM> {
+                if matches!(self.delimiter(), $pm::Delimiter::None) {
+                    let mut ts = self.stream().into_iter();
+                    if let Some(item) = ts.next() {
+                        if ts.next().is_none() {
+                            // none-delimited group with a single item in it
+                            return item.into_token_object()
+                        }
+                    }
+                }
+                std::rc::Rc::new(self)
+            }
         }
 
         #[cfg(all(feature = $feature))]

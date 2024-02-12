@@ -1,6 +1,4 @@
-use crate::{
-    Match, PMExt, ToTokenStream, ToTokens, Token, TokenObject, TokenStream, TokenTreeExt, PM,
-};
+use crate::{Match, ToTokenStream, ToTokens, Token, TokenObject, TokenStream, PM};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -277,19 +275,6 @@ impl<T: PM> TokenBuffer<T> {
     }
 }
 
-impl<T: PMExt> TokenBuffer<T> {
-    /// Create a new `TokenBuffer` from a `TokenStream`.
-    #[inline]
-    pub fn from_token_stream(ts: T::TokenStream) -> Self {
-        ts.into_iter()
-            .map(|mut t| {
-                t.flatten_group();
-                t
-            })
-            .collect()
-    }
-}
-
 impl<T: PM> AsRef<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn as_ref(&self) -> &TokenBuf<T> {
@@ -347,7 +332,7 @@ impl<T: PM, X: ToTokenBuffer<T>> Extend<X> for TokenBuffer<T> {
 impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
     #[inline]
     fn from(value: proc_macro::TokenStream) -> Self {
-        Self::from_token_stream(value)
+        Self::from_iter(value)
     }
 }
 
@@ -355,7 +340,7 @@ impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
 impl From<proc_macro2::TokenStream> for TokenBuffer<crate::PM2> {
     #[inline]
     fn from(value: proc_macro2::TokenStream) -> Self {
-        Self::from_token_stream(value)
+        Self::from_iter(value)
     }
 }
 
