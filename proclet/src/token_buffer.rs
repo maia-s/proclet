@@ -130,6 +130,15 @@ pub trait Parser<T: PM> {
             _ => Err(buf),
         }
     }
+
+    /// Wrap this parser in [`Optional`] to make it always succeed and return an option.
+    #[inline]
+    fn optional(self) -> Optional<Self>
+    where
+        Self: Sized,
+    {
+        Optional(self)
+    }
 }
 
 impl<T: PM> Parser<T> for TokenObject<T> {
@@ -167,18 +176,6 @@ impl<T: PM> Parser<T> for &[TokenObject<T>] {
     }
 }
 
-impl<T: PM, X: Parser<T>> Parser<T> for Option<X> {
-    type Output<'p, 'b> = Option<X::Output<'p, 'b>> where Self: 'p;
-
-    #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
-        match self {
-            Some(x) => Some(x.parse(buf)),
-            None => Some(None),
-        }
-    }
-}
-
 impl<T: PM, X: Parser<T>> Parser<T> for [X] {
     type Output<'p, 'b> = Vec<X::Output<'p, 'b>> where Self: 'p;
 
@@ -203,6 +200,19 @@ pub trait DefaultParser<T: PM> {
 
 impl<T: PM, X: Parse<T>> DefaultParser<T> for X {
     type Parser = DefaultParserImpl<T, X>;
+}
+
+/// Wrap a parser in this to make it always succeed and return an `Option`.
+#[repr(transparent)]
+pub struct Optional<T>(pub T);
+
+impl<T: PM, X: Parser<T>> Parser<T> for Optional<X> {
+    type Output<'p, 'b> = Option<X::Output<'p, 'b>> where Self: 'p;
+
+    #[inline]
+    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+        Some(self.0.parse(buf))
+    }
 }
 
 pub struct DefaultParserImpl<T: PM, X: Parse<T>>(PhantomData<fn() -> (T, X)>);

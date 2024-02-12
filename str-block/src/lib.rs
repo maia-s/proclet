@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proclet::{delimited, op, prelude::*, Error, StringToken, TokenBuffer};
+use proclet::{delimited, op, prelude::*, Error, Optional, StringToken, TokenBuffer};
 
 /// Remove the first line if it's empty except for whitespace, and remove the common whitespace prefix from
 /// all lines, if any. Empty lines are treated as if they have the common prefix.
@@ -9,7 +9,8 @@ use proclet::{delimited, op, prelude::*, Error, StringToken, TokenBuffer};
 pub fn str_block(input: TokenStream) -> TokenStream {
     let input: TokenBuffer<_> = input.into();
     let mut input = input.as_buf();
-    let Ok(strings) = delimited(StringToken::parser(), Some(op(","))).parse_all(&mut input) else {
+    let Ok(strings) = delimited(StringToken::parser(), Optional(op(","))).parse_all(&mut input)
+    else {
         return Error::new("str_block takes one or more string or raw string literals as input")
             .to_compile_error();
     };

@@ -74,7 +74,8 @@ use token::def_tokens;
 pub use token::{ToTokenStream, ToTokens, Token, TokenAuto, TokenObject};
 #[cfg(feature = "token-buffer")]
 pub use token_buffer::{
-    AsTokenBuf, AsTokenBufMut, DefaultParser, Parse, Parser, ToTokenBuffer, TokenBuf, TokenBuffer,
+    AsTokenBuf, AsTokenBufMut, DefaultParser, Optional, Parse, Parser, ToTokenBuffer, TokenBuf,
+    TokenBuffer,
 };
 pub use token_stream::{TokenStream, TokenStreamExt};
 pub use token_tree::{
