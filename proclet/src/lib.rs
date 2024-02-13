@@ -67,9 +67,10 @@ pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
 #[cfg(feature = "literal-value")]
 pub use literal::{
-    ByteCharacterToken, ByteStringToken, CharacterToken, F32Token, F64Token, FloatToken, I128Token,
-    I16Token, I32Token, I64Token, I8Token, IntToken, IsizeToken, LiteralToken, StringToken,
-    U128Token, U16Token, U32Token, U64Token, U8Token, UsizeToken,
+    ByteCharacterLiteral, ByteStringLiteral, CharacterLiteral, F32Literal, F64Literal,
+    FloatLiteral, I128Literal, I16Literal, I32Literal, I64Literal, I8Literal, IntLiteral,
+    IsizeLiteral, LiteralValue, StringLiteral, U128Literal, U16Literal, U32Literal, U64Literal,
+    U8Literal, UsizeLiteral,
 };
 pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};

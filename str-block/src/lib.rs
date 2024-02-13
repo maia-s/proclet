@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proclet::{delimited, op, prelude::*, Error, Optional, StringToken, TokenBuffer};
+use proclet::{delimited, op, prelude::*, Error, Optional, StringLiteral, TokenBuffer};
 
 /// Remove the first line if it's empty except for whitespace, and remove the common whitespace prefix from
 /// all lines, if any. Empty lines are treated as if they have the common prefix.
@@ -9,7 +9,7 @@ use proclet::{delimited, op, prelude::*, Error, Optional, StringToken, TokenBuff
 pub fn str_block(input: TokenStream) -> TokenStream {
     let input: TokenBuffer<_> = input.into();
     let mut input = input.as_buf();
-    let Ok(strings) = delimited(StringToken::parser(), Optional(op(","))).parse_all(&mut input)
+    let Ok(strings) = delimited(StringLiteral::parser(), Optional(op(","))).parse_all(&mut input)
     else {
         return Error::new("str_block takes one or more string or raw string literals as input")
             .to_compile_error();
@@ -25,7 +25,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
     let mut lines2 = lines.clone();
     let Some(first) = lines.next() else {
         // input was an empty string
-        return StringToken::new(String::new()).to_token_stream();
+        return StringLiteral::new(String::new()).to_token_stream();
     };
     // skip first line if it's empty
     let first = if first.trim().is_empty() {
@@ -34,7 +34,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
             second
         } else {
             // input was one line of only whitespace
-            return StringToken::new(String::new()).to_token_stream();
+            return StringLiteral::new(String::new()).to_token_stream();
         }
     } else {
         first
@@ -65,5 +65,5 @@ pub fn str_block(input: TokenStream) -> TokenStream {
         output.push('\n');
         output.push_str(line.strip_prefix(prefix).unwrap_or(""));
     }
-    StringToken::new(output).to_token_stream()
+    StringLiteral::new(output).to_token_stream()
 }

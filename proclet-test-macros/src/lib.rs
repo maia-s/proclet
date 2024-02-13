@@ -25,13 +25,13 @@ use proc_macro2::TokenStream;
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use proclet::LiteralToken;
+    use proclet::LiteralValue;
     let input: TokenStream = input.into();
     let mut output = TokenStream::new();
     for mut token in input {
         token.flatten_group();
         if let Some(lit) = token.literal_mut() {
-            *lit = LiteralToken::from(lit.clone()).into();
+            *lit = LiteralValue::from(lit.clone()).into();
             output.extend(lit.to_token_stream());
         } else {
             panic!("literal_roundtrip only accepts literals");
@@ -45,13 +45,13 @@ pub fn literal_roundtrip(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn literal_roundtrip_with_parse(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use proclet::{LiteralToken, ToTokenStream, TokenBuffer};
+    use proclet::{LiteralValue, ToTokenStream, TokenBuffer};
     let input: TokenStream = input.into();
     let input: TokenBuffer<_> = input.into();
     let mut input = input.as_buf();
     let mut output = TokenBuffer::new();
     while !input.is_empty() {
-        if let Some(lit) = LiteralToken::parse(&mut input) {
+        if let Some(lit) = LiteralValue::parse(&mut input) {
             let ts: TokenStream = lit.to_token_stream();
             output.extend(ts);
         } else {
@@ -129,11 +129,11 @@ pub fn parse_rust_ops_with_buffer(input: proc_macro::TokenStream) -> proc_macro:
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
 pub fn parse_delimited(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use proclet::{delimited, op, DelimiterKind, LiteralToken, ProcMacro, TokenBuffer};
+    use proclet::{delimited, op, DelimiterKind, LiteralValue, ProcMacro, TokenBuffer};
     let input: TokenStream = input.into();
     let input: TokenBuffer<_> = input.into();
     let mut input = input.as_buf();
-    let args = delimited(LiteralToken::parser(), op(","))
+    let args = delimited(LiteralValue::parser(), op(","))
         .parse(&mut input)
         .unwrap();
     let mut output = TokenStream::new();

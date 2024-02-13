@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proclet::{delimited, op, prelude::*, Error, StringToken, TokenBuffer};
+use proclet::{delimited, op, prelude::*, Error, StringLiteral, TokenBuffer};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 #[proc_macro]
@@ -7,7 +7,7 @@ pub fn _define_ops(input: TokenStream) -> TokenStream {
     let input: TokenBuffer<_> = input.into();
     let mut input = input.as_buf();
 
-    let args = match delimited(StringToken::parser(), op(",")).parse_all(&mut input) {
+    let args = match delimited(StringLiteral::parser(), op(",")).parse_all(&mut input) {
         Ok(args) => args,
         Err(_e) => {
             return Error::new("expected comma separated string literals as input")
