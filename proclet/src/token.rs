@@ -1,66 +1,7 @@
 use crate::{TokenStream, PM};
-use std::{any::Any, fmt::Debug, rc::Rc};
 
 /// Owned trait object of [`Token`]
-pub type TokenObject<T> = Rc<dyn Token<T>>;
-
-/// A token.
-pub trait Token<T: PM>:
-    TokenAuto<T> + Any + Debug + ToTokens<T> + ToTokenStream<T::TokenStream>
-{
-    /// Check two tokens for equality, not including their spans.
-    fn eq_except_span(&self, other: &dyn Token<T>) -> bool;
-
-    /// Turn this token into a trait object.
-    #[inline]
-    fn into_token_object(self) -> TokenObject<T>
-    where
-        Self: Sized,
-    {
-        Rc::new(self)
-    }
-}
-
-impl<T: PM> dyn Token<T> {
-    /// Check if the token is the provided type.
-    #[inline]
-    pub fn is<X: Token<T>>(&self) -> bool {
-        self.as_any().is::<X>()
-    }
-
-    /// Get a reference to the underlying type of the token, if it is the provided type.
-    #[inline]
-    pub fn downcast_ref<X: Token<T>>(&self) -> Option<&X> {
-        self.as_any().downcast_ref::<X>()
-    }
-
-    /// Get a mutable reference to the underlying type of the token, if it is the provided type.
-    #[inline]
-    pub fn downcast_mut<X: Token<T>>(&mut self) -> Option<&mut X> {
-        self.as_any_mut().downcast_mut::<X>()
-    }
-}
-
-/// Automatically implemented methods for [`Token`]
-pub trait TokenAuto<T: PM> {
-    /// Get the token as `&dyn Any`.
-    fn as_any(&self) -> &dyn Any;
-
-    /// Get the token as `&mut dyn Any`.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T: PM, X: Clone + Token<T>> TokenAuto<T> for X {
-    #[inline]
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+pub type TokenObject<T> = <T as crate::ProcMacro>::TokenTree;
 
 /// Trait for converting an object into its token representation.
 pub trait ToTokens<T: PM> {

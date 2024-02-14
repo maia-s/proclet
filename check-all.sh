@@ -9,13 +9,11 @@ for cargo in "cargo"; do
     for pm in "" "proc-macro,"; do
         for pm2 in "" "proc-macro2,"; do
             for lv in "" "literal-value,"; do
-                for tb in "" "token-buffer,"; do
-                    features="$pm$pm2$lv$tb"
-                    if [ ! -z "$features" ]; then
-                        features="--features $features"
-                    fi
-                    RUSTFLAGS="-D warnings" run $cargo check -p proclet --no-default-features $features
-                done
+                features="$pm$pm2$lv"
+                if [ ! -z "$features" ]; then
+                    features="--features $features"
+                fi
+                RUSTFLAGS="-D warnings" run $cargo check -p proclet --no-default-features $features
             done
             features="$pm$pm2"
             if [ ! -z "$features" ]; then

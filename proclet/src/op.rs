@@ -1,6 +1,5 @@
 use crate::{
-    prelude::*, Match, PMExt, Punct, PunctExt, Span, SpanExt, ToTokenStream, ToTokens, Token,
-    TokenObject,
+    prelude::*, Match, PMExt, Punct, PunctExt, Span, SpanExt, ToTokenStream, ToTokens, TokenObject,
 };
 use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
 
@@ -132,7 +131,6 @@ impl<S: SpanExt> Op<S> {
     }
 }
 
-#[cfg(feature = "token-buffer")]
 impl<T: crate::PMExt> crate::Parser<T> for Op<T::Span> {
     type Output<'p, 'b> = Op<T::Span> where Self: 'p;
 
@@ -152,16 +150,6 @@ impl<T: crate::PMExt> crate::Parser<T> for Op<T::Span> {
             }
         })
         .parse(buf)
-    }
-}
-
-impl<S: SpanExt> Token<S::PM> for Op<S> {
-    #[inline]
-    fn eq_except_span(&self, other: &dyn Token<S::PM>) -> bool {
-        other
-            .downcast_ref::<Self>()
-            .map(|other| self.as_str() == other.as_str())
-            .unwrap_or(false)
     }
 }
 
@@ -186,7 +174,6 @@ impl<S: Span> From<&'static str> for Op<S> {
     }
 }
 
-#[cfg(feature = "token-buffer")]
 impl<S: SpanExt> crate::Parse<S::PM> for Op<S> {
     /// Generic op parser. This doesn't check against valid ops.
     #[inline]
@@ -194,7 +181,7 @@ impl<S: SpanExt> crate::Parse<S::PM> for Op<S> {
         let mut str = String::new();
         let mut spans = Vec::new();
         buf.parse_prefix(|token| {
-            if let Some(punct) = token.downcast_ref::<S::Punct>() {
+            if let Some(punct) = token.punct() {
                 str.push(punct.as_char());
                 spans.push(punct.span());
                 if punct.spacing().is_joint() {
@@ -367,7 +354,6 @@ impl<P: PunctExt, F: MatchOpFn> OpParser<P, F> {
     }
 }
 
-#[cfg(feature = "token-buffer")]
 impl<P: PunctExt, F: MatchOpFn> crate::Parser<P::PM> for OpParser<P, F> {
     type Output<'p, 'b> = Op<P::Span> where Self:'p;
 
@@ -379,9 +365,9 @@ impl<P: PunctExt, F: MatchOpFn> crate::Parser<P::PM> for OpParser<P, F> {
         let mut string = String::new();
         let mut spans = Vec::new();
         buf.parse_prefix_next(move |token, next| {
-            if let Some(punct) = token.downcast_ref::<P::Punct>() {
+            if let Some(punct) = token.punct() {
                 let next = if punct.spacing().is_joint() {
-                    next.and_then(|next| next.downcast_ref::<P::Punct>().map(|next| next.as_char()))
+                    next.and_then(|next| next.punct().map(|next| next.as_char()))
                 } else {
                     None
                 };

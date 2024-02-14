@@ -13,9 +13,8 @@ categories = ["parsing", "development-tools::procedural-macro-helpers"]
 [features]
 default = ["proc-macro", "all"]
 
-all = ["literal-value", "token-buffer"]
+all = ["literal-value"]
 literal-value = []
-token-buffer = []
 
 proc-macro = ["proc-macro2?/proc-macro"]
 proc-macro2 = ["dep:proc-macro2"]

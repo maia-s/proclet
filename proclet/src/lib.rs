@@ -7,11 +7,8 @@ extern crate proc_macro;
 
 pub mod prelude {
     //! The prelude imports all the crate's traits with `use ... as _`.
-    #[cfg(feature = "token-buffer")]
     pub use crate::AsTokenBuf as _;
-    #[cfg(feature = "token-buffer")]
     pub use crate::AsTokenBufMut as _;
-    #[cfg(feature = "token-buffer")]
     pub use crate::DefaultParser as _;
     pub use crate::Delimiter as _;
     pub use crate::DelimiterExt as _;
@@ -21,9 +18,7 @@ pub mod prelude {
     pub use crate::IdentExt as _;
     pub use crate::Literal as _;
     pub use crate::LiteralExt as _;
-    #[cfg(feature = "token-buffer")]
     pub use crate::Parse as _;
-    #[cfg(feature = "token-buffer")]
     pub use crate::Parser as _;
     pub use crate::ProcMacro as _;
     pub use crate::ProcMacroExt as _;
@@ -33,11 +28,8 @@ pub mod prelude {
     pub use crate::SpacingExt as _;
     pub use crate::Span as _;
     pub use crate::SpanExt as _;
-    #[cfg(feature = "token-buffer")]
     pub use crate::ToTokenBuffer as _;
     pub use crate::ToTokenStream as _;
-    pub use crate::Token as _;
-    pub use crate::TokenAuto as _;
     pub use crate::TokenStream as _;
     pub use crate::TokenStreamExt as _;
     pub use crate::TokenTree as _;
@@ -45,14 +37,12 @@ pub mod prelude {
 }
 
 mod base;
-#[cfg(feature = "token-buffer")]
 mod delimited;
 mod error;
 mod literal;
 mod op;
 mod span;
 mod token;
-#[cfg(feature = "token-buffer")]
 mod token_buffer;
 mod token_stream;
 mod token_tree;
@@ -62,7 +52,6 @@ pub use base::PM1;
 #[cfg(feature = "proc-macro2")]
 pub use base::PM2;
 pub use base::{PMExt, ProcMacro, ProcMacroExt, PM};
-#[cfg(feature = "token-buffer")]
 pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
 #[cfg(feature = "literal-value")]
@@ -75,8 +64,7 @@ pub use literal::{
 pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-pub use token::{ToTokenStream, ToTokens, Token, TokenAuto, TokenObject};
-#[cfg(feature = "token-buffer")]
+pub use token::{ToTokenStream, ToTokens, TokenObject};
 pub use token_buffer::{
     AsTokenBuf, AsTokenBufMut, DefaultParser, Optional, Parse, Parser, ToTokenBuffer, TokenBuf,
     TokenBuffer,

@@ -1,4 +1,4 @@
-use crate::{Match, ToTokenStream, ToTokens, Token, TokenObject, TokenStream, PM};
+use crate::{Match, ToTokenStream, ToTokens, TokenObject, TokenStreamExt, PM};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -29,16 +29,6 @@ pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, S
             None => Err(&buf[..0]),
             _ => Err(buf),
         }
-    }
-}
-
-impl<T: PM> Parse<T> for TokenObject<T> {
-    #[inline]
-    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
-        buf.first().map(|token| {
-            *buf = &buf[1..];
-            token.clone()
-        })
     }
 }
 
@@ -138,41 +128,6 @@ pub trait Parser<T: PM> {
         Self: Sized,
     {
         Optional(self)
-    }
-}
-
-impl<T: PM> Parser<T> for TokenObject<T> {
-    type Output<'p, 'b> = Self where Self: 'p;
-
-    #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
-        buf.first().and_then(|token| {
-            if self.eq_except_span(token.deref()) {
-                *buf = &buf[1..];
-                Some(token.clone())
-            } else {
-                None
-            }
-        })
-    }
-}
-
-impl<T: PM> Parser<T> for &[TokenObject<T>] {
-    type Output<'p, 'b> = TokenBuffer<T> where Self: 'p;
-
-    #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
-        for (t, token) in self.iter().zip(buf.iter()) {
-            if !t.eq_except_span(token.deref()) {
-                return None;
-            }
-        }
-        let mut tokens = Vec::with_capacity(self.len());
-        for token in buf[..self.len()].iter() {
-            tokens.push(token.clone());
-        }
-        *buf = &buf[self.len()..];
-        Some(tokens.into())
     }
 }
 
@@ -544,7 +499,7 @@ impl<T: PM> TokenBuf<T> {
     #[inline]
     pub fn parse_prefix<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
+        mut match_fn: impl FnMut(&T::TokenTree) -> Match<M>,
     ) -> Option<M> {
         self.parse_prefix_buf(|_, token, _| match_fn(token))
     }
@@ -559,7 +514,7 @@ impl<T: PM> TokenBuf<T> {
     #[inline]
     pub fn parse_prefix_next<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
+        mut match_fn: impl FnMut(&T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
     ) -> Option<M> {
         self.parse_prefix_buf(|_, token, next| match_fn(token, next))
     }
@@ -575,15 +530,11 @@ impl<T: PM> TokenBuf<T> {
     #[inline]
     pub fn parse_prefix_buf<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&'a Self, &dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
+        mut match_fn: impl FnMut(&'a Self, &T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
     ) -> Option<M> {
         let mut result = None;
         for i in 1..=self.len() {
-            match match_fn(
-                &self[..i],
-                self[i - 1].deref(),
-                self.get(i).map(|i| i.deref()),
-            ) {
+            match match_fn(&self[..i], &self[i - 1], self.get(i)) {
                 Match::Complete(m) => {
                     *self = &self[i..];
                     return Some(m);
@@ -599,62 +550,6 @@ impl<T: PM> TokenBuf<T> {
         })
     }
 
-    /// Parse a specific set of tokens from this buffer. All of the tokens in the provided
-    /// iterator must match, or the buffer won't advance and this will return `None`.
-    ///
-    /// The referenced `&self` will be modified to point past the parsed tokens on success.
-    #[inline]
-    pub fn parse_prefix_tokens<'a>(
-        self: &mut &'a Self,
-        tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<&'a Self> {
-        let mut tokens = tokens.into_iter().peekable();
-        self.parse_prefix_buf(move |buf, token, _| {
-            if let Some(t) = tokens.next() {
-                if token.eq_except_span(t.as_ref()) {
-                    if tokens.peek().is_some() {
-                        Match::NeedMore
-                    } else {
-                        Match::Complete(buf)
-                    }
-                } else {
-                    Match::NoMatch
-                }
-            } else {
-                // empty input
-                Match::Complete(&buf[..0])
-            }
-        })
-    }
-
-    /// Parse a specific set of tokens from this buffer. At least one of the tokens in the provided
-    /// iterator must match, or the buffer won't advance and this will return `None`.
-    ///
-    /// The referenced `&self` will be modified to point past the parsed tokens on success.
-    #[inline]
-    pub fn parse_prefix_tokens_partial(
-        self: &mut &Self,
-        tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<&Self> {
-        let mut tokens = tokens.into_iter().peekable();
-        self.parse_prefix_buf(move |buf, token, _| {
-            if let Some(t) = tokens.next() {
-                if token.eq_except_span(t.as_ref()) {
-                    if tokens.peek().is_some() {
-                        Match::Partial(buf)
-                    } else {
-                        Match::Complete(buf)
-                    }
-                } else {
-                    Match::NoMatch
-                }
-            } else {
-                // empty input
-                Match::Complete(&buf[..0])
-            }
-        })
-    }
-
     /// Parse a suffix from this buffer. `match_fn` is called for each token in the buffer
     /// starting from the end. Parsing stops if `match_fn` returns `Match::Complete`
     /// or `Match::NoMatch`, or if the buffer runs out of tokens.
@@ -663,7 +558,7 @@ impl<T: PM> TokenBuf<T> {
     #[inline]
     pub fn parse_suffix<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&dyn Token<T>) -> Match<M>,
+        mut match_fn: impl FnMut(&T::TokenTree) -> Match<M>,
     ) -> Option<M> {
         self.parse_suffix_buf(|_, token, _| match_fn(token))
     }
@@ -678,7 +573,7 @@ impl<T: PM> TokenBuf<T> {
     #[inline]
     pub fn parse_suffix_next<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
+        mut match_fn: impl FnMut(&T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
     ) -> Option<M> {
         self.parse_suffix_buf(|_, token, next| match_fn(token, next))
     }
@@ -694,15 +589,11 @@ impl<T: PM> TokenBuf<T> {
     #[inline]
     pub fn parse_suffix_buf<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&'a Self, &dyn Token<T>, Option<&dyn Token<T>>) -> Match<M>,
+        mut match_fn: impl FnMut(&'a Self, &T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
     ) -> Option<M> {
         let mut result = None;
         for i in (0..self.len()).rev() {
-            match match_fn(
-                &self[i..],
-                self[i].deref(),
-                (i > 0).then(|| self[i - 1].deref()),
-            ) {
+            match match_fn(&self[i..], &self[i], (i > 0).then(|| &self[i - 1])) {
                 Match::Complete(m) => {
                     *self = &self[..i];
                     return Some(m);
@@ -715,102 +606,6 @@ impl<T: PM> TokenBuf<T> {
         result.map(|(result, rest)| {
             *self = rest;
             result
-        })
-    }
-
-    /// Parse a specific set of tokens from this buffer. All of the tokens in the provided
-    /// iterator must match, or the buffer won't advance and this will return `None`.
-    ///
-    /// The matching starts from the end of the buffer against the end of the iterator
-    /// (i.e. this will match the iterator's sequence of tokens at the end of the
-    /// buffer in forwards order)
-    ///
-    /// The referenced `&self` will be modified to end before the parsed tokens on success.
-    #[inline]
-    pub fn parse_suffix_tokens(
-        self: &mut &Self,
-        tokens: impl IntoIterator<IntoIter = impl DoubleEndedIterator<Item = impl AsRef<dyn Token<T>>>>,
-    ) -> Option<&Self> {
-        self.parse_suffix_tokens_reverse(tokens.into_iter().rev())
-    }
-
-    /// Parse a specific set of tokens from this buffer. All of the tokens in the provided
-    /// iterator must match, or the buffer won't advance and this will return `None`.
-    ///
-    /// The matching starts from the end of the buffer against the start of the iterator
-    /// (i.e. this will match the iterator's sequence of tokens at the end of the
-    /// buffer in reverse order)
-    ///
-    /// The referenced `&self` will be modified to end before the parsed tokens on success.
-    #[inline]
-    pub fn parse_suffix_tokens_reverse(
-        self: &mut &Self,
-        tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<&Self> {
-        let mut tokens = tokens.into_iter().peekable();
-        self.parse_suffix_buf(move |buf, token, _| {
-            if let Some(t) = tokens.next() {
-                if token.eq_except_span(t.as_ref()) {
-                    if tokens.peek().is_some() {
-                        Match::NeedMore
-                    } else {
-                        Match::Complete(buf)
-                    }
-                } else {
-                    Match::NoMatch
-                }
-            } else {
-                // empty input
-                Match::Complete(&buf[..0])
-            }
-        })
-    }
-
-    /// Parse a specific set of tokens from this buffer. At least one of the tokens in the provided
-    /// iterator must match, or the buffer won't advance and this will return `None`.
-    ///
-    /// The matching starts from the end of the buffer against the start of the iterator
-    /// (i.e. this will match the iterator's sequence of tokens at the end of the
-    /// buffer in reverse order)
-    ///
-    /// The referenced `&self` will be modified to end before the parsed tokens on success.
-    #[inline]
-    pub fn parse_suffix_tokens_partial(
-        self: &mut &Self,
-        tokens: impl IntoIterator<IntoIter = impl DoubleEndedIterator<Item = impl AsRef<dyn Token<T>>>>,
-    ) -> Option<&Self> {
-        self.parse_suffix_tokens_reverse_partial(tokens.into_iter().rev())
-    }
-
-    /// Parse a specific set of tokens from this buffer. At least one of the tokens in the provided
-    /// iterator must match, or the buffer won't advance and this will return `None`.
-    ///
-    /// The matching starts from the end of the buffer against the start of the iterator
-    /// (i.e. this will match the iterator's sequence of tokens at the end of the
-    /// buffer in reverse order)
-    ///
-    /// The referenced `&self` will be modified to end before the parsed tokens on success.
-    #[inline]
-    pub fn parse_suffix_tokens_reverse_partial(
-        self: &mut &Self,
-        tokens: impl IntoIterator<Item = impl AsRef<dyn Token<T>>>,
-    ) -> Option<&Self> {
-        let mut tokens = tokens.into_iter().peekable();
-        self.parse_suffix_buf(move |buf, token, _| {
-            if let Some(t) = tokens.next() {
-                if token.eq_except_span(t.as_ref()) {
-                    if tokens.peek().is_some() {
-                        Match::Partial(buf)
-                    } else {
-                        Match::Complete(buf)
-                    }
-                } else {
-                    Match::NoMatch
-                }
-            } else {
-                // empty input
-                Match::Complete(&buf[..0])
-            }
         })
     }
 }
@@ -936,7 +731,7 @@ impl<T: PM> ToOwned for TokenBuf<T> {
     }
 }
 
-impl<T: TokenStream<TokenStream = T>> ToTokenStream<T> for TokenBuf<T::PM> {
+impl<T: TokenStreamExt> ToTokenStream<T> for TokenBuf<T::PM> {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut T) {
         for i in self.0.iter() {

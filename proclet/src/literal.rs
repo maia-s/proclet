@@ -1,4 +1,4 @@
-use crate::{ProcMacro, ProcMacroExt, Token};
+use crate::{Parse, ProcMacro, ProcMacroExt, ToTokenStream, ToTokens};
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
@@ -541,226 +541,11 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
     }
 }
 
-#[cfg(all(feature = "literal-value", feature = "token-buffer"))]
-impl<T: crate::PMExt> crate::Parse<T> for LiteralValue<T::Span> {
+#[cfg(feature = "literal-value")]
+impl<T: crate::PMExt> Parse<T> for LiteralValue<T::Span> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
-        buf.parse_prefix(|token| {
-            if let Some(token) = token.downcast_ref::<Self>() {
-                crate::Match::Complete(token.clone())
-            } else if let Some(token) = token.downcast_ref::<StringLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<ByteStringLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<CharacterLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<ByteCharacterLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<IntLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<FloatLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<I8Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<I16Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<I32Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<I64Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<I128Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<IsizeLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<U8Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<U16Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<U32Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<U64Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<U128Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<UsizeLiteral<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<F32Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<F64Literal<T::Span>>() {
-                crate::Match::Complete(token.clone().into())
-            } else if let Some(token) = token.downcast_ref::<T::Literal>() {
-                crate::Match::Complete(token.clone().into())
-            } else {
-                crate::Match::NoMatch
-            }
-        })
-    }
-}
-
-#[cfg(feature = "literal-value")]
-impl<T: crate::PMExt> Token<T> for LiteralValue<T::Span> {
-    #[inline]
-    fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
-        #[allow(clippy::single_match)]
-        match self {
-            LiteralValue::String(s) => {
-                if let Some(other) = other.downcast_ref::<StringLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::ByteString(s) => {
-                if let Some(other) = other.downcast_ref::<ByteStringLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::Character(s) => {
-                if let Some(other) = other.downcast_ref::<CharacterLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::ByteCharacter(s) => {
-                if let Some(other) = other.downcast_ref::<ByteCharacterLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::Int(s) => {
-                if let Some(other) = other.downcast_ref::<IntLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::Float(s) => {
-                if let Some(other) = other.downcast_ref::<FloatLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::I8(s) => {
-                if let Some(other) = other.downcast_ref::<I8Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::I16(s) => {
-                if let Some(other) = other.downcast_ref::<I16Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::I32(s) => {
-                if let Some(other) = other.downcast_ref::<I32Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::I64(s) => {
-                if let Some(other) = other.downcast_ref::<I64Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::I128(s) => {
-                if let Some(other) = other.downcast_ref::<I128Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::Isize(s) => {
-                if let Some(other) = other.downcast_ref::<IsizeLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::U8(s) => {
-                if let Some(other) = other.downcast_ref::<U8Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::U16(s) => {
-                if let Some(other) = other.downcast_ref::<U16Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::U32(s) => {
-                if let Some(other) = other.downcast_ref::<U32Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::U64(s) => {
-                if let Some(other) = other.downcast_ref::<U64Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::U128(s) => {
-                if let Some(other) = other.downcast_ref::<U128Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::Usize(s) => {
-                if let Some(other) = other.downcast_ref::<UsizeLiteral<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::F32(s) => {
-                if let Some(other) = other.downcast_ref::<F32Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-            LiteralValue::F64(s) => {
-                if let Some(other) = other.downcast_ref::<F64Literal<T::Span>>() {
-                    return s.value() == other.value();
-                }
-            }
-        }
-        if let Some(other) = other.downcast_ref::<Self>() {
-            match (self, other) {
-                (LiteralValue::String(s), LiteralValue::String(o)) => s.value() == o.value(),
-                (LiteralValue::ByteString(s), LiteralValue::ByteString(o)) => {
-                    s.value() == o.value()
-                }
-                (LiteralValue::Character(s), LiteralValue::Character(o)) => s.value() == o.value(),
-                (LiteralValue::ByteCharacter(s), LiteralValue::ByteCharacter(o)) => {
-                    s.value() == o.value()
-                }
-                (LiteralValue::Int(s), LiteralValue::Int(o)) => s.value() == o.value(),
-                (LiteralValue::Float(s), LiteralValue::Float(o)) => s.value() == o.value(),
-                (LiteralValue::I8(s), LiteralValue::I8(o)) => s.value() == o.value(),
-                (LiteralValue::I16(s), LiteralValue::I16(o)) => s.value() == o.value(),
-                (LiteralValue::I32(s), LiteralValue::I32(o)) => s.value() == o.value(),
-                (LiteralValue::I64(s), LiteralValue::I64(o)) => s.value() == o.value(),
-                (LiteralValue::I128(s), LiteralValue::I128(o)) => s.value() == o.value(),
-                (LiteralValue::Isize(s), LiteralValue::Isize(o)) => s.value() == o.value(),
-                (LiteralValue::U8(s), LiteralValue::U8(o)) => s.value() == o.value(),
-                (LiteralValue::U16(s), LiteralValue::U16(o)) => s.value() == o.value(),
-                (LiteralValue::U32(s), LiteralValue::U32(o)) => s.value() == o.value(),
-                (LiteralValue::U64(s), LiteralValue::U64(o)) => s.value() == o.value(),
-                (LiteralValue::U128(s), LiteralValue::U128(o)) => s.value() == o.value(),
-                (LiteralValue::Usize(s), LiteralValue::Usize(o)) => s.value() == o.value(),
-                _ => false,
-            }
-        } else if let Some(other) = other.downcast_ref::<T::Literal>() {
-            self.eq_except_span(&other.to_literal_token() as &dyn Token<T>)
-        } else {
-            false
-        }
-    }
-
-    #[inline]
-    fn into_token_object(self) -> crate::TokenObject<T> {
-        match self {
-            LiteralValue::String(t) => t.into_token_object(),
-            LiteralValue::ByteString(t) => t.into_token_object(),
-            LiteralValue::Character(t) => t.into_token_object(),
-            LiteralValue::ByteCharacter(t) => t.into_token_object(),
-            LiteralValue::Int(t) => t.into_token_object(),
-            LiteralValue::Float(t) => t.into_token_object(),
-            LiteralValue::I8(t) => t.into_token_object(),
-            LiteralValue::I16(t) => t.into_token_object(),
-            LiteralValue::I32(t) => t.into_token_object(),
-            LiteralValue::I64(t) => t.into_token_object(),
-            LiteralValue::I128(t) => t.into_token_object(),
-            LiteralValue::Isize(t) => t.into_token_object(),
-            LiteralValue::U8(t) => t.into_token_object(),
-            LiteralValue::U16(t) => t.into_token_object(),
-            LiteralValue::U32(t) => t.into_token_object(),
-            LiteralValue::U64(t) => t.into_token_object(),
-            LiteralValue::U128(t) => t.into_token_object(),
-            LiteralValue::Usize(t) => t.into_token_object(),
-            LiteralValue::F32(t) => t.into_token_object(),
-            LiteralValue::F64(t) => t.into_token_object(),
-        }
+        T::Literal::parse(buf).map(|x| x.into())
     }
 }
 
@@ -768,7 +553,7 @@ impl<T: crate::PMExt> Token<T> for LiteralValue<T::Span> {
 impl<T: crate::PMExt> crate::ToTokens<T> for LiteralValue<T::Span> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
-        std::iter::once(self.into_token_object())
+        T::Literal::from(self).into_tokens()
     }
 }
 
@@ -838,26 +623,6 @@ macro_rules! def_literal_tokens {
         }
 
         #[cfg(feature = "literal-value")]
-        impl<T: crate::PMExt> Token<T> for $ident<T::Span> {
-            #[inline]
-            fn eq_except_span(&self, other: &dyn Token<T>) -> bool {
-                if let Some(other) = other.downcast_ref::<Self>() {
-                    self.value() == other.value()
-                } else if let Some(other) = other.downcast_ref::<LiteralValue<T::Span>>() {
-                    if let LiteralValue::$variant(other) = other {
-                        self.value() == other.value()
-                    } else {
-                        false
-                    }
-                } else if let Some(other) = other.downcast_ref::<T::Literal>() {
-                    self.eq_except_span(&other.to_literal_token() as &dyn Token<T>)
-                } else {
-                    false
-                }
-            }
-        }
-
-        #[cfg(feature = "literal-value")]
         impl<S: crate::SpanExt> TryFrom<LiteralValue<S>> for $ident<S> {
             type Error = crate::Error;
 
@@ -879,26 +644,27 @@ macro_rules! def_literal_tokens {
             }
         }
 
-        #[cfg(all(feature = "literal-value", feature = "token-buffer"))]
-        impl<T: crate::PMExt> crate::Parse<T> for $ident<T::Span> {
+        #[cfg(feature = "literal-value")]
+        impl<T: crate::PMExt> Parse<T> for $ident<T::Span> {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
-                let mut buf2: &crate::TokenBuf<T> = buf;
-                if let Some(token) = LiteralValue::parse(&mut buf2) {
-                    if let Ok(token) = token.try_into() {
-                        *buf = buf2;
-                        return Some(token);
-                    }
+                let mut buf2 = *buf;
+                if let Ok(token) = LiteralValue::parse(&mut buf2)?.try_into() {
+                    *buf = buf2;
+                    return Some(token);
+                } else {
+                    None
                 }
-                None
             }
         }
 
         #[cfg(feature = "literal-value")]
-        impl<T: crate::PMExt> crate::ToTokens<T> for $ident<T::Span> {
+        impl<T: crate::PMExt> crate::ToTokens<T> for $ident<T::Span>
+            where LiteralValue<T::Span>: crate::ToTokens<T> // always true, but rust is stupid
+        {
             #[inline]
             fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
-                std::iter::once(self.into_token_object())
+                LiteralValue::$variant(self).into_tokens()
             }
         }
 
@@ -1072,7 +838,14 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
 ///
 /// This trait is implemented for `Literal` in `proc_macro` and `proc_macro2` if the
 /// corresponding feature is enabled.
-pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal + Token<Self::PM> {}
+pub trait LiteralExt:
+    ProcMacroExt<LiteralExt = Self>
+    + Literal
+    + Parse<Self::PM>
+    + ToTokens<Self::PM>
+    + ToTokenStream<Self::TokenStream>
+{
+}
 
 #[cfg(feature = "literal-value")]
 /// Extensions for [`Literal`].
@@ -1082,9 +855,11 @@ pub trait LiteralExt: ProcMacroExt<LiteralExt = Self> + Literal + Token<Self::PM
 pub trait LiteralExt:
     ProcMacroExt<LiteralExt = Self>
     + Literal
-    + Token<Self::PM>
     + From<LiteralValue<Self::Span>>
     + Into<LiteralValue<Self::Span>>
+    + Parse<Self::PM>
+    + ToTokens<Self::PM>
+    + ToTokenStream<Self::TokenStream>
 {
     /// Convert this `Literal` into a `LiteralValue`.
     fn to_literal_token(&self) -> LiteralValue<Self::Span>;
@@ -1192,39 +967,17 @@ macro_rules! impl_literal {
             }
         }
 
-        #[cfg(all(feature = $feature, feature = "token-buffer"))]
-        impl crate::Parse<crate::base::$pm::PM> for $pm::Literal {
+        #[cfg(feature = $feature)]
+        impl Parse<crate::base::$pm::PM> for $pm::Literal {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
                 buf.parse_prefix(|token| {
-                    if let Some(token) = token.downcast_ref::<Self>() {
-                        return crate::Match::Complete(token.clone());
+                    if let $pm::TokenTree::Literal(t) = token {
+                        crate::Match::Complete(t.clone())
+                    } else {
+                        crate::Match::NoMatch
                     }
-                    #[cfg(feature = "literal-value")]
-                    if let Some(token) = token.downcast_ref::<LiteralValue<$pm::Span>>() {
-                        return crate::Match::Complete(token.clone().into())
-                    }
-                    crate::Match::NoMatch
                 })
-            }
-        }
-
-        #[cfg(feature = $feature)]
-        impl Token<crate::base::$pm::PM> for $pm::Literal {
-            #[cfg(feature = "literal-value")]
-            #[inline]
-            fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
-                LiteralValue::from(self.clone()).eq_except_span(other)
-            }
-
-            #[cfg(not(feature = "literal-value"))]
-            #[inline]
-            fn eq_except_span(&self, other: &dyn Token<crate::base::$pm::PM>) -> bool {
-                if let Some(other) = other.downcast_ref::<Self>() {
-                    self.to_string() == other.to_string()
-                } else {
-                    false
-                }
             }
         }
 
@@ -1240,12 +993,7 @@ macro_rules! impl_literal {
         impl crate::ToTokens<crate::base::$pm::PM> for $pm::Literal {
             #[inline]
             fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<crate::base::$pm::PM>> {
-                #[cfg(feature = "literal-value")] {
-                    LiteralValue::from(self).into_tokens()
-                }
-                #[cfg(not(feature = "literal-value"))] {
-                    std::iter::once(self.into_token_object())
-                }
+                std::iter::once($pm::TokenTree::Literal(self))
             }
         }
     )* };
