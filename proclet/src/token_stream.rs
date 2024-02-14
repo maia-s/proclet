@@ -103,6 +103,16 @@ macro_rules! impl_token_stream {
             fn extend_token_stream(&self, ts: &mut $pm::TokenStream) {
                 ts.extend(self.clone().into_iter())
             }
+
+            #[inline]
+            fn into_token_stream(self) -> $pm::TokenStream {
+                self
+            }
+
+            #[inline]
+            fn to_token_stream(&self) -> $pm::TokenStream {
+                self.clone()
+            }
         }
     )* };
 }

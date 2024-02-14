@@ -83,7 +83,7 @@ pub fn proclet<T: TokenStreamExt, U: ToTokenStream<T>>(
 ) -> T {
     let buffer = input.into();
     match f(&mut buffer.as_buf()) {
-        Ok(out) => out.to_token_stream(),
+        Ok(out) => out.into_token_stream(),
         Err(e) => e.to_compile_error(),
     }
 }

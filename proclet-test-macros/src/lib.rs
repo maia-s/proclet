@@ -52,7 +52,7 @@ pub fn literal_roundtrip_with_parse(input: proc_macro::TokenStream) -> proc_macr
     let mut output = TokenBuffer::new();
     while !input.is_empty() {
         if let Some(lit) = LiteralValue::parse(&mut input) {
-            let ts: TokenStream = lit.to_token_stream();
+            let ts: TokenStream = lit.into_token_stream();
             output.extend(ts);
         } else {
             panic!("invalid literal");

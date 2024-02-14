@@ -36,6 +36,17 @@ pub trait ToTokenStream<T: TokenStream> {
 
     /// Make a new `TokenStream` with a representation of this object.
     #[inline]
+    fn into_token_stream(self) -> T
+    where
+        Self: Sized,
+    {
+        let mut ts = T::new();
+        self.extend_token_stream(&mut ts);
+        ts
+    }
+
+    /// Make a new `TokenStream` with a representation of this object.
+    #[inline]
     fn to_token_stream(&self) -> T {
         let mut ts = T::new();
         self.extend_token_stream(&mut ts);
