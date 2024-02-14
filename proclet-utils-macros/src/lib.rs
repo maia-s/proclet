@@ -1,4 +1,4 @@
-use proc_macro::TokenStream;
+use proc_macro::{Span, TokenStream};
 use proclet::{delimited, op, prelude::*, Error, StringLiteral, TokenBuffer};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
@@ -9,9 +9,10 @@ pub fn _define_ops(input: TokenStream) -> TokenStream {
 
     let args = match delimited(StringLiteral::parser(), op(",")).parse_all(&mut input) {
         Ok(args) => args,
-        Err(_e) => {
-            return Error::new("expected comma separated string literals as input")
-                .to_compile_error()
+        Err(e) => {
+            let span = e.first().map(|e| e.span()).unwrap_or_else(Span::call_site);
+            return Error::with_span(span, "expected comma separated string literals as input")
+                .to_compile_error();
         }
     };
 
