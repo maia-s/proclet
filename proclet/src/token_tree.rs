@@ -1,4 +1,4 @@
-use crate::{Parse, ProcMacro, ToTokenStream, ToTokens};
+use crate::{IntoTokens, Parse, ProcMacro, ToTokenStream};
 use std::fmt::Display;
 
 /// The kind of a `TokenTree`. This is like the enum in `proc_macro*::TokenTree`, but
@@ -47,7 +47,7 @@ pub trait TokenTreeExt:
     crate::ProcMacroExt<TokenTreeExt = Self>
     + TokenTree
     + Parse<Self>
-    + ToTokens<Self>
+    + IntoTokens<Self>
     + ToTokenStream<Self::TokenStream>
 {
     /// Get the kind of this `TokenTree`.
@@ -162,7 +162,7 @@ pub trait GroupExt:
     crate::ProcMacroExt<GroupExt = Self>
     + Group
     + Parse<Self::TokenTree>
-    + ToTokens<Self::TokenTree>
+    + IntoTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Create a new `Group` with a custom span.
@@ -311,7 +311,7 @@ pub trait IdentExt:
     crate::ProcMacroExt<IdentExt = Self>
     + Ident
     + Parse<Self::TokenTree>
-    + ToTokens<Self::TokenTree>
+    + IntoTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
 }
@@ -347,7 +347,7 @@ pub trait PunctExt:
     crate::ProcMacroExt<PunctExt = Self>
     + Punct
     + Parse<Self::TokenTree>
-    + ToTokens<Self::TokenTree>
+    + IntoTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Create a new `Punct` with a custom `Span`.
@@ -545,7 +545,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(all(feature = $feature))]
-        impl crate::ToTokens<$pm::TokenTree> for $pm::TokenTree {
+        impl crate::IntoTokens<$pm::TokenTree> for $pm::TokenTree {
             #[inline]
             fn into_tokens(mut self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 self.flatten_group();
@@ -622,7 +622,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(all(feature = $feature))]
-        impl crate::ToTokens<$pm::TokenTree> for $pm::Group {
+        impl crate::IntoTokens<$pm::TokenTree> for $pm::Group {
             #[inline]
             fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 std::iter::once($pm::TokenTree::Group(self))
@@ -732,7 +732,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(all(feature = $feature))]
-        impl crate::ToTokens<$pm::TokenTree> for $pm::Ident {
+        impl crate::IntoTokens<$pm::TokenTree> for $pm::Ident {
             #[inline]
             fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 std::iter::once($pm::TokenTree::Ident(self))
@@ -793,7 +793,7 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl crate::ToTokens<$pm::TokenTree> for $pm::Punct {
+        impl crate::IntoTokens<$pm::TokenTree> for $pm::Punct {
             #[inline]
             fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 std::iter::once($pm::TokenTree::Punct(self))

@@ -1,4 +1,4 @@
-use crate::{Parse, ProcMacro, ProcMacroExt, ToTokenStream, ToTokens};
+use crate::{IntoTokens, Parse, ProcMacro, ProcMacroExt, ToTokenStream};
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
@@ -550,7 +550,7 @@ impl<T: crate::TokenTreeExt> Parse<T> for LiteralValue<T::Span> {
 }
 
 #[cfg(feature = "literal-value")]
-impl<T: crate::TokenTreeExt> crate::ToTokens<T> for LiteralValue<T::Span> {
+impl<T: crate::TokenTreeExt> crate::IntoTokens<T> for LiteralValue<T::Span> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
         T::Literal::from(self).into_tokens()
@@ -659,8 +659,8 @@ macro_rules! def_literal_tokens {
         }
 
         #[cfg(feature = "literal-value")]
-        impl<T: crate::TokenTreeExt> crate::ToTokens<T> for $ident<T::Span>
-            where LiteralValue<T::Span>: crate::ToTokens<T> // always true, but rust is stupid
+        impl<T: crate::TokenTreeExt> crate::IntoTokens<T> for $ident<T::Span>
+            where LiteralValue<T::Span>: crate::IntoTokens<T> // always true, but rust is stupid
         {
             #[inline]
             fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
@@ -842,7 +842,7 @@ pub trait LiteralExt:
     ProcMacroExt<LiteralExt = Self>
     + Literal
     + Parse<Self::TokenTree>
-    + ToTokens<Self::TokenTree>
+    + IntoTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
 }
@@ -858,7 +858,7 @@ pub trait LiteralExt:
     + From<LiteralValue<Self::Span>>
     + Into<LiteralValue<Self::Span>>
     + Parse<Self::TokenTree>
-    + ToTokens<Self::TokenTree>
+    + IntoTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Convert this `Literal` into a `LiteralValue`.
@@ -982,7 +982,7 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl crate::ToTokens<$pm::TokenTree> for $pm::Literal {
+        impl crate::IntoTokens<$pm::TokenTree> for $pm::Literal {
             #[inline]
             fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 std::iter::once($pm::TokenTree::Literal(self))

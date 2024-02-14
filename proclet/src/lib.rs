@@ -64,7 +64,7 @@ pub use literal::{
 pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-pub use token::{ToTokenStream, ToTokens, TokenObject};
+pub use token::{IntoTokens, ToTokenStream, ToTokens, TokenObject};
 pub use token_buffer::{
     AsTokenBuf, AsTokenBufMut, DefaultParser, Optional, Parse, Parser, ToTokenBuffer, TokenBuf,
     TokenBuffer,

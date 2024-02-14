@@ -1,4 +1,4 @@
-use crate::{Parse, Parser, ToTokenStream, ToTokens, TokenStream, TokenTree};
+use crate::{IntoTokens, Parse, Parser, ToTokenStream, TokenStream, TokenTree};
 use std::{marker::PhantomData, ops::Deref};
 
 /// Parsed delimited values.
@@ -38,7 +38,7 @@ impl<T: TokenTree, M: Parse<T>, D: Parse<T>> Parse<T> for Delimited<M, D> {
     }
 }
 
-impl<T: TokenTree, M: ToTokens<T>, D: ToTokens<T>> ToTokens<T> for Delimited<M, D> {
+impl<T: TokenTree, M: IntoTokens<T>, D: IntoTokens<T>> IntoTokens<T> for Delimited<M, D> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>>
     where

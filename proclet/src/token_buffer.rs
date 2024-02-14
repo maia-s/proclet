@@ -1,4 +1,4 @@
-use crate::{Match, ToTokenStream, ToTokens, TokenObject, TokenStreamExt, TokenTree};
+use crate::{IntoTokens, Match, ToTokenStream, ToTokens, TokenObject, TokenStreamExt, TokenTree};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -200,7 +200,7 @@ impl<T: TokenTree, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
 }
 
 /// Methods for making or extending a `TokenBuffer` with tokens representing this object.
-/// This is automatically implemented for types that implement the [`ToTokens`] trait.
+/// This is automatically implemented for types that implement the [`IntoTokens`] trait.
 pub trait ToTokenBuffer<T: TokenTree> {
     /// Extend the given `TokenBuffer` with tokens representing this object.
     fn extend_token_buffer(&self, token_buffer: &mut TokenBuffer<T>);
@@ -214,7 +214,7 @@ pub trait ToTokenBuffer<T: TokenTree> {
     }
 }
 
-impl<T: TokenTree, X: ToTokens<T> + Clone> ToTokenBuffer<T> for X {
+impl<T: TokenTree, X: IntoTokens<T> + Clone> ToTokenBuffer<T> for X {
     #[inline]
     fn extend_token_buffer(&self, token_buffer: &mut TokenBuffer<T>) {
         token_buffer.0.extend(self.to_tokens())
@@ -432,7 +432,7 @@ impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
     }
 }
 
-impl<T: TokenTree> ToTokens<T> for TokenBuffer<T> {
+impl<T: TokenTree> IntoTokens<T> for TokenBuffer<T> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
     where
@@ -735,18 +735,7 @@ impl<T: TokenTree> ToOwned for TokenBuf<T> {
 
 impl<T: TokenTree> ToTokens<T> for TokenBuf<T> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
-    where
-        Self: Sized,
-    {
-        self.to_owned().into_tokens()
-    }
-
-    #[inline]
-    fn to_tokens(&self) -> impl Iterator<Item = TokenObject<T>>
-    where
-        Self: Clone,
-    {
+    fn to_tokens(&self) -> impl Iterator<Item = TokenObject<T>> {
         // to_owned doesn't work here bc rust
         TokenBuffer::<T>(self.0.to_vec()).into_tokens()
     }

@@ -1,5 +1,5 @@
 use crate::{
-    prelude::*, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream, ToTokens, TokenObject,
+    prelude::*, IntoTokens, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream, TokenObject,
     TokenTreeExt,
 };
 use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
@@ -154,7 +154,7 @@ impl<T: crate::TokenTreeExt> crate::Parser<T> for Op<T::Span> {
     }
 }
 
-impl<T: TokenTreeExt> ToTokens<T> for Op<T::Span> {
+impl<T: TokenTreeExt> IntoTokens<T> for Op<T::Span> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>> {
         self.into_iter().flat_map(|p| p.into_tokens())
