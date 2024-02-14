@@ -96,6 +96,14 @@ macro_rules! impl_token_stream {
 
         #[cfg(feature = $feature)]
         impl TokenStreamExt for $pm::TokenStream {}
+
+        #[cfg(feature = $feature)]
+        impl crate::ToTokenStream<$pm::TokenStream> for $pm::TokenStream {
+            #[inline]
+            fn extend_token_stream(&self, ts: &mut $pm::TokenStream) {
+                ts.extend(self.clone().into_iter())
+            }
+        }
     )* };
 }
 

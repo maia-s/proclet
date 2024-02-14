@@ -49,7 +49,7 @@ pub trait TokenTreeExt:
     + Parse<Self>
     + IntoTokens<Self>
     + ToTokens<Self>
-    + ToTokenStream<Self::TokenStream>
+    + ToTokenStream<Self::TokenStreamExt>
 {
     /// Get the kind of this `TokenTree`.
     fn kind(&self) -> TokenTreeKind;

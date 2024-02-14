@@ -1,20 +1,14 @@
-use proc_macro::{Span, TokenStream};
-use proclet::{delimited, op, prelude::*, Error, StringLiteral, TokenBuffer};
+use proc_macro::TokenStream;
+use proclet::{delimited, op, prelude::*, proclet, Error, StringLiteral, TokenBuf};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 #[proc_macro]
 pub fn _define_ops(input: TokenStream) -> TokenStream {
-    let input: TokenBuffer<_> = input.into();
-    let mut input = input.as_buf();
+    proclet(input, _define_ops_)
+}
 
-    let args = match delimited(StringLiteral::parser(), op(",")).parse_all(&mut input) {
-        Ok(args) => args,
-        Err(e) => {
-            let span = e.first().map(|e| e.span()).unwrap_or_else(Span::call_site);
-            return Error::with_span(span, "expected comma separated string literals as input")
-                .to_compile_error();
-        }
-    };
+fn _define_ops_(input: &mut &TokenBuf<proc_macro::TokenTree>) -> Result<TokenStream, Error> {
+    let args = delimited(StringLiteral::parser(), op(",")).parse_all(input)?;
 
     let mut map = HashMap::<String, (bool, HashSet<char>)>::new();
 
@@ -22,7 +16,7 @@ pub fn _define_ops(input: TokenStream) -> TokenStream {
         let str = op.value();
         let clen = str.chars().count();
         if clen == 0 {
-            return Error::with_span(op.span(), "empty operator").to_compile_error();
+            return Err(Error::with_span(op.span(), "empty operator"));
         } else if clen > 1 {
             let mut chars = op.value().chars();
             let mut ci = chars.next().unwrap().len_utf8();
@@ -77,9 +71,9 @@ pub fn _define_ops(input: TokenStream) -> TokenStream {
         }
     }
     output.push_str("_ => Match::NoMatch }}");
-    output
+    Ok(output
         .parse()
-        .expect("internal error: generated invalid code")
+        .expect("internal error: generated invalid code"))
 }
 
 fn to_byte_string_string(str: &str) -> String {

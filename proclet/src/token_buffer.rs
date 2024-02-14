@@ -1,4 +1,7 @@
-use crate::{IntoTokens, Match, ToTokenStream, ToTokens, TokenObject, TokenStreamExt, TokenTree};
+use crate::{
+    Error, IntoTokens, Match, Span, ToTokenStream, ToTokens, TokenObject, TokenStreamExt,
+    TokenTree, TokenTreeExt,
+};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -11,7 +14,7 @@ use std::{
 };
 
 /// Parse from a `TokenBuf`.
-pub trait Parse<T: TokenTree>:
+pub trait Parse<T: TokenTreeExt>:
     Sized + DefaultParser<T, Parser = DefaultParserImpl<T, Self>>
 {
     /// Parse a value from a `TokenBuf`.
@@ -25,16 +28,12 @@ pub trait Parse<T: TokenTree>:
     ///
     /// The referenced `&buf` will be modified to point past the parsed tokens on success.
     #[inline]
-    fn parse_all<'b>(buf: &mut &'b TokenBuf<T>) -> Result<Self, &'b TokenBuf<T>> {
-        match Self::parse(buf) {
-            Some(result) if buf.is_empty() => Ok(result),
-            None => Err(&buf[..0]),
-            _ => Err(buf),
-        }
+    fn parse_all(buf: &mut &TokenBuf<T>) -> Result<Self, Error> {
+        Self::parser().parse_all(buf)
     }
 }
 
-impl<T: TokenTree, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
+impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         // can't use MaybeUninit for array init as rust claims the size is unknown when transmuting it
@@ -53,7 +52,7 @@ impl<T: TokenTree, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
     }
 }
 
-impl<T: TokenTree, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH]> {
+impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH]> {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         if buf.len() >= LENGTH {
@@ -71,14 +70,14 @@ impl<T: TokenTree, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH
     }
 }
 
-impl<T: TokenTree, X: Parse<T>> Parse<T> for Option<X> {
+impl<T: TokenTreeExt, X: Parse<T>> Parse<T> for Option<X> {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         Some(X::parse(buf))
     }
 }
 
-impl<T: TokenTree, X: Parse<T>> Parse<T> for Vec<X> {
+impl<T: TokenTreeExt, X: Parse<T>> Parse<T> for Vec<X> {
     /// Parse a non-empty vector of items. If you want to accept an empty vector, use `Option<Vec<...>>::parse`.
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
@@ -95,7 +94,7 @@ impl<T: TokenTree, X: Parse<T>> Parse<T> for Vec<X> {
 }
 
 /// A parser for parsing values from a `TokenBuf`.
-pub trait Parser<T: TokenTree> {
+pub trait Parser<T: TokenTreeExt> {
     /// The output type of this parser.
     type Output<'p, 'b>
     where
@@ -115,11 +114,21 @@ pub trait Parser<T: TokenTree> {
     fn parse_all<'p, 'b>(
         &'p self,
         buf: &mut &'b TokenBuf<T>,
-    ) -> Result<Self::Output<'p, 'b>, &'b TokenBuf<T>> {
+    ) -> Result<Self::Output<'p, 'b>, Error> {
         match self.parse(buf) {
             Some(result) if buf.is_empty() => Ok(result),
-            None => Err(&buf[..0]),
-            _ => Err(buf),
+            None => Err(Error::with_span(
+                buf.first()
+                    .map(|x| x.span())
+                    .unwrap_or(T::Span::call_site()),
+                "parse failed",
+            )),
+            _ => Err(Error::with_span(
+                buf.first()
+                    .map(|x| x.span())
+                    .unwrap_or(T::Span::call_site()),
+                "unexpected tokens after input",
+            )),
         }
     }
 
@@ -133,7 +142,7 @@ pub trait Parser<T: TokenTree> {
     }
 }
 
-impl<T: TokenTree, X: Parser<T>> Parser<T> for [X] {
+impl<T: TokenTreeExt, X: Parser<T>> Parser<T> for [X] {
     type Output<'p, 'b> = Vec<X::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
@@ -144,7 +153,7 @@ impl<T: TokenTree, X: Parser<T>> Parser<T> for [X] {
 
 /// Trait for making a default parser. This is automatically implemented for objects
 /// that implement the `Parse` trait.
-pub trait DefaultParser<T: TokenTree> {
+pub trait DefaultParser<T: TokenTreeExt> {
     /// The parser that will be created.
     type Parser: Parser<T> + Copy + Default;
 
@@ -155,7 +164,7 @@ pub trait DefaultParser<T: TokenTree> {
     }
 }
 
-impl<T: TokenTree, X: Parse<T>> DefaultParser<T> for X {
+impl<T: TokenTreeExt, X: Parse<T>> DefaultParser<T> for X {
     type Parser = DefaultParserImpl<T, X>;
 }
 
@@ -163,7 +172,7 @@ impl<T: TokenTree, X: Parse<T>> DefaultParser<T> for X {
 #[repr(transparent)]
 pub struct Optional<T>(pub T);
 
-impl<T: TokenTree, X: Parser<T>> Parser<T> for Optional<X> {
+impl<T: TokenTreeExt, X: Parser<T>> Parser<T> for Optional<X> {
     type Output<'p, 'b> = Option<X::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
@@ -172,25 +181,25 @@ impl<T: TokenTree, X: Parser<T>> Parser<T> for Optional<X> {
     }
 }
 
-pub struct DefaultParserImpl<T: TokenTree, X: Parse<T>>(PhantomData<fn() -> (T, X)>);
+pub struct DefaultParserImpl<T: TokenTreeExt, X: Parse<T>>(PhantomData<fn() -> (T, X)>);
 
-impl<T: TokenTree, X: Parse<T>> Clone for DefaultParserImpl<T, X> {
+impl<T: TokenTreeExt, X: Parse<T>> Clone for DefaultParserImpl<T, X> {
     #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T: TokenTree, X: Parse<T>> Copy for DefaultParserImpl<T, X> {}
+impl<T: TokenTreeExt, X: Parse<T>> Copy for DefaultParserImpl<T, X> {}
 
-impl<T: TokenTree, X: Parse<T>> Default for DefaultParserImpl<T, X> {
+impl<T: TokenTreeExt, X: Parse<T>> Default for DefaultParserImpl<T, X> {
     #[inline(always)]
     fn default() -> Self {
         Self(PhantomData)
     }
 }
 
-impl<T: TokenTree, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
+impl<T: TokenTreeExt, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
     type Output<'p, 'b> = X where Self: 'p;
 
     #[inline]
@@ -257,7 +266,7 @@ where
 #[derive(Clone, Debug, Default)]
 pub struct TokenBuffer<T: TokenTree>(Vec<TokenObject<T>>);
 
-impl<T: TokenTree> TokenBuffer<T> {
+impl<T: TokenTreeExt> TokenBuffer<T> {
     /// Get this buffer as a `&TokenBuf`.
     #[inline]
     pub fn as_buf(&self) -> &TokenBuf<T> {
@@ -276,7 +285,7 @@ impl<T: TokenTree> TokenBuffer<T> {
     ///
     /// Unlike `TokenBuf::parse_all`, this doesn't modify the reference to self.
     #[inline]
-    pub fn parse_all<P: Parse<T>>(&self) -> Result<P, &TokenBuf<T>> {
+    pub fn parse_all<P: Parse<T>>(&self) -> Result<P, Error> {
         self.as_buf().parse_all()
     }
 }
@@ -289,35 +298,35 @@ impl<T: TokenTree> TokenBuffer<T> {
     }
 }
 
-impl<T: TokenTree> AsRef<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTreeExt> AsRef<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn as_ref(&self) -> &TokenBuf<T> {
         self.as_buf()
     }
 }
 
-impl<T: TokenTree> AsMut<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTreeExt> AsMut<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn as_mut(&mut self) -> &mut TokenBuf<T> {
         self.as_buf_mut()
     }
 }
 
-impl<T: TokenTree> Borrow<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTreeExt> Borrow<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn borrow(&self) -> &TokenBuf<T> {
         self.as_buf()
     }
 }
 
-impl<T: TokenTree> BorrowMut<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTreeExt> BorrowMut<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn borrow_mut(&mut self) -> &mut TokenBuf<T> {
         self.as_buf_mut()
     }
 }
 
-impl<T: TokenTree> Deref for TokenBuffer<T> {
+impl<T: TokenTreeExt> Deref for TokenBuffer<T> {
     type Target = TokenBuf<T>;
 
     #[inline]
@@ -326,7 +335,7 @@ impl<T: TokenTree> Deref for TokenBuffer<T> {
     }
 }
 
-impl<T: TokenTree> DerefMut for TokenBuffer<T> {
+impl<T: TokenTreeExt> DerefMut for TokenBuffer<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         TokenBuf::from_mut(&mut self.0[..])
@@ -456,7 +465,7 @@ impl<T: TokenTree, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [TokenObject
 #[repr(transparent)]
 pub struct TokenBuf<T: TokenTree>([TokenObject<T>]);
 
-impl<T: TokenTree> TokenBuf<T> {
+impl<T: TokenTreeExt> TokenBuf<T> {
     #[inline]
     fn from_ref(r: &[TokenObject<T>]) -> &Self {
         unsafe {
@@ -489,7 +498,7 @@ impl<T: TokenTree> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Result<P, &Self> {
+    pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Result<P, Error> {
         P::parse_all(self)
     }
 
@@ -501,7 +510,7 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn parse_prefix<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&T::TokenTree) -> Match<M>,
+        mut match_fn: impl FnMut(&T) -> Match<M>,
     ) -> Option<M> {
         self.parse_prefix_buf(|_, token, _| match_fn(token))
     }
@@ -516,7 +525,7 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn parse_prefix_next<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
+        mut match_fn: impl FnMut(&T, Option<&T>) -> Match<M>,
     ) -> Option<M> {
         self.parse_prefix_buf(|_, token, next| match_fn(token, next))
     }
@@ -532,7 +541,7 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn parse_prefix_buf<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&'a Self, &T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
+        mut match_fn: impl FnMut(&'a Self, &T, Option<&T>) -> Match<M>,
     ) -> Option<M> {
         let mut result = None;
         for i in 1..=self.len() {
@@ -560,7 +569,7 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn parse_suffix<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&T::TokenTree) -> Match<M>,
+        mut match_fn: impl FnMut(&T) -> Match<M>,
     ) -> Option<M> {
         self.parse_suffix_buf(|_, token, _| match_fn(token))
     }
@@ -575,7 +584,7 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn parse_suffix_next<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
+        mut match_fn: impl FnMut(&T, Option<&T>) -> Match<M>,
     ) -> Option<M> {
         self.parse_suffix_buf(|_, token, next| match_fn(token, next))
     }
@@ -591,7 +600,7 @@ impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     pub fn parse_suffix_buf<'a, M: 'a>(
         self: &mut &'a Self,
-        mut match_fn: impl FnMut(&'a Self, &T::TokenTree, Option<&T::TokenTree>) -> Match<M>,
+        mut match_fn: impl FnMut(&'a Self, &T, Option<&T>) -> Match<M>,
     ) -> Option<M> {
         let mut result = None;
         for i in (0..self.len()).rev() {
@@ -660,28 +669,28 @@ impl From<&mut TokenBuf<proc_macro2::TokenTree>> for proc_macro2::TokenStream {
     }
 }
 
-impl<'a, T: TokenTree> From<&'a TokenBuffer<T>> for &'a TokenBuf<T> {
+impl<'a, T: TokenTreeExt> From<&'a TokenBuffer<T>> for &'a TokenBuf<T> {
     #[inline]
     fn from(value: &'a TokenBuffer<T>) -> Self {
         value.as_buf()
     }
 }
 
-impl<'a, T: TokenTree> From<&'a mut TokenBuffer<T>> for &'a mut TokenBuf<T> {
+impl<'a, T: TokenTreeExt> From<&'a mut TokenBuffer<T>> for &'a mut TokenBuf<T> {
     #[inline]
     fn from(value: &'a mut TokenBuffer<T>) -> Self {
         value.as_buf_mut()
     }
 }
 
-impl<'a, T: TokenTree> From<&'a [TokenObject<T>]> for &'a TokenBuf<T> {
+impl<'a, T: TokenTreeExt> From<&'a [TokenObject<T>]> for &'a TokenBuf<T> {
     #[inline]
     fn from(value: &'a [TokenObject<T>]) -> Self {
         TokenBuf::from_ref(value)
     }
 }
 
-impl<'a, T: TokenTree> From<&'a mut [TokenObject<T>]> for &'a mut TokenBuf<T> {
+impl<'a, T: TokenTreeExt> From<&'a mut [TokenObject<T>]> for &'a mut TokenBuf<T> {
     #[inline]
     fn from(value: &'a mut [TokenObject<T>]) -> Self {
         TokenBuf::from_mut(value)
@@ -724,7 +733,7 @@ impl<'a, T: TokenTree> IntoIterator for &'a mut TokenBuf<T> {
     }
 }
 
-impl<T: TokenTree> ToOwned for TokenBuf<T> {
+impl<T: TokenTreeExt> ToOwned for TokenBuf<T> {
     type Owned = TokenBuffer<T>;
 
     #[inline]
@@ -770,7 +779,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for usize {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for Range<usize> {
+impl<T: TokenTreeExt> TokenBufferIndex<T> for Range<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -784,7 +793,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for Range<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeFrom<usize> {
+impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeFrom<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -798,7 +807,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeFrom<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeFull {
+impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeFull {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -812,7 +821,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeFull {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeInclusive<usize> {
+impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -826,7 +835,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeInclusive<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeTo<usize> {
+impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeTo<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -840,7 +849,7 @@ impl<T: TokenTree> TokenBufferIndex<T> for RangeTo<usize> {
     }
 }
 
-impl<T: TokenTree> TokenBufferIndex<T> for RangeToInclusive<usize> {
+impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeToInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]

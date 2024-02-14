@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proclet::{delimited, op, prelude::*, Error, Optional, StringLiteral, TokenBuffer};
+use proclet::{delimited, op, prelude::*, proclet, Error, Optional, StringLiteral, TokenBuf};
 
 /// Remove the first line if it's empty except for whitespace, and remove the common whitespace prefix from
 /// all lines, if any. Empty lines are treated as if they have the common prefix.
@@ -7,13 +7,13 @@ use proclet::{delimited, op, prelude::*, Error, Optional, StringLiteral, TokenBu
 /// Call with `{}` like `str_block!{"string"}` to stop rustfmt from modifying your string.
 #[proc_macro]
 pub fn str_block(input: TokenStream) -> TokenStream {
-    let input: TokenBuffer<_> = input.into();
-    let mut input = input.as_buf();
-    let Ok(strings) = delimited(StringLiteral::parser(), Optional(op(","))).parse_all(&mut input)
-    else {
-        return Error::new("str_block takes one or more string or raw string literals as input")
-            .to_compile_error();
-    };
+    proclet(input, str_block_)
+}
+
+fn str_block_(
+    input: &mut &TokenBuf<proc_macro::TokenTree>,
+) -> Result<StringLiteral<proc_macro::Span>, Error> {
+    let strings = delimited(StringLiteral::parser(), Optional(op(","))).parse_all(input)?;
 
     // concat input
     let str = strings.into_iter().fold(String::new(), |mut s, item| {
@@ -25,7 +25,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
     let mut lines2 = lines.clone();
     let Some(first) = lines.next() else {
         // input was an empty string
-        return StringLiteral::new(String::new()).to_token_stream();
+        return Ok(StringLiteral::new(String::new()));
     };
     // skip first line if it's empty
     let first = if first.trim().is_empty() {
@@ -34,7 +34,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
             second
         } else {
             // input was one line of only whitespace
-            return StringLiteral::new(String::new()).to_token_stream();
+            return Ok(StringLiteral::new(String::new()));
         }
     } else {
         first
@@ -65,5 +65,5 @@ pub fn str_block(input: TokenStream) -> TokenStream {
         output.push('\n');
         output.push_str(line.strip_prefix(prefix).unwrap_or(""));
     }
-    StringLiteral::new(output).to_token_stream()
+    Ok(StringLiteral::new(output))
 }

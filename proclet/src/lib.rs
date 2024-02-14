@@ -75,6 +75,18 @@ pub use token_tree::{
     Spacing, SpacingExt, TokenTree, TokenTreeExt, TokenTreeKind,
 };
 
+/// Optional wrapper for proc macros.
+pub fn proclet<T: TokenStreamExt, U: ToTokenStream<T>>(
+    input: impl Into<TokenBuffer<T::TokenTree>>,
+    f: impl FnOnce(&mut &TokenBuf<T::TokenTree>) -> Result<U, Error>,
+) -> T {
+    let buffer = input.into();
+    match f(&mut buffer.as_buf()) {
+        Ok(out) => out.to_token_stream(),
+        Err(e) => e.to_compile_error(),
+    }
+}
+
 /// Match results.
 pub enum Match<T> {
     /// The match is complete; stop looking.
