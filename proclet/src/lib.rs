@@ -78,7 +78,7 @@ pub use token_tree::{
 /// Optional wrapper for proc macros.
 pub fn proclet<T: TokenStreamExt, U: ToTokenStream<T>>(
     input: impl Into<TokenBuffer<T::TokenTree>>,
-    f: impl FnOnce(&mut &TokenBuf<T::TokenTree>) -> Result<U, Error>,
+    f: impl FnOnce(&mut &TokenBuf<T::TokenTree>) -> Result<U, Error<T::Span>>,
 ) -> T {
     let buffer = input.into();
     match f(&mut buffer.as_buf()) {

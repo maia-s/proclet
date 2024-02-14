@@ -69,8 +69,8 @@ pub enum LiteralValue<S: crate::Span> {
 }
 
 #[cfg(feature = "literal-value")]
-impl<S: crate::Span> FromStr for LiteralValue<S> {
-    type Err = crate::Error;
+impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
+    type Err = crate::Error<S>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut input = s.as_bytes();
@@ -81,21 +81,21 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
             String,
         }
 
-        fn bin_digit(b: u8) -> Result<u8, crate::Error> {
+        fn bin_digit<S: crate::SpanExt>(b: u8) -> Result<u8, crate::Error<S>> {
             match b {
                 b'0'..=b'1' => Ok(b - b'0'),
                 _ => Err(crate::Error::new("expected binary digit")),
             }
         }
 
-        fn oct_digit(b: u8) -> Result<u8, crate::Error> {
+        fn oct_digit<S: crate::SpanExt>(b: u8) -> Result<u8, crate::Error<S>> {
             match b {
                 b'0'..=b'7' => Ok(b - b'0'),
                 _ => Err(crate::Error::new("expected octal digit")),
             }
         }
 
-        fn hex_digit(b: u8) -> Result<u8, crate::Error> {
+        fn hex_digit<S: crate::SpanExt>(b: u8) -> Result<u8, crate::Error<S>> {
             match b {
                 b'0'..=b'9' => Ok(b - b'0'),
                 b'a'..=b'f' => Ok(b - b'a' + 10),
@@ -104,10 +104,10 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
             }
         }
 
-        fn from_int<S: crate::Span>(
+        fn from_int<S: crate::SpanExt>(
             value: u128,
             suffix: &[u8],
-        ) -> Result<LiteralValue<S>, crate::Error> {
+        ) -> Result<LiteralValue<S>, crate::Error<S>> {
             macro_rules! make {
                 ($($s:literal => $t:ident: $token:ident $(: $as:ident)?),* $(,)?) => {
                     match suffix {
@@ -191,10 +191,10 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
             &input[0..0]
         }
 
-        fn parse_byte_escape(
+        fn parse_byte_escape<S: crate::SpanExt>(
             input: &mut &[u8],
             escapes: Escapes,
-        ) -> Result<Option<u8>, crate::Error> {
+        ) -> Result<Option<u8>, crate::Error<S>> {
             assert_eq!(input[0], b'\\');
             if input.len() >= 2 {
                 let escape = input[1];
@@ -220,7 +220,10 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
             }
         }
 
-        fn parse_byte(input: &mut &[u8], escapes: Escapes) -> Result<Option<u8>, crate::Error> {
+        fn parse_byte<S: crate::SpanExt>(
+            input: &mut &[u8],
+            escapes: Escapes,
+        ) -> Result<Option<u8>, crate::Error<S>> {
             if let Some(&value) = input.first() {
                 if value == b'\\' {
                     Ok(parse_byte_escape(input, escapes)?)
@@ -233,10 +236,10 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
             }
         }
 
-        fn parse_char_escape(
+        fn parse_char_escape<S: crate::SpanExt>(
             input: &mut &[u8],
             escapes: Escapes,
-        ) -> Result<Option<char>, crate::Error> {
+        ) -> Result<Option<char>, crate::Error<S>> {
             assert_eq!(input[0], b'\\');
             if input.len() >= 2 {
                 let escape = input[1];
@@ -282,7 +285,10 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
             }
         }
 
-        fn parse_char(input: &mut &[u8], escapes: Escapes) -> Result<Option<char>, crate::Error> {
+        fn parse_char<S: crate::SpanExt>(
+            input: &mut &[u8],
+            escapes: Escapes,
+        ) -> Result<Option<char>, crate::Error<S>> {
             if !input.is_empty() && input[0] == b'\\' {
                 if let Some(c) = parse_char_escape(input, escapes)? {
                     Ok(Some(c))
@@ -624,7 +630,7 @@ macro_rules! def_literal_tokens {
 
         #[cfg(feature = "literal-value")]
         impl<S: crate::SpanExt> TryFrom<LiteralValue<S>> for $ident<S> {
-            type Error = crate::Error;
+            type Error = crate::Error<S>;
 
             #[inline]
             fn try_from(value: LiteralValue<S>) -> Result<Self, Self::Error> {
@@ -646,7 +652,7 @@ macro_rules! def_literal_tokens {
 
         #[cfg(all(feature = "proc-macro", feature = "literal-value"))]
         impl TryFrom<proc_macro::Literal> for $ident<proc_macro::Span> {
-            type Error = crate::Error;
+            type Error = crate::Error<proc_macro::Span>;
 
             #[inline]
             fn try_from(value: proc_macro::Literal) -> Result<Self, Self::Error> {
@@ -656,7 +662,7 @@ macro_rules! def_literal_tokens {
 
         #[cfg(all(feature = "proc-macro2", feature = "literal-value"))]
         impl TryFrom<proc_macro2::Literal> for $ident<proc_macro2::Span> {
-            type Error = crate::Error;
+            type Error = crate::Error<proc_macro2::Span>;
 
             #[inline]
             fn try_from(value: proc_macro2::Literal) -> Result<Self, Self::Error> {

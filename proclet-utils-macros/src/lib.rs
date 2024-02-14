@@ -7,7 +7,9 @@ pub fn _define_ops(input: TokenStream) -> TokenStream {
     proclet(input, _define_ops_)
 }
 
-fn _define_ops_(input: &mut &TokenBuf<proc_macro::TokenTree>) -> Result<TokenStream, Error> {
+fn _define_ops_(
+    input: &mut &TokenBuf<proc_macro::TokenTree>,
+) -> Result<TokenStream, Error<proc_macro::Span>> {
     let args = delimited(StringLiteral::parser(), op(",")).parse_all(input)?;
 
     let mut map = HashMap::<String, (bool, HashSet<char>)>::new();

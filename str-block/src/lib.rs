@@ -12,7 +12,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
 
 fn str_block_(
     input: &mut &TokenBuf<proc_macro::TokenTree>,
-) -> Result<StringLiteral<proc_macro::Span>, Error> {
+) -> Result<StringLiteral<proc_macro::Span>, Error<proc_macro::Span>> {
     let strings = delimited(StringLiteral::parser(), Optional(op(","))).parse_all(input)?;
 
     // concat input

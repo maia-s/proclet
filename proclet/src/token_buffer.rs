@@ -28,7 +28,7 @@ pub trait Parse<T: TokenTreeExt>:
     ///
     /// The referenced `&buf` will be modified to point past the parsed tokens on success.
     #[inline]
-    fn parse_all(buf: &mut &TokenBuf<T>) -> Result<Self, Error> {
+    fn parse_all(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>> {
         Self::parser().parse_all(buf)
     }
 }
@@ -114,7 +114,7 @@ pub trait Parser<T: TokenTreeExt> {
     fn parse_all<'p, 'b>(
         &'p self,
         buf: &mut &'b TokenBuf<T>,
-    ) -> Result<Self::Output<'p, 'b>, Error> {
+    ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
         match self.parse(buf) {
             Some(result) if buf.is_empty() => Ok(result),
             None => Err(Error::with_span(
@@ -285,7 +285,7 @@ impl<T: TokenTreeExt> TokenBuffer<T> {
     ///
     /// Unlike `TokenBuf::parse_all`, this doesn't modify the reference to self.
     #[inline]
-    pub fn parse_all<P: Parse<T>>(&self) -> Result<P, Error> {
+    pub fn parse_all<P: Parse<T>>(&self) -> Result<P, Error<T::Span>> {
         self.as_buf().parse_all()
     }
 }
@@ -498,7 +498,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Result<P, Error> {
+    pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Result<P, Error<T::Span>> {
         P::parse_all(self)
     }
 
