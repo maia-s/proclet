@@ -30,6 +30,7 @@ pub mod prelude {
     pub use crate::SpanExt as _;
     pub use crate::ToTokenBuffer as _;
     pub use crate::ToTokenStream as _;
+    pub use crate::ToTokens as _;
     pub use crate::TokenStream as _;
     pub use crate::TokenStreamExt as _;
     pub use crate::TokenTree as _;
