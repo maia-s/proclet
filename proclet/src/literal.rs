@@ -939,8 +939,8 @@ pub trait LiteralExt:
     + crate::ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
-    /// Convert this `Literal` into a `LiteralValue`.
-    fn to_literal_token(&self) -> LiteralValue<Self::Span>;
+    /// Convert this `Literal` to a `LiteralValue`.
+    fn to_value(&self) -> LiteralValue<Self::Span>;
 }
 
 macro_rules! impl_literal {
@@ -949,7 +949,7 @@ macro_rules! impl_literal {
         impl From<$pm::Literal> for LiteralValue<$pm::Span> {
             #[inline]
             fn from(value: $pm::Literal) -> Self {
-                value.to_literal_token()
+                value.to_value()
             }
         }
 
@@ -1040,7 +1040,7 @@ macro_rules! impl_literal {
         impl LiteralExt for $pm::Literal {
             #[cfg(feature = "literal-value")]
             #[inline]
-            fn to_literal_token(&self) -> LiteralValue<$pm::Span> {
+            fn to_value(&self) -> LiteralValue<$pm::Span> {
                 self.to_string().parse().unwrap()
             }
         }
