@@ -1,5 +1,10 @@
 use proc_macro::TokenStream;
-use proclet::{delimited, op, prelude::*, proclet, Error, Optional, StringLiteral, TokenBuf};
+use proclet::{
+    delimited, op,
+    pm1::{Error, StringLiteral, TokenBuf},
+    prelude::*,
+    proclet, Optional,
+};
 
 /// Remove the first line if it's empty except for whitespace, and remove the common whitespace prefix from
 /// all lines, if any. Empty lines are treated as if they have the common prefix.
@@ -10,9 +15,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
     proclet(input, str_block_)
 }
 
-fn str_block_(
-    input: &mut &TokenBuf<proc_macro::TokenTree>,
-) -> Result<StringLiteral<proc_macro::Span>, Error<proc_macro::Span>> {
+fn str_block_(input: &mut &TokenBuf) -> Result<StringLiteral, Error> {
     let strings = delimited(StringLiteral::parser(), Optional(op(","))).parse_all(input)?;
 
     // concat input

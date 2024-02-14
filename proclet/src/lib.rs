@@ -103,6 +103,51 @@ pub enum Match<T> {
     NoMatch,
 }
 
+macro_rules! pm {
+    ($($mod:ident: $pm:ident: $feature:literal),*) => { $(
+        #[cfg(feature = $feature)]
+        #[doc = concat!("Type aliases for use with ", $feature, ".")]
+        pub mod $mod { use $pm::*; pm! {
+            @ $feature;
+            Error = Error<Span>;
+            DelimitedParser<M, D> = DelimitedParser<TokenTree, M, D>;
+            "literal-value" LiteralValue = LiteralValue<Span>;
+            "literal-value" StringLiteral = StringLiteral<Span>;
+            "literal-value" ByteStringLiteral = ByteStringLiteral<Span>;
+            "literal-value" CharacterLiteral = CharacterLiteral<Span>;
+            "literal-value" ByteCharacterLiteral = ByteCharacterLiteral<Span>;
+            "literal-value" IntLiteral = IntLiteral<Span>;
+            "literal-value" FloatLiteral = FloatLiteral<Span>;
+            "literal-value" I8Literal = I8Literal<Span>;
+            "literal-value" I16Literal = I16Literal<Span>;
+            "literal-value" I32Literal = I32Literal<Span>;
+            "literal-value" I64Literal = I64Literal<Span>;
+            "literal-value" I128Literal = I128Literal<Span>;
+            "literal-value" IsizeLiteral = IsizeLiteral<Span>;
+            "literal-value" U8Literal = U8Literal<Span>;
+            "literal-value" U16Literal = U16Literal<Span>;
+            "literal-value" U32Literal = U32Literal<Span>;
+            "literal-value" U64Literal = U64Literal<Span>;
+            "literal-value" U128Literal = U128Literal<Span>;
+            "literal-value" UsizeLiteral = UsizeLiteral<Span>;
+            "literal-value" F32Literal = F32Literal<Span>;
+            "literal-value" F64Literal = F64Literal<Span>;
+            Op = Op<Span>;
+            OpParser<F> = OpParser<Punct, F>;
+            TokenBuffer = TokenBuffer<TokenTree>;
+            TokenBuf = TokenBuf<TokenTree>;
+        }}
+    )* };
+
+    (@ $pm:literal; $($($feat:literal)? $alias:ident $(<$($g:ident),*>)? = $t:ident$(<$($tg:ident),*>)?;)*) => { $(
+        $( #[cfg(feature = $feat)] )?
+        #[doc = concat!("`", stringify!($alias), "` for ", $pm, ".")]
+        pub type $alias $(<$($g),*>)? = crate::$t$(<$($tg),*>)?;
+    )* };
+}
+
+pm!(pm1: proc_macro: "proc-macro", pm2: proc_macro2: "proc-macro2");
+
 use internal::*;
 mod internal {
     use std::{fmt::Debug, str::FromStr};

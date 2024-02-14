@@ -1,5 +1,10 @@
 use proc_macro::TokenStream;
-use proclet::{delimited, op, prelude::*, proclet, Error, StringLiteral, TokenBuf};
+use proclet::{
+    delimited, op,
+    pm1::{Error, StringLiteral, TokenBuf},
+    prelude::*,
+    proclet,
+};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 #[proc_macro]
@@ -7,9 +12,7 @@ pub fn _define_ops(input: TokenStream) -> TokenStream {
     proclet(input, _define_ops_)
 }
 
-fn _define_ops_(
-    input: &mut &TokenBuf<proc_macro::TokenTree>,
-) -> Result<TokenStream, Error<proc_macro::Span>> {
+fn _define_ops_(input: &mut &TokenBuf) -> Result<TokenStream, Error> {
     let args = delimited(StringLiteral::parser(), op(",")).parse_all(input)?;
 
     let mut map = HashMap::<String, (bool, HashSet<char>)>::new();
