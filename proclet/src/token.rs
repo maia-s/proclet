@@ -20,6 +20,16 @@ pub trait ToTokens<T: TokenTree> {
     }
 }
 
+impl<T: TokenTree, X: ToTokens<T>> ToTokens<T> for Option<X> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
+    where
+        Self: Sized,
+    {
+        self.into_iter().flat_map(|x| x.into_tokens())
+    }
+}
+
 /// Methods for making or extending a `TokenStream` with a representation of this object.
 pub trait ToTokenStream<T: TokenStream> {
     /// Extend the given `TokenStream` with a representation of this object.
@@ -49,5 +59,15 @@ impl<T: TokenStream, X: ToTokenStream<T>> ToTokenStream<T> for Option<X> {
         if let Some(x) = self {
             x.extend_token_stream(token_stream);
         }
+    }
+}
+
+impl<T: TokenTree, T0: ToTokens<T>, T1: ToTokens<T>> ToTokens<T> for (T0, T1) {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
+    where
+        Self: Sized,
+    {
+        self.0.into_tokens().chain(self.1.into_tokens())
     }
 }

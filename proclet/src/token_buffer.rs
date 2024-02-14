@@ -733,6 +733,25 @@ impl<T: TokenTree> ToOwned for TokenBuf<T> {
     }
 }
 
+impl<T: TokenTree> ToTokens<T> for TokenBuf<T> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
+    where
+        Self: Sized,
+    {
+        self.to_owned().into_tokens()
+    }
+
+    #[inline]
+    fn to_tokens(&self) -> impl Iterator<Item = TokenObject<T>>
+    where
+        Self: Clone,
+    {
+        // to_owned doesn't work here bc rust
+        TokenBuffer::<T>(self.0.to_vec()).into_tokens()
+    }
+}
+
 impl<T: TokenStreamExt> ToTokenStream<T> for TokenBuf<T::TokenTree> {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut T) {
