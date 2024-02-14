@@ -1,4 +1,4 @@
-use crate::{IntoTokens, Parse, ProcMacro, ToTokenStream};
+use crate::{IntoTokens, Parse, ProcMacro, ToTokenStream, ToTokens};
 use std::fmt::Display;
 
 /// The kind of a `TokenTree`. This is like the enum in `proc_macro*::TokenTree`, but
@@ -48,6 +48,7 @@ pub trait TokenTreeExt:
     + TokenTree
     + Parse<Self>
     + IntoTokens<Self>
+    + ToTokens<Self>
     + ToTokenStream<Self::TokenStream>
 {
     /// Get the kind of this `TokenTree`.
@@ -163,6 +164,7 @@ pub trait GroupExt:
     + Group
     + Parse<Self::TokenTree>
     + IntoTokens<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Create a new `Group` with a custom span.
@@ -312,6 +314,7 @@ pub trait IdentExt:
     + Ident
     + Parse<Self::TokenTree>
     + IntoTokens<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
 }
@@ -348,6 +351,7 @@ pub trait PunctExt:
     + Punct
     + Parse<Self::TokenTree>
     + IntoTokens<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Create a new `Punct` with a custom `Span`.

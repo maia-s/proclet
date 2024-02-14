@@ -644,6 +644,42 @@ macro_rules! def_literal_tokens {
             }
         }
 
+        #[cfg(all(feature = "proc-macro", feature = "literal-value"))]
+        impl TryFrom<proc_macro::Literal> for $ident<proc_macro::Span> {
+            type Error = crate::Error;
+
+            #[inline]
+            fn try_from(value: proc_macro::Literal) -> Result<Self, Self::Error> {
+                LiteralValue::from(value).try_into()
+            }
+        }
+
+        #[cfg(all(feature = "proc-macro2", feature = "literal-value"))]
+        impl TryFrom<proc_macro2::Literal> for $ident<proc_macro2::Span> {
+            type Error = crate::Error;
+
+            #[inline]
+            fn try_from(value: proc_macro2::Literal) -> Result<Self, Self::Error> {
+                LiteralValue::from(value).try_into()
+            }
+        }
+
+        #[cfg(all(feature = "proc-macro", feature = "literal-value"))]
+        impl From<$ident<proc_macro::Span>> for proc_macro::Literal {
+            #[inline]
+            fn from(value: $ident<proc_macro::Span>) -> Self {
+                LiteralValue::from(value).into()
+            }
+        }
+
+        #[cfg(all(feature = "proc-macro2", feature = "literal-value"))]
+        impl From<$ident<proc_macro2::Span>> for proc_macro2::Literal {
+            #[inline]
+            fn from(value: $ident<proc_macro2::Span>) -> Self {
+                LiteralValue::from(value).into()
+            }
+        }
+
         #[cfg(feature = "literal-value")]
         impl<T: crate::TokenTreeExt> Parse<T> for $ident<T::Span> {
             #[inline]
@@ -843,6 +879,7 @@ pub trait LiteralExt:
     + Literal
     + Parse<Self::TokenTree>
     + IntoTokens<Self::TokenTree>
+    + crate::ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
 }
@@ -856,9 +893,50 @@ pub trait LiteralExt:
     ProcMacroExt<LiteralExt = Self>
     + Literal
     + From<LiteralValue<Self::Span>>
+    + From<StringLiteral<Self::Span>>
+    + From<ByteStringLiteral<Self::Span>>
+    + From<CharacterLiteral<Self::Span>>
+    + From<ByteCharacterLiteral<Self::Span>>
+    + From<IntLiteral<Self::Span>>
+    + From<FloatLiteral<Self::Span>>
+    + From<I8Literal<Self::Span>>
+    + From<I16Literal<Self::Span>>
+    + From<I32Literal<Self::Span>>
+    + From<I64Literal<Self::Span>>
+    + From<I128Literal<Self::Span>>
+    + From<IsizeLiteral<Self::Span>>
+    + From<U8Literal<Self::Span>>
+    + From<U16Literal<Self::Span>>
+    + From<U32Literal<Self::Span>>
+    + From<U64Literal<Self::Span>>
+    + From<U128Literal<Self::Span>>
+    + From<UsizeLiteral<Self::Span>>
+    + From<F32Literal<Self::Span>>
+    + From<F64Literal<Self::Span>>
     + Into<LiteralValue<Self::Span>>
+    + TryInto<StringLiteral<Self::Span>>
+    + TryInto<ByteStringLiteral<Self::Span>>
+    + TryInto<CharacterLiteral<Self::Span>>
+    + TryInto<ByteCharacterLiteral<Self::Span>>
+    + TryInto<IntLiteral<Self::Span>>
+    + TryInto<FloatLiteral<Self::Span>>
+    + TryInto<I8Literal<Self::Span>>
+    + TryInto<I16Literal<Self::Span>>
+    + TryInto<I32Literal<Self::Span>>
+    + TryInto<I64Literal<Self::Span>>
+    + TryInto<I128Literal<Self::Span>>
+    + TryInto<IsizeLiteral<Self::Span>>
+    + TryInto<U8Literal<Self::Span>>
+    + TryInto<U16Literal<Self::Span>>
+    + TryInto<U32Literal<Self::Span>>
+    + TryInto<U64Literal<Self::Span>>
+    + TryInto<U128Literal<Self::Span>>
+    + TryInto<UsizeLiteral<Self::Span>>
+    + TryInto<F32Literal<Self::Span>>
+    + TryInto<F64Literal<Self::Span>>
     + Parse<Self::TokenTree>
     + IntoTokens<Self::TokenTree>
+    + crate::ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Convert this `Literal` into a `LiteralValue`.
