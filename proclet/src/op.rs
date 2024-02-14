@@ -1,5 +1,6 @@
 use crate::{
-    prelude::*, Match, PMExt, Punct, PunctExt, Span, SpanExt, ToTokenStream, ToTokens, TokenObject,
+    prelude::*, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream, ToTokens, TokenObject,
+    TokenTreeExt,
 };
 use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
 
@@ -131,7 +132,7 @@ impl<S: SpanExt> Op<S> {
     }
 }
 
-impl<T: crate::PMExt> crate::Parser<T> for Op<T::Span> {
+impl<T: crate::TokenTreeExt> crate::Parser<T> for Op<T::Span> {
     type Output<'p, 'b> = Op<T::Span> where Self: 'p;
 
     #[inline]
@@ -153,17 +154,17 @@ impl<T: crate::PMExt> crate::Parser<T> for Op<T::Span> {
     }
 }
 
+impl<T: TokenTreeExt> ToTokens<T> for Op<T::Span> {
+    #[inline]
+    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>> {
+        self.into_iter().flat_map(|p| p.into_tokens())
+    }
+}
+
 impl<S: SpanExt> ToTokenStream<S::TokenStream> for Op<S> {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut S::TokenStream) {
         token_stream.extend(self.puncts().map(S::TokenTree::from))
-    }
-}
-
-impl<T: PMExt> ToTokens<T> for Op<T::Span> {
-    #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>> {
-        self.into_iter().flat_map(|p| p.into_tokens())
     }
 }
 
@@ -174,10 +175,10 @@ impl<S: Span> From<&'static str> for Op<S> {
     }
 }
 
-impl<S: SpanExt> crate::Parse<S::PM> for Op<S> {
+impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
     /// Generic op parser. This doesn't check against valid ops.
     #[inline]
-    fn parse(buf: &mut &crate::TokenBuf<S::PM>) -> Option<Self> {
+    fn parse(buf: &mut &crate::TokenBuf<S::TokenTree>) -> Option<Self> {
         let mut str = String::new();
         let mut spans = Vec::new();
         buf.parse_prefix(|token| {
@@ -354,13 +355,13 @@ impl<P: PunctExt, F: MatchOpFn> OpParser<P, F> {
     }
 }
 
-impl<P: PunctExt, F: MatchOpFn> crate::Parser<P::PM> for OpParser<P, F> {
+impl<P: PunctExt, F: MatchOpFn> crate::Parser<P::TokenTree> for OpParser<P, F> {
     type Output<'p, 'b> = Op<P::Span> where Self:'p;
 
     #[inline]
     fn parse<'p, 'b>(
         &'p self,
-        buf: &mut &'b crate::TokenBuf<P::PM>,
+        buf: &mut &'b crate::TokenBuf<P::TokenTree>,
     ) -> Option<Self::Output<'p, 'b>> {
         let mut string = String::new();
         let mut spans = Vec::new();

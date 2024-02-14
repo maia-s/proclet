@@ -542,7 +542,7 @@ impl<S: crate::Span> FromStr for LiteralValue<S> {
 }
 
 #[cfg(feature = "literal-value")]
-impl<T: crate::PMExt> Parse<T> for LiteralValue<T::Span> {
+impl<T: crate::TokenTreeExt> Parse<T> for LiteralValue<T::Span> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
         T::Literal::parse(buf).map(|x| x.into())
@@ -550,7 +550,7 @@ impl<T: crate::PMExt> Parse<T> for LiteralValue<T::Span> {
 }
 
 #[cfg(feature = "literal-value")]
-impl<T: crate::PMExt> crate::ToTokens<T> for LiteralValue<T::Span> {
+impl<T: crate::TokenTreeExt> crate::ToTokens<T> for LiteralValue<T::Span> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
         T::Literal::from(self).into_tokens()
@@ -645,7 +645,7 @@ macro_rules! def_literal_tokens {
         }
 
         #[cfg(feature = "literal-value")]
-        impl<T: crate::PMExt> Parse<T> for $ident<T::Span> {
+        impl<T: crate::TokenTreeExt> Parse<T> for $ident<T::Span> {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
                 let mut buf2 = *buf;
@@ -659,7 +659,7 @@ macro_rules! def_literal_tokens {
         }
 
         #[cfg(feature = "literal-value")]
-        impl<T: crate::PMExt> crate::ToTokens<T> for $ident<T::Span>
+        impl<T: crate::TokenTreeExt> crate::ToTokens<T> for $ident<T::Span>
             where LiteralValue<T::Span>: crate::ToTokens<T> // always true, but rust is stupid
         {
             #[inline]
@@ -841,8 +841,8 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
 pub trait LiteralExt:
     ProcMacroExt<LiteralExt = Self>
     + Literal
-    + Parse<Self::PM>
-    + ToTokens<Self::PM>
+    + Parse<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
 }
@@ -857,8 +857,8 @@ pub trait LiteralExt:
     + Literal
     + From<LiteralValue<Self::Span>>
     + Into<LiteralValue<Self::Span>>
-    + Parse<Self::PM>
-    + ToTokens<Self::PM>
+    + Parse<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Convert this `Literal` into a `LiteralValue`.
@@ -968,9 +968,9 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl Parse<crate::base::$pm::PM> for $pm::Literal {
+        impl Parse<$pm::TokenTree> for $pm::Literal {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Literal(t) = token {
                         crate::Match::Complete(t.clone())
@@ -982,18 +982,18 @@ macro_rules! impl_literal {
         }
 
         #[cfg(feature = $feature)]
-        impl crate::ToTokenStream<$pm::TokenStream> for $pm::Literal {
+        impl crate::ToTokens<$pm::TokenTree> for $pm::Literal {
             #[inline]
-            fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream)  {
-                token_stream.extend([$pm::TokenTree::from(self.clone())]);
+            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
+                std::iter::once($pm::TokenTree::Literal(self))
             }
         }
 
         #[cfg(feature = $feature)]
-        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Literal {
+        impl crate::ToTokenStream<$pm::TokenStream> for $pm::Literal {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<crate::base::$pm::PM>> {
-                std::iter::once($pm::TokenTree::Literal(self))
+            fn extend_token_stream(&self, token_stream: &mut $pm::TokenStream)  {
+                token_stream.extend([$pm::TokenTree::from(self.clone())]);
             }
         }
     )* };

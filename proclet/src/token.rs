@@ -1,10 +1,10 @@
-use crate::{TokenStream, PM};
+use crate::{TokenStream, TokenTree};
 
 /// Owned trait object of [`Token`]
 pub type TokenObject<T> = <T as crate::ProcMacro>::TokenTree;
 
 /// Trait for converting an object into its token representation.
-pub trait ToTokens<T: PM> {
+pub trait ToTokens<T: TokenTree> {
     /// Convert this object into an iterator of tokens representing the object.
     fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
     where

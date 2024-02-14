@@ -46,8 +46,8 @@ pub trait TokenTree:
 pub trait TokenTreeExt:
     crate::ProcMacroExt<TokenTreeExt = Self>
     + TokenTree
-    + Parse<Self::PM>
-    + ToTokens<Self::PM>
+    + Parse<Self>
+    + ToTokens<Self>
     + ToTokenStream<Self::TokenStream>
 {
     /// Get the kind of this `TokenTree`.
@@ -161,8 +161,8 @@ pub trait Group: ProcMacro<Group = Self> + Display {
 pub trait GroupExt:
     crate::ProcMacroExt<GroupExt = Self>
     + Group
-    + Parse<Self::PM>
-    + ToTokens<Self::PM>
+    + Parse<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Create a new `Group` with a custom span.
@@ -179,7 +179,7 @@ pub trait GroupExt:
     }
 
     /// Get the delimited `TokenStream` as a `TokenBuffer`, not including delimiters.
-    fn stream_buffer(&self) -> crate::TokenBuffer<Self::PM>;
+    fn stream_buffer(&self) -> crate::TokenBuffer<Self::TokenTree>;
 
     /// If the group has delimiter `None` and contains a single item, extract that item,
     /// and if that item is a group, flatten that too, recursively. Then return the item,
@@ -310,8 +310,8 @@ pub trait Ident: ProcMacro<Ident = Self> + Display {
 pub trait IdentExt:
     crate::ProcMacroExt<IdentExt = Self>
     + Ident
-    + Parse<Self::PM>
-    + ToTokens<Self::PM>
+    + Parse<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
 }
@@ -346,8 +346,8 @@ pub trait Punct: ProcMacro<Punct = Self> + Display {
 pub trait PunctExt:
     crate::ProcMacroExt<PunctExt = Self>
     + Punct
-    + Parse<Self::PM>
-    + ToTokens<Self::PM>
+    + Parse<Self::TokenTree>
+    + ToTokens<Self::TokenTree>
     + ToTokenStream<Self::TokenStream>
 {
     /// Create a new `Punct` with a custom `Span`.
@@ -535,9 +535,9 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl crate::Parse<crate::base::$pm::PM> for $pm::TokenTree {
+        impl crate::Parse<$pm::TokenTree> for $pm::TokenTree {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
                 let result = buf.first()?.clone();
                 *buf = &buf[1..];
                 Some(result)
@@ -545,9 +545,9 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(all(feature = $feature))]
-        impl crate::ToTokens<crate::base::$pm::PM> for $pm::TokenTree {
+        impl crate::ToTokens<$pm::TokenTree> for $pm::TokenTree {
             #[inline]
-            fn into_tokens(mut self) -> impl Iterator<Item = crate::TokenObject<crate::base::$pm::PM>> {
+            fn into_tokens(mut self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 self.flatten_group();
                 std::iter::once(self)
             }
@@ -602,15 +602,15 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl GroupExt for $pm::Group {
             #[inline]
-            fn stream_buffer(&self) -> crate::TokenBuffer<crate::base::$pm::PM> {
+            fn stream_buffer(&self) -> crate::TokenBuffer<$pm::TokenTree> {
                 crate::TokenBuffer::from(self.stream())
             }
         }
 
         #[cfg(feature = $feature)]
-        impl crate::Parse<crate::base::$pm::PM> for $pm::Group {
+        impl crate::Parse<$pm::TokenTree> for $pm::Group {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Group(t) = token {
                         crate::Match::Complete(t.clone())
@@ -622,9 +622,9 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(all(feature = $feature))]
-        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Group {
+        impl crate::ToTokens<$pm::TokenTree> for $pm::Group {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<crate::base::$pm::PM>> {
+            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 std::iter::once($pm::TokenTree::Group(self))
             }
         }
@@ -718,9 +718,9 @@ macro_rules! impl_token_tree {
         impl IdentExt for $pm::Ident {}
 
         #[cfg(feature = $feature)]
-        impl crate::Parse<crate::base::$pm::PM> for $pm::Ident {
+        impl crate::Parse<$pm::TokenTree> for $pm::Ident {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Ident(t) = token {
                         crate::Match::Complete(t.clone())
@@ -732,9 +732,9 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(all(feature = $feature))]
-        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Ident {
+        impl crate::ToTokens<$pm::TokenTree> for $pm::Ident {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<crate::base::$pm::PM>> {
+            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 std::iter::once($pm::TokenTree::Ident(self))
             }
         }
@@ -779,9 +779,9 @@ macro_rules! impl_token_tree {
         impl PunctExt for $pm::Punct {}
 
         #[cfg(feature = $feature)]
-        impl crate::Parse<crate::base::$pm::PM> for $pm::Punct {
+        impl crate::Parse<$pm::TokenTree> for $pm::Punct {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<crate::base::$pm::PM>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Punct(t) = token {
                         crate::Match::Complete(t.clone())
@@ -793,9 +793,9 @@ macro_rules! impl_token_tree {
         }
 
         #[cfg(feature = $feature)]
-        impl crate::ToTokens<crate::base::$pm::PM> for $pm::Punct {
+        impl crate::ToTokens<$pm::TokenTree> for $pm::Punct {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<crate::base::$pm::PM>> {
+            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
                 std::iter::once($pm::TokenTree::Punct(self))
             }
         }

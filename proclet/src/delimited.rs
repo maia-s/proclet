@@ -1,4 +1,4 @@
-use crate::{Parse, Parser, ToTokenStream, TokenStream, PM};
+use crate::{Parse, Parser, ToTokenStream, TokenStream, TokenTree};
 use std::{marker::PhantomData, ops::Deref};
 
 /// Parsed delimited values.
@@ -31,7 +31,7 @@ impl<M, D> IntoIterator for Delimited<M, D> {
     }
 }
 
-impl<T: PM, M: Parse<T>, D: Parse<T>> Parse<T> for Delimited<M, D> {
+impl<T: TokenTree, M: Parse<T>, D: Parse<T>> Parse<T> for Delimited<M, D> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
         delimited(M::parser(), D::parser()).parse(buf)
@@ -51,9 +51,9 @@ impl<T: TokenStream, M: ToTokenStream<T>, D: ToTokenStream<T>> ToTokenStream<T>
 
 /// Parser for delimited values.
 #[derive(Clone, Debug)]
-pub struct DelimitedParser<T: PM, M, D>(M, D, PhantomData<fn() -> T>);
+pub struct DelimitedParser<T: TokenTree, M, D>(M, D, PhantomData<fn() -> T>);
 
-impl<T: PM, M: Parser<T>, D: Parser<T>> DelimitedParser<T, M, D> {
+impl<T: TokenTree, M: Parser<T>, D: Parser<T>> DelimitedParser<T, M, D> {
     /// Create a new `DelimitedParser` using `main` as the parser for the main part and
     /// `delim` as the parser for the delimiter.
     #[inline]
@@ -62,7 +62,7 @@ impl<T: PM, M: Parser<T>, D: Parser<T>> DelimitedParser<T, M, D> {
     }
 }
 
-impl<T: PM, M: Parser<T>, D: Parser<T>> Parser<T> for DelimitedParser<T, M, D> {
+impl<T: TokenTree, M: Parser<T>, D: Parser<T>> Parser<T> for DelimitedParser<T, M, D> {
     type Output<'p, 'b> = Delimited<M::Output<'p, 'b>, D::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
@@ -83,7 +83,7 @@ impl<T: PM, M: Parser<T>, D: Parser<T>> Parser<T> for DelimitedParser<T, M, D> {
 /// Create a new parser for parsing things with `main` delimited by `delim`.
 /// Convenience function for calling [`DelimitedParser::new`].
 #[inline]
-pub const fn delimited<T: PM, M: Parser<T>, D: Parser<T>>(
+pub const fn delimited<T: TokenTree, M: Parser<T>, D: Parser<T>>(
     main: M,
     delim: D,
 ) -> DelimitedParser<T, M, D> {

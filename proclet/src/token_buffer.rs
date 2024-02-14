@@ -1,4 +1,4 @@
-use crate::{Match, ToTokenStream, ToTokens, TokenObject, TokenStreamExt, PM};
+use crate::{Match, ToTokenStream, ToTokens, TokenObject, TokenStreamExt, TokenTree};
 use std::{
     borrow::{Borrow, BorrowMut},
     marker::PhantomData,
@@ -11,7 +11,9 @@ use std::{
 };
 
 /// Parse from a `TokenBuf`.
-pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, Self>> {
+pub trait Parse<T: TokenTree>:
+    Sized + DefaultParser<T, Parser = DefaultParserImpl<T, Self>>
+{
     /// Parse a value from a `TokenBuf`.
     ///
     /// The referenced `&buf` will be modified to point past the parsed tokens on success.
@@ -32,7 +34,7 @@ pub trait Parse<T: PM>: Sized + DefaultParser<T, Parser = DefaultParserImpl<T, S
     }
 }
 
-impl<T: PM, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
+impl<T: TokenTree, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         // can't use MaybeUninit for array init as rust claims the size is unknown when transmuting it
@@ -51,7 +53,7 @@ impl<T: PM, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
     }
 }
 
-impl<T: PM, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH]> {
+impl<T: TokenTree, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH]> {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         if buf.len() >= LENGTH {
@@ -69,14 +71,14 @@ impl<T: PM, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH]> {
     }
 }
 
-impl<T: PM, X: Parse<T>> Parse<T> for Option<X> {
+impl<T: TokenTree, X: Parse<T>> Parse<T> for Option<X> {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         Some(X::parse(buf))
     }
 }
 
-impl<T: PM, X: Parse<T>> Parse<T> for Vec<X> {
+impl<T: TokenTree, X: Parse<T>> Parse<T> for Vec<X> {
     /// Parse a non-empty vector of items. If you want to accept an empty vector, use `Option<Vec<...>>::parse`.
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
@@ -93,7 +95,7 @@ impl<T: PM, X: Parse<T>> Parse<T> for Vec<X> {
 }
 
 /// A parser for parsing values from a `TokenBuf`.
-pub trait Parser<T: PM> {
+pub trait Parser<T: TokenTree> {
     /// The output type of this parser.
     type Output<'p, 'b>
     where
@@ -131,7 +133,7 @@ pub trait Parser<T: PM> {
     }
 }
 
-impl<T: PM, X: Parser<T>> Parser<T> for [X] {
+impl<T: TokenTree, X: Parser<T>> Parser<T> for [X] {
     type Output<'p, 'b> = Vec<X::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
@@ -142,7 +144,7 @@ impl<T: PM, X: Parser<T>> Parser<T> for [X] {
 
 /// Trait for making a default parser. This is automatically implemented for objects
 /// that implement the `Parse` trait.
-pub trait DefaultParser<T: PM> {
+pub trait DefaultParser<T: TokenTree> {
     /// The parser that will be created.
     type Parser: Parser<T> + Copy + Default;
 
@@ -153,7 +155,7 @@ pub trait DefaultParser<T: PM> {
     }
 }
 
-impl<T: PM, X: Parse<T>> DefaultParser<T> for X {
+impl<T: TokenTree, X: Parse<T>> DefaultParser<T> for X {
     type Parser = DefaultParserImpl<T, X>;
 }
 
@@ -161,7 +163,7 @@ impl<T: PM, X: Parse<T>> DefaultParser<T> for X {
 #[repr(transparent)]
 pub struct Optional<T>(pub T);
 
-impl<T: PM, X: Parser<T>> Parser<T> for Optional<X> {
+impl<T: TokenTree, X: Parser<T>> Parser<T> for Optional<X> {
     type Output<'p, 'b> = Option<X::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
@@ -170,25 +172,25 @@ impl<T: PM, X: Parser<T>> Parser<T> for Optional<X> {
     }
 }
 
-pub struct DefaultParserImpl<T: PM, X: Parse<T>>(PhantomData<fn() -> (T, X)>);
+pub struct DefaultParserImpl<T: TokenTree, X: Parse<T>>(PhantomData<fn() -> (T, X)>);
 
-impl<T: PM, X: Parse<T>> Clone for DefaultParserImpl<T, X> {
+impl<T: TokenTree, X: Parse<T>> Clone for DefaultParserImpl<T, X> {
     #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T: PM, X: Parse<T>> Copy for DefaultParserImpl<T, X> {}
+impl<T: TokenTree, X: Parse<T>> Copy for DefaultParserImpl<T, X> {}
 
-impl<T: PM, X: Parse<T>> Default for DefaultParserImpl<T, X> {
+impl<T: TokenTree, X: Parse<T>> Default for DefaultParserImpl<T, X> {
     #[inline(always)]
     fn default() -> Self {
         Self(PhantomData)
     }
 }
 
-impl<T: PM, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
+impl<T: TokenTree, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
     type Output<'p, 'b> = X where Self: 'p;
 
     #[inline]
@@ -199,7 +201,7 @@ impl<T: PM, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
 
 /// Methods for making or extending a `TokenBuffer` with tokens representing this object.
 /// This is automatically implemented for types that implement the [`ToTokens`] trait.
-pub trait ToTokenBuffer<T: PM> {
+pub trait ToTokenBuffer<T: TokenTree> {
     /// Extend the given `TokenBuffer` with tokens representing this object.
     fn extend_token_buffer(&self, token_buffer: &mut TokenBuffer<T>);
 
@@ -212,7 +214,7 @@ pub trait ToTokenBuffer<T: PM> {
     }
 }
 
-impl<T: PM, X: ToTokens<T> + Clone> ToTokenBuffer<T> for X {
+impl<T: TokenTree, X: ToTokens<T> + Clone> ToTokenBuffer<T> for X {
     #[inline]
     fn extend_token_buffer(&self, token_buffer: &mut TokenBuffer<T>) {
         token_buffer.0.extend(self.to_tokens())
@@ -220,12 +222,12 @@ impl<T: PM, X: ToTokens<T> + Clone> ToTokenBuffer<T> for X {
 }
 
 /// Automatically implemented for types that implement `Into<&TokenBuf>` for `&Type`.
-pub trait AsTokenBuf<'a, T: PM> {
+pub trait AsTokenBuf<'a, T: TokenTree> {
     /// Get a reference to this as a `TokenBuf`.
     fn as_token_buf(&'a self) -> &'a TokenBuf<T>;
 }
 
-impl<'a, T: PM, X: 'a> AsTokenBuf<'a, T> for X
+impl<'a, T: TokenTree, X: 'a> AsTokenBuf<'a, T> for X
 where
     &'a X: Into<&'a TokenBuf<T>>,
 {
@@ -236,12 +238,12 @@ where
 }
 
 /// Automatically implemented for types that implement `Into<&mut TokenBuf>` for `&mut Type`.
-pub trait AsTokenBufMut<'a, T: PM> {
+pub trait AsTokenBufMut<'a, T: TokenTree> {
     /// Get a mutable reference to this as a `TokenBuf`.
     fn as_token_buf_mut(&'a mut self) -> &'a mut TokenBuf<T>;
 }
 
-impl<'a, T: PM, X: 'a> AsTokenBufMut<'a, T> for X
+impl<'a, T: TokenTree, X: 'a> AsTokenBufMut<'a, T> for X
 where
     &'a mut X: Into<&'a mut TokenBuf<T>>,
 {
@@ -253,9 +255,9 @@ where
 
 /// An owned buffer of tokens.
 #[derive(Clone, Debug, Default)]
-pub struct TokenBuffer<T: PM>(Vec<TokenObject<T>>);
+pub struct TokenBuffer<T: TokenTree>(Vec<TokenObject<T>>);
 
-impl<T: PM> TokenBuffer<T> {
+impl<T: TokenTree> TokenBuffer<T> {
     /// Get this buffer as a `&TokenBuf`.
     #[inline]
     pub fn as_buf(&self) -> &TokenBuf<T> {
@@ -279,7 +281,7 @@ impl<T: PM> TokenBuffer<T> {
     }
 }
 
-impl<T: PM> TokenBuffer<T> {
+impl<T: TokenTree> TokenBuffer<T> {
     /// Create a new `TokenBuffer`.
     #[inline]
     pub const fn new() -> Self {
@@ -287,35 +289,35 @@ impl<T: PM> TokenBuffer<T> {
     }
 }
 
-impl<T: PM> AsRef<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTree> AsRef<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn as_ref(&self) -> &TokenBuf<T> {
         self.as_buf()
     }
 }
 
-impl<T: PM> AsMut<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTree> AsMut<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn as_mut(&mut self) -> &mut TokenBuf<T> {
         self.as_buf_mut()
     }
 }
 
-impl<T: PM> Borrow<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTree> Borrow<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn borrow(&self) -> &TokenBuf<T> {
         self.as_buf()
     }
 }
 
-impl<T: PM> BorrowMut<TokenBuf<T>> for TokenBuffer<T> {
+impl<T: TokenTree> BorrowMut<TokenBuf<T>> for TokenBuffer<T> {
     #[inline]
     fn borrow_mut(&mut self) -> &mut TokenBuf<T> {
         self.as_buf_mut()
     }
 }
 
-impl<T: PM> Deref for TokenBuffer<T> {
+impl<T: TokenTree> Deref for TokenBuffer<T> {
     type Target = TokenBuf<T>;
 
     #[inline]
@@ -324,14 +326,14 @@ impl<T: PM> Deref for TokenBuffer<T> {
     }
 }
 
-impl<T: PM> DerefMut for TokenBuffer<T> {
+impl<T: TokenTree> DerefMut for TokenBuffer<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         TokenBuf::from_mut(&mut self.0[..])
     }
 }
 
-impl<T: PM, X: ToTokenBuffer<T>> Extend<X> for TokenBuffer<T> {
+impl<T: TokenTree, X: ToTokenBuffer<T>> Extend<X> for TokenBuffer<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = X>>(&mut self, iter: I) {
         for i in iter {
@@ -341,7 +343,7 @@ impl<T: PM, X: ToTokenBuffer<T>> Extend<X> for TokenBuffer<T> {
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
+impl From<proc_macro::TokenStream> for TokenBuffer<proc_macro::TokenTree> {
     #[inline]
     fn from(value: proc_macro::TokenStream) -> Self {
         Self::from_iter(value)
@@ -349,7 +351,7 @@ impl From<proc_macro::TokenStream> for TokenBuffer<crate::PM1> {
 }
 
 #[cfg(feature = "proc-macro2")]
-impl From<proc_macro2::TokenStream> for TokenBuffer<crate::PM2> {
+impl From<proc_macro2::TokenStream> for TokenBuffer<proc_macro2::TokenTree> {
     #[inline]
     fn from(value: proc_macro2::TokenStream) -> Self {
         Self::from_iter(value)
@@ -357,43 +359,43 @@ impl From<proc_macro2::TokenStream> for TokenBuffer<crate::PM2> {
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<TokenBuffer<crate::PM1>> for proc_macro::TokenStream {
+impl From<TokenBuffer<proc_macro::TokenTree>> for proc_macro::TokenStream {
     #[inline]
-    fn from(value: TokenBuffer<crate::PM1>) -> Self {
+    fn from(value: TokenBuffer<proc_macro::TokenTree>) -> Self {
         value.to_token_stream()
     }
 }
 
 #[cfg(feature = "proc-macro2")]
-impl From<TokenBuffer<crate::PM2>> for proc_macro2::TokenStream {
+impl From<TokenBuffer<proc_macro2::TokenTree>> for proc_macro2::TokenStream {
     #[inline]
-    fn from(value: TokenBuffer<crate::PM2>) -> Self {
+    fn from(value: TokenBuffer<proc_macro2::TokenTree>) -> Self {
         value.to_token_stream()
     }
 }
 
-impl<T: PM> From<TokenBuffer<T>> for Box<[TokenObject<T>]> {
+impl<T: TokenTree> From<TokenBuffer<T>> for Box<[TokenObject<T>]> {
     #[inline]
     fn from(value: TokenBuffer<T>) -> Self {
         value.0.into()
     }
 }
 
-impl<T: PM> From<TokenBuffer<T>> for Vec<TokenObject<T>> {
+impl<T: TokenTree> From<TokenBuffer<T>> for Vec<TokenObject<T>> {
     #[inline]
     fn from(value: TokenBuffer<T>) -> Self {
         value.0
     }
 }
 
-impl<T: PM> From<Vec<TokenObject<T>>> for TokenBuffer<T> {
+impl<T: TokenTree> From<Vec<TokenObject<T>>> for TokenBuffer<T> {
     #[inline]
     fn from(value: Vec<TokenObject<T>>) -> Self {
         Self(value)
     }
 }
 
-impl<T: PM, X: ToTokenBuffer<T>> FromIterator<X> for TokenBuffer<T> {
+impl<T: TokenTree, X: ToTokenBuffer<T>> FromIterator<X> for TokenBuffer<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = X>>(iter: I) -> Self {
         let mut buf = TokenBuffer::new();
@@ -404,7 +406,7 @@ impl<T: PM, X: ToTokenBuffer<T>> FromIterator<X> for TokenBuffer<T> {
     }
 }
 
-impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuffer<T> {
+impl<T: TokenTree, I: TokenBufferIndex<T>> Index<I> for TokenBuffer<T> {
     type Output = I::Output;
 
     #[inline]
@@ -413,14 +415,14 @@ impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuffer<T> {
     }
 }
 
-impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
+impl<T: TokenTree, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         index.index_mut(&mut self.0)
     }
 }
 
-impl<T: PM> IntoIterator for TokenBuffer<T> {
+impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
     type IntoIter = <Vec<TokenObject<T>> as IntoIterator>::IntoIter;
     type Item = TokenObject<T>;
 
@@ -430,7 +432,7 @@ impl<T: PM> IntoIterator for TokenBuffer<T> {
     }
 }
 
-impl<T: PM> ToTokens<T> for TokenBuffer<T> {
+impl<T: TokenTree> ToTokens<T> for TokenBuffer<T> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
     where
@@ -440,7 +442,7 @@ impl<T: PM> ToTokens<T> for TokenBuffer<T> {
     }
 }
 
-impl<T: PM, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [TokenObject<T>; LENGTH] {
+impl<T: TokenTree, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [TokenObject<T>; LENGTH] {
     type Error = <Self as TryFrom<Vec<TokenObject<T>>>>::Error;
 
     #[inline]
@@ -452,9 +454,9 @@ impl<T: PM, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [TokenObject<T>; LE
 /// Borrowed version of [`TokenBuffer`].
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct TokenBuf<T: PM>([TokenObject<T>]);
+pub struct TokenBuf<T: TokenTree>([TokenObject<T>]);
 
-impl<T: PM> TokenBuf<T> {
+impl<T: TokenTree> TokenBuf<T> {
     #[inline]
     fn from_ref(r: &[TokenObject<T>]) -> &Self {
         unsafe {
@@ -610,7 +612,7 @@ impl<T: PM> TokenBuf<T> {
     }
 }
 
-impl<T: PM> Deref for TokenBuf<T> {
+impl<T: TokenTree> Deref for TokenBuf<T> {
     type Target = [TokenObject<T>];
 
     #[inline]
@@ -619,7 +621,7 @@ impl<T: PM> Deref for TokenBuf<T> {
     }
 }
 
-impl<T: PM> DerefMut for TokenBuf<T> {
+impl<T: TokenTree> DerefMut for TokenBuf<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
@@ -627,66 +629,66 @@ impl<T: PM> DerefMut for TokenBuf<T> {
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<&TokenBuf<crate::PM1>> for proc_macro::TokenStream {
+impl From<&TokenBuf<proc_macro::TokenTree>> for proc_macro::TokenStream {
     #[inline]
-    fn from(value: &TokenBuf<crate::PM1>) -> Self {
+    fn from(value: &TokenBuf<proc_macro::TokenTree>) -> Self {
         value.to_token_stream()
     }
 }
 
 #[cfg(feature = "proc-macro")]
-impl From<&mut TokenBuf<crate::PM1>> for proc_macro::TokenStream {
+impl From<&mut TokenBuf<proc_macro::TokenTree>> for proc_macro::TokenStream {
     #[inline]
-    fn from(value: &mut TokenBuf<crate::PM1>) -> Self {
+    fn from(value: &mut TokenBuf<proc_macro::TokenTree>) -> Self {
         value.to_token_stream()
     }
 }
 
 #[cfg(feature = "proc-macro2")]
-impl From<&TokenBuf<crate::PM2>> for proc_macro2::TokenStream {
+impl From<&TokenBuf<proc_macro2::TokenTree>> for proc_macro2::TokenStream {
     #[inline]
-    fn from(value: &TokenBuf<crate::PM2>) -> Self {
+    fn from(value: &TokenBuf<proc_macro2::TokenTree>) -> Self {
         value.to_token_stream()
     }
 }
 
 #[cfg(feature = "proc-macro2")]
-impl From<&mut TokenBuf<crate::PM2>> for proc_macro2::TokenStream {
+impl From<&mut TokenBuf<proc_macro2::TokenTree>> for proc_macro2::TokenStream {
     #[inline]
-    fn from(value: &mut TokenBuf<crate::PM2>) -> Self {
+    fn from(value: &mut TokenBuf<proc_macro2::TokenTree>) -> Self {
         value.to_token_stream()
     }
 }
 
-impl<'a, T: PM> From<&'a TokenBuffer<T>> for &'a TokenBuf<T> {
+impl<'a, T: TokenTree> From<&'a TokenBuffer<T>> for &'a TokenBuf<T> {
     #[inline]
     fn from(value: &'a TokenBuffer<T>) -> Self {
         value.as_buf()
     }
 }
 
-impl<'a, T: PM> From<&'a mut TokenBuffer<T>> for &'a mut TokenBuf<T> {
+impl<'a, T: TokenTree> From<&'a mut TokenBuffer<T>> for &'a mut TokenBuf<T> {
     #[inline]
     fn from(value: &'a mut TokenBuffer<T>) -> Self {
         value.as_buf_mut()
     }
 }
 
-impl<'a, T: PM> From<&'a [TokenObject<T>]> for &'a TokenBuf<T> {
+impl<'a, T: TokenTree> From<&'a [TokenObject<T>]> for &'a TokenBuf<T> {
     #[inline]
     fn from(value: &'a [TokenObject<T>]) -> Self {
         TokenBuf::from_ref(value)
     }
 }
 
-impl<'a, T: PM> From<&'a mut [TokenObject<T>]> for &'a mut TokenBuf<T> {
+impl<'a, T: TokenTree> From<&'a mut [TokenObject<T>]> for &'a mut TokenBuf<T> {
     #[inline]
     fn from(value: &'a mut [TokenObject<T>]) -> Self {
         TokenBuf::from_mut(value)
     }
 }
 
-impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuf<T> {
+impl<T: TokenTree, I: TokenBufferIndex<T>> Index<I> for TokenBuf<T> {
     type Output = I::Output;
 
     #[inline]
@@ -695,14 +697,14 @@ impl<T: PM, I: TokenBufferIndex<T>> Index<I> for TokenBuf<T> {
     }
 }
 
-impl<T: PM, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuf<T> {
+impl<T: TokenTree, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuf<T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         index.index_mut(&mut self.0)
     }
 }
 
-impl<'a, T: PM> IntoIterator for &'a TokenBuf<T> {
+impl<'a, T: TokenTree> IntoIterator for &'a TokenBuf<T> {
     type IntoIter = slice::Iter<'a, TokenObject<T>>;
     type Item = &'a TokenObject<T>;
 
@@ -712,7 +714,7 @@ impl<'a, T: PM> IntoIterator for &'a TokenBuf<T> {
     }
 }
 
-impl<'a, T: PM> IntoIterator for &'a mut TokenBuf<T> {
+impl<'a, T: TokenTree> IntoIterator for &'a mut TokenBuf<T> {
     type IntoIter = slice::IterMut<'a, TokenObject<T>>;
     type Item = &'a mut TokenObject<T>;
 
@@ -722,7 +724,7 @@ impl<'a, T: PM> IntoIterator for &'a mut TokenBuf<T> {
     }
 }
 
-impl<T: PM> ToOwned for TokenBuf<T> {
+impl<T: TokenTree> ToOwned for TokenBuf<T> {
     type Owned = TokenBuffer<T>;
 
     #[inline]
@@ -731,7 +733,7 @@ impl<T: PM> ToOwned for TokenBuf<T> {
     }
 }
 
-impl<T: TokenStreamExt> ToTokenStream<T> for TokenBuf<T::PM> {
+impl<T: TokenStreamExt> ToTokenStream<T> for TokenBuf<T::TokenTree> {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut T) {
         for i in self.0.iter() {
@@ -740,13 +742,13 @@ impl<T: TokenStreamExt> ToTokenStream<T> for TokenBuf<T::PM> {
     }
 }
 
-pub trait TokenBufferIndex<T: PM> {
+pub trait TokenBufferIndex<T: TokenTree> {
     type Output: ?Sized;
     fn index(self, slice: &[TokenObject<T>]) -> &Self::Output;
     fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output;
 }
 
-impl<T: PM> TokenBufferIndex<T> for usize {
+impl<T: TokenTree> TokenBufferIndex<T> for usize {
     type Output = TokenObject<T>;
 
     #[inline]
@@ -760,7 +762,7 @@ impl<T: PM> TokenBufferIndex<T> for usize {
     }
 }
 
-impl<T: PM> TokenBufferIndex<T> for Range<usize> {
+impl<T: TokenTree> TokenBufferIndex<T> for Range<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -774,7 +776,7 @@ impl<T: PM> TokenBufferIndex<T> for Range<usize> {
     }
 }
 
-impl<T: PM> TokenBufferIndex<T> for RangeFrom<usize> {
+impl<T: TokenTree> TokenBufferIndex<T> for RangeFrom<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -788,7 +790,7 @@ impl<T: PM> TokenBufferIndex<T> for RangeFrom<usize> {
     }
 }
 
-impl<T: PM> TokenBufferIndex<T> for RangeFull {
+impl<T: TokenTree> TokenBufferIndex<T> for RangeFull {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -802,7 +804,7 @@ impl<T: PM> TokenBufferIndex<T> for RangeFull {
     }
 }
 
-impl<T: PM> TokenBufferIndex<T> for RangeInclusive<usize> {
+impl<T: TokenTree> TokenBufferIndex<T> for RangeInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -816,7 +818,7 @@ impl<T: PM> TokenBufferIndex<T> for RangeInclusive<usize> {
     }
 }
 
-impl<T: PM> TokenBufferIndex<T> for RangeTo<usize> {
+impl<T: TokenTree> TokenBufferIndex<T> for RangeTo<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
@@ -830,7 +832,7 @@ impl<T: PM> TokenBufferIndex<T> for RangeTo<usize> {
     }
 }
 
-impl<T: PM> TokenBufferIndex<T> for RangeToInclusive<usize> {
+impl<T: TokenTree> TokenBufferIndex<T> for RangeToInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
