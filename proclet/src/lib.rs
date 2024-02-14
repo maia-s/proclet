@@ -80,7 +80,7 @@ pub enum Match<T> {
     /// The match is complete; stop looking.
     Complete(T),
 
-    /// A match was found, but there may be more; keep looking.
+    /// A match was found, but there may be a longer match; keep looking.
     Partial(T),
 
     /// More data is needed to find a match.
