@@ -11,10 +11,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
         let strings = delimited(StringLiteral::parser(), Optional(op(","))).parse_all(input)?;
 
         // concat input
-        let str = strings.into_iter().fold(String::new(), |mut s, item| {
-            s.push_str(item.0.value());
-            s
-        });
+        let str: String = strings.into_iter().map(|(s, _)| s.into_value()).collect();
 
         let mut lines = str.lines();
         let mut lines2 = lines.clone();
