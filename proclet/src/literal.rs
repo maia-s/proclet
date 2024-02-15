@@ -558,7 +558,7 @@ impl<T: crate::TokenTreeExt> Parse<T> for LiteralValue<T::Span> {
 #[cfg(feature = "literal-value")]
 impl<T: crate::TokenTreeExt> crate::IntoTokens<T> for LiteralValue<T::Span> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
+    fn into_tokens(self) -> impl Iterator<Item = T> {
         T::Literal::from(self).into_tokens()
     }
 }
@@ -705,7 +705,7 @@ macro_rules! def_literal_tokens {
             where LiteralValue<T::Span>: crate::IntoTokens<T> // always true, but rust is stupid
         {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>> {
+            fn into_tokens(self) -> impl Iterator<Item = T> {
                 LiteralValue::$variant(self).into_tokens()
             }
         }
@@ -1068,7 +1068,7 @@ macro_rules! impl_literal {
         #[cfg(feature = $feature)]
         impl crate::IntoTokens<$pm::TokenTree> for $pm::Literal {
             #[inline]
-            fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<$pm::TokenTree>> {
+            fn into_tokens(self) -> impl Iterator<Item = $pm::TokenTree> {
                 std::iter::once($pm::TokenTree::Literal(self))
             }
         }

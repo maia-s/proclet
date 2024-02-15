@@ -1,6 +1,6 @@
 use crate::{
-    Error, IntoTokens, Match, Span, ToTokenStream, ToTokens, TokenObject, TokenStreamExt,
-    TokenTree, TokenTreeExt,
+    Error, IntoTokens, Match, Span, ToTokenStream, ToTokens, TokenStreamExt, TokenTree,
+    TokenTreeExt,
 };
 use std::{
     borrow::{Borrow, BorrowMut},
@@ -33,7 +33,7 @@ pub trait Parse<T: TokenTreeExt>:
     }
 }
 
-impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH] {
+impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [T; LENGTH] {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         // can't use MaybeUninit for array init as rust claims the size is unknown when transmuting it
@@ -41,7 +41,7 @@ impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH]
             let parsed = buf[..LENGTH]
                 .into_iter()
                 .cloned()
-                .collect::<Vec<TokenObject<T>>>()
+                .collect::<Vec<T>>()
                 .try_into()
                 .unwrap();
             *buf = &buf[LENGTH..];
@@ -52,14 +52,14 @@ impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [TokenObject<T>; LENGTH]
     }
 }
 
-impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for Box<[TokenObject<T>; LENGTH]> {
+impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for Box<[T; LENGTH]> {
     #[inline]
     fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
         if buf.len() >= LENGTH {
             let parsed = buf[..LENGTH]
                 .into_iter()
                 .cloned()
-                .collect::<Vec<TokenObject<T>>>()
+                .collect::<Vec<T>>()
                 .try_into()
                 .unwrap();
             *buf = &buf[LENGTH..];
@@ -264,7 +264,7 @@ where
 
 /// An owned buffer of tokens.
 #[derive(Clone, Debug, Default)]
-pub struct TokenBuffer<T: TokenTree>(Vec<TokenObject<T>>);
+pub struct TokenBuffer<T: TokenTree>(Vec<T>);
 
 impl<T: TokenTreeExt> TokenBuffer<T> {
     /// Get this buffer as a `&TokenBuf`.
@@ -383,23 +383,23 @@ impl From<TokenBuffer<proc_macro2::TokenTree>> for proc_macro2::TokenStream {
     }
 }
 
-impl<T: TokenTree> From<TokenBuffer<T>> for Box<[TokenObject<T>]> {
+impl<T: TokenTree> From<TokenBuffer<T>> for Box<[T]> {
     #[inline]
     fn from(value: TokenBuffer<T>) -> Self {
         value.0.into()
     }
 }
 
-impl<T: TokenTree> From<TokenBuffer<T>> for Vec<TokenObject<T>> {
+impl<T: TokenTree> From<TokenBuffer<T>> for Vec<T> {
     #[inline]
     fn from(value: TokenBuffer<T>) -> Self {
         value.0
     }
 }
 
-impl<T: TokenTree> From<Vec<TokenObject<T>>> for TokenBuffer<T> {
+impl<T: TokenTree> From<Vec<T>> for TokenBuffer<T> {
     #[inline]
-    fn from(value: Vec<TokenObject<T>>) -> Self {
+    fn from(value: Vec<T>) -> Self {
         Self(value)
     }
 }
@@ -432,8 +432,8 @@ impl<T: TokenTree, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuffer<T> {
 }
 
 impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
-    type IntoIter = <Vec<TokenObject<T>> as IntoIterator>::IntoIter;
-    type Item = TokenObject<T>;
+    type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+    type Item = T;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -443,7 +443,7 @@ impl<T: TokenTree> IntoIterator for TokenBuffer<T> {
 
 impl<T: TokenTree> IntoTokens<T> for TokenBuffer<T> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
+    fn into_tokens(self) -> impl Iterator<Item = T>
     where
         Self: Sized,
     {
@@ -451,8 +451,8 @@ impl<T: TokenTree> IntoTokens<T> for TokenBuffer<T> {
     }
 }
 
-impl<T: TokenTree, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [TokenObject<T>; LENGTH] {
-    type Error = <Self as TryFrom<Vec<TokenObject<T>>>>::Error;
+impl<T: TokenTree, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [T; LENGTH] {
+    type Error = <Self as TryFrom<Vec<T>>>::Error;
 
     #[inline]
     fn try_from(value: TokenBuffer<T>) -> Result<Self, Self::Error> {
@@ -463,24 +463,24 @@ impl<T: TokenTree, const LENGTH: usize> TryFrom<TokenBuffer<T>> for [TokenObject
 /// Borrowed version of [`TokenBuffer`].
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct TokenBuf<T: TokenTree>([TokenObject<T>]);
+pub struct TokenBuf<T: TokenTree>([T]);
 
 impl<T: TokenTreeExt> TokenBuf<T> {
     #[inline]
-    fn from_ref(r: &[TokenObject<T>]) -> &Self {
+    fn from_ref(r: &[T]) -> &Self {
         unsafe {
             // # Safety
             // It's a reference to the same type in a transparent struct
-            transmute::<&[TokenObject<T>], &Self>(r)
+            transmute::<&[T], &Self>(r)
         }
     }
 
     #[inline]
-    fn from_mut(r: &mut [TokenObject<T>]) -> &mut Self {
+    fn from_mut(r: &mut [T]) -> &mut Self {
         unsafe {
             // # Safety
             // It's a reference to the same type in a transparent struct
-            transmute::<&mut [TokenObject<T>], &mut Self>(r)
+            transmute::<&mut [T], &mut Self>(r)
         }
     }
 
@@ -622,7 +622,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
 }
 
 impl<T: TokenTree> Deref for TokenBuf<T> {
-    type Target = [TokenObject<T>];
+    type Target = [T];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -683,16 +683,16 @@ impl<'a, T: TokenTreeExt> From<&'a mut TokenBuffer<T>> for &'a mut TokenBuf<T> {
     }
 }
 
-impl<'a, T: TokenTreeExt> From<&'a [TokenObject<T>]> for &'a TokenBuf<T> {
+impl<'a, T: TokenTreeExt> From<&'a [T]> for &'a TokenBuf<T> {
     #[inline]
-    fn from(value: &'a [TokenObject<T>]) -> Self {
+    fn from(value: &'a [T]) -> Self {
         TokenBuf::from_ref(value)
     }
 }
 
-impl<'a, T: TokenTreeExt> From<&'a mut [TokenObject<T>]> for &'a mut TokenBuf<T> {
+impl<'a, T: TokenTreeExt> From<&'a mut [T]> for &'a mut TokenBuf<T> {
     #[inline]
-    fn from(value: &'a mut [TokenObject<T>]) -> Self {
+    fn from(value: &'a mut [T]) -> Self {
         TokenBuf::from_mut(value)
     }
 }
@@ -714,8 +714,8 @@ impl<T: TokenTree, I: TokenBufferIndex<T>> IndexMut<I> for TokenBuf<T> {
 }
 
 impl<'a, T: TokenTree> IntoIterator for &'a TokenBuf<T> {
-    type IntoIter = slice::Iter<'a, TokenObject<T>>;
-    type Item = &'a TokenObject<T>;
+    type IntoIter = slice::Iter<'a, T>;
+    type Item = &'a T;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -724,8 +724,8 @@ impl<'a, T: TokenTree> IntoIterator for &'a TokenBuf<T> {
 }
 
 impl<'a, T: TokenTree> IntoIterator for &'a mut TokenBuf<T> {
-    type IntoIter = slice::IterMut<'a, TokenObject<T>>;
-    type Item = &'a mut TokenObject<T>;
+    type IntoIter = slice::IterMut<'a, T>;
+    type Item = &'a mut T;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -744,7 +744,7 @@ impl<T: TokenTreeExt> ToOwned for TokenBuf<T> {
 
 impl<T: TokenTree> ToTokens<T> for TokenBuf<T> {
     #[inline]
-    fn to_tokens(&self) -> impl Iterator<Item = TokenObject<T>> {
+    fn to_tokens(&self) -> impl Iterator<Item = T> {
         // to_owned doesn't work here bc rust
         TokenBuffer::<T>(self.0.to_vec()).into_tokens()
     }
@@ -761,20 +761,20 @@ impl<T: TokenStreamExt> ToTokenStream<T> for TokenBuf<T::TokenTree> {
 
 pub trait TokenBufferIndex<T: TokenTree> {
     type Output: ?Sized;
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output;
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output;
+    fn index(self, slice: &[T]) -> &Self::Output;
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output;
 }
 
 impl<T: TokenTree> TokenBufferIndex<T> for usize {
-    type Output = TokenObject<T>;
+    type Output = T;
 
     #[inline]
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
+    fn index(self, slice: &[T]) -> &Self::Output {
         &slice[self]
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         &mut slice[self]
     }
 }
@@ -783,12 +783,12 @@ impl<T: TokenTreeExt> TokenBufferIndex<T> for Range<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
+    fn index(self, slice: &[T]) -> &Self::Output {
         TokenBuf::from_ref(&slice[self.start..self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[self.start..self.end])
     }
 }
@@ -797,12 +797,12 @@ impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeFrom<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
+    fn index(self, slice: &[T]) -> &Self::Output {
         TokenBuf::from_ref(&slice[self.start..])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[self.start..])
     }
 }
@@ -811,12 +811,12 @@ impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeFull {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
+    fn index(self, slice: &[T]) -> &Self::Output {
         TokenBuf::from_ref(slice)
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         TokenBuf::from_mut(slice)
     }
 }
@@ -825,12 +825,12 @@ impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
+    fn index(self, slice: &[T]) -> &Self::Output {
         TokenBuf::from_ref(&slice[*self.start()..=*self.end()])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[*self.start()..=*self.end()])
     }
 }
@@ -839,12 +839,12 @@ impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeTo<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
+    fn index(self, slice: &[T]) -> &Self::Output {
         TokenBuf::from_ref(&slice[..self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[..self.end])
     }
 }
@@ -853,12 +853,12 @@ impl<T: TokenTreeExt> TokenBufferIndex<T> for RangeToInclusive<usize> {
     type Output = TokenBuf<T>;
 
     #[inline]
-    fn index(self, slice: &[TokenObject<T>]) -> &Self::Output {
+    fn index(self, slice: &[T]) -> &Self::Output {
         TokenBuf::from_ref(&slice[..=self.end])
     }
 
     #[inline]
-    fn index_mut(self, slice: &mut [TokenObject<T>]) -> &mut Self::Output {
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
         TokenBuf::from_mut(&mut slice[..=self.end])
     }
 }

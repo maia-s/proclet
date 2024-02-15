@@ -65,7 +65,7 @@ pub use literal::{
 pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
 pub use span::{Span, SpanExt};
-pub use token::{IntoTokens, ToTokenStream, ToTokens, TokenObject};
+pub use token::{IntoTokens, ToTokenStream, ToTokens};
 pub use token_buffer::{
     AsTokenBuf, AsTokenBufMut, DefaultParser, Optional, Parse, Parser, ToTokenBuffer, TokenBuf,
     TokenBuffer,
@@ -112,7 +112,6 @@ macro_rules! pm {
             use $pm::*;
             pm! {
                 @ $feature;
-                TokenObject = TokenObject<TokenTree>;
                 Error = Error<Span>;
                 DelimitedParser<M, D> = DelimitedParser<TokenTree, M, D>;
                 "literal-value" LiteralValue = LiteralValue<Span>;

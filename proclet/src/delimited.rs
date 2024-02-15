@@ -40,7 +40,7 @@ impl<T: TokenTreeExt, M: Parse<T>, D: Parse<T>> Parse<T> for Delimited<M, D> {
 
 impl<T: TokenTree, M: IntoTokens<T>, D: IntoTokens<T>> IntoTokens<T> for Delimited<M, D> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = crate::TokenObject<T>>
+    fn into_tokens(self) -> impl Iterator<Item = T>
     where
         Self: Sized,
     {

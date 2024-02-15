@@ -1,30 +1,27 @@
 use crate::{TokenStream, TokenTree};
 
-/// Token object.
-pub type TokenObject<T> = <T as crate::ProcMacro>::TokenTree;
-
 /// Trait for converting an object into its token representation.
 pub trait IntoTokens<T: TokenTree> {
     /// Convert this object into an iterator of tokens representing the object.
-    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>;
+    fn into_tokens(self) -> impl Iterator<Item = T>;
 }
 
 /// Trait for getting the token representation of an object.
 pub trait ToTokens<T: TokenTree> {
     /// Get an iterator of tokens representing this object.
-    fn to_tokens(&self) -> impl Iterator<Item = TokenObject<T>> + '_;
+    fn to_tokens(&self) -> impl Iterator<Item = T> + '_;
 }
 
 impl<T: TokenTree, X: IntoTokens<T> + Clone> ToTokens<T> for X {
     #[inline]
-    fn to_tokens(&self) -> impl Iterator<Item = TokenObject<T>> {
+    fn to_tokens(&self) -> impl Iterator<Item = T> {
         self.clone().into_tokens()
     }
 }
 
 impl<T: TokenTree, X: IntoTokens<T>> IntoTokens<T> for Option<X> {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>> {
+    fn into_tokens(self) -> impl Iterator<Item = T> {
         self.into_iter().flat_map(|x| x.into_tokens())
     }
 }
@@ -74,7 +71,7 @@ impl<T: TokenStream, X: ToTokenStream<T>> ToTokenStream<T> for Option<X> {
 
 impl<T: TokenTree, T0: IntoTokens<T>, T1: IntoTokens<T>> IntoTokens<T> for (T0, T1) {
     #[inline]
-    fn into_tokens(self) -> impl Iterator<Item = TokenObject<T>>
+    fn into_tokens(self) -> impl Iterator<Item = T>
     where
         Self: Sized,
     {
