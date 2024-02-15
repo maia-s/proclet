@@ -1,6 +1,6 @@
 use crate::{TokenStream, TokenTree};
 
-/// Owned trait object of [`Token`]
+/// Token object.
 pub type TokenObject<T> = <T as crate::ProcMacro>::TokenTree;
 
 /// Trait for converting an object into its token representation.
