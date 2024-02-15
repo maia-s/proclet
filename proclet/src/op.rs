@@ -1,8 +1,8 @@
 use crate::{
-    prelude::*, IntoTokens, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream, TokenObject,
-    TokenTreeExt,
+    prelude::*, Error, IntoTokens, Match, Punct, PunctExt, Span, SpanExt, ToTokenStream,
+    TokenObject, TokenTreeExt,
 };
-use std::{borrow::Cow, fmt::Display, iter::FusedIterator, marker::PhantomData, mem};
+use std::{borrow::Cow, iter::FusedIterator, marker::PhantomData, mem};
 
 /// Function for OpParser to use to match operators.
 pub trait MatchOpFn: Clone + Fn(&str, Option<char>) -> Match<Cow<'static, str>> {}
@@ -221,7 +221,7 @@ pub struct ParseOps<S: SpanExt, I: Iterator<Item = S::Punct>, F: MatchOpFn>(
 impl<S: SpanExt, I: Iterator<Item = S::Punct>, F: MatchOpFn> FusedIterator for ParseOps<S, I, F> {}
 
 impl<S: SpanExt, I: Iterator<Item = S::Punct>, F: MatchOpFn> Iterator for ParseOps<S, I, F> {
-    type Item = Result<Op<S>, InvalidOpError<S::Punct>>;
+    type Item = Result<Op<S>, Error<S>>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -285,22 +285,6 @@ impl<'a, P: PunctExt> Iterator for Puncts<'a, P> {
         } else {
             None
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct InvalidOpError<P: Punct>(pub Vec<P>);
-
-impl<P: Punct> std::error::Error for InvalidOpError<P> {}
-
-impl<P: Punct> Display for InvalidOpError<P> {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "invalid op: `")?;
-        for punct in self.0.iter() {
-            write!(f, "{}", punct.as_char())?;
-        }
-        write!(f, "`")
     }
 }
 
@@ -428,7 +412,7 @@ impl<P: PunctExt, F: MatchOpFn> OpParserInstance<P, F> {
     /// valid, it returns an error. Call [`OpParserInstance::finish`] to finish parsing.
     #[inline]
     #[allow(clippy::type_complexity)]
-    pub fn apply(&mut self, punct: P) -> Option<Result<Op<P::Span>, InvalidOpError<P>>> {
+    pub fn apply(&mut self, punct: P) -> Option<Result<Op<P::Span>, Error<P::Span>>> {
         let (mut punct, mut next_ch) = if let Some(next) = mem::take(&mut self.next) {
             let next_ch = next.spacing().is_joint().then_some(punct.as_char());
             self.next = Some(punct);
@@ -461,9 +445,11 @@ impl<P: PunctExt, F: MatchOpFn> OpParserInstance<P, F> {
                     }
                 }
                 Match::NoMatch => {
+                    let err = Error::with_span(*self.spans.first().unwrap(), "invalid op");
                     self.str.clear();
                     self.spans.clear();
-                    return Some(Err(InvalidOpError(mem::take(&mut self.puncts))));
+                    self.puncts.clear();
+                    return Some(Err(err));
                 }
             }
         }
@@ -472,7 +458,7 @@ impl<P: PunctExt, F: MatchOpFn> OpParserInstance<P, F> {
     /// Finish parsing the currently accumulated op.
     #[inline]
     #[allow(clippy::type_complexity)]
-    pub fn finish(&mut self) -> Option<Result<Op<P::Span>, InvalidOpError<P>>> {
+    pub fn finish(&mut self) -> Option<Result<Op<P::Span>, Error<P::Span>>> {
         mem::take(&mut self.next).map(|punct| {
             self.str.push(punct.as_char());
             let m = (self.match_op)(&self.str, None);
@@ -482,8 +468,10 @@ impl<P: PunctExt, F: MatchOpFn> OpParserInstance<P, F> {
                 self.puncts.clear();
                 Ok(Op::with_spans(str, mem::take(&mut self.spans)))
             } else {
-                self.puncts.push(punct);
-                Err(InvalidOpError(mem::take(&mut self.puncts)))
+                let err = Error::with_span(*self.spans.first().unwrap(), "invalid op");
+                self.spans.clear();
+                self.puncts.clear();
+                Err(err)
             }
         })
     }
