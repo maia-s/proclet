@@ -7,13 +7,20 @@ pub struct Punctuated<M, D>(Vec<(M, Option<D>)>);
 
 impl<M, D> Punctuated<M, D> {
     /// Create a new empty set of punctuated values.
+    #[inline]
     pub const fn new() -> Self {
         Self(Vec::new())
+    }
+
+    /// Get the contents as a slice.
+    #[inline]
+    pub fn as_slice(&self) -> &[(M, Option<D>)] {
+        &self.0
     }
 }
 
 impl<M, D> Deref for Punctuated<M, D> {
-    type Target = Vec<(M, Option<D>)>;
+    type Target = [(M, Option<D>)];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
