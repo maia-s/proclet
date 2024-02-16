@@ -14,4 +14,4 @@ categories = ["text-processing"]
 proc-macro = true
 
 [dependencies]
-proclet = { path = "../proclet", default-features = false, features = ["proc-macro", "literal-value"] }
+proclet = { path = "../proclet", version = "0.1", default-features = false, features = ["proc-macro", "literal-value"] }

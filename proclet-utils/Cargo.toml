@@ -2,7 +2,12 @@
 name = "proclet-utils"
 version = "0.1.0"
 edition = "2021"
+authors = ["Maia S. R."]
+license = "MIT OR Apache-2.0 OR Zlib"
+description = "Utilities for proclet"
+repository = "https://github.com/maia-s/proclet"
+categories = ["parsing", "development-tools::procedural-macro-helpers"]
 
 [dependencies]
-proclet = { path = "../proclet", default-features = false }
-proclet-utils-macros = { path = "../proclet-utils-macros" }
+proclet = { path = "../proclet", version = "0.1", default-features = false }
+proclet-utils-macros = { path = "../proclet-utils-macros", version = "0.1" }
