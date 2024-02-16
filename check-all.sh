@@ -25,4 +25,7 @@ for cargo in "cargo"; do
             fi
         done
     done
+    for crate in "str-block"; do
+        run $cargo test -p $crate
+    done
 done
