@@ -1,4 +1,6 @@
-use crate::{IntoTokens, Parse, Parser, ToTokenStream, TokenStream, TokenTree, TokenTreeExt};
+use crate::{
+    Error, IntoTokens, Parse, Parser, ToTokenStream, TokenStream, TokenTree, TokenTreeExt,
+};
 use std::{marker::PhantomData, ops::Deref};
 
 /// Parsed punctuated values.
@@ -40,7 +42,7 @@ impl<M, D> IntoIterator for Punctuated<M, D> {
 
 impl<T: TokenTreeExt, M: Parse<T>, D: Parse<T>> Parse<T> for Punctuated<M, D> {
     #[inline]
-    fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
+    fn parse(buf: &mut &crate::TokenBuf<T>) -> Result<Self, Error<T::Span>> {
         punctuated(M::parser(), D::parser()).parse(buf)
     }
 }
@@ -84,17 +86,20 @@ impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> Parser<T> for PunctuatedParser
     type Output<'p, 'b> = Punctuated<M::Output<'p, 'b>, D::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b crate::TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+    fn parse<'p, 'b>(
+        &'p self,
+        buf: &mut &'b crate::TokenBuf<T>,
+    ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
         let mut vec = Vec::new();
-        while let Some(main) = self.0.parse(buf) {
-            let delim = self.1.parse(buf);
+        while let Ok(main) = self.0.parse(buf) {
+            let delim = self.1.parse(buf).ok();
             let got_delim = delim.is_some();
             vec.push((main, delim));
             if !got_delim {
                 break;
             }
         }
-        Some(Punctuated(vec))
+        Ok(Punctuated(vec))
     }
 }
 

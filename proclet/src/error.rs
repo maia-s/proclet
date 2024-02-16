@@ -30,6 +30,11 @@ impl<S: SpanExt> Error<S> {
         }
     }
 
+    /// Set a new error message for this error, keeping the span.
+    pub fn set_message(&mut self, message: impl Into<Cow<'static, str>>) {
+        self.message = message.into();
+    }
+
     /// Set the span of this error.
     #[inline]
     pub fn set_span(&mut self, span: S) {

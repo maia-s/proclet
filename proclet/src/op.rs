@@ -139,7 +139,10 @@ impl<T: crate::TokenTreeExt> crate::Parser<T> for Op<T::Span> {
     type Output<'p, 'b> = Op<T::Span> where Self: 'p;
 
     #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b crate::TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+    fn parse<'p, 'b>(
+        &'p self,
+        buf: &mut &'b crate::TokenBuf<T>,
+    ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
         OpParser::<T::Punct, _>::new(|str, next| {
             if self.str == str {
                 Match::Complete(self.str.clone())
@@ -181,7 +184,7 @@ impl<S: Span> From<&'static str> for Op<S> {
 impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
     /// Generic op parser. This doesn't check against valid ops.
     #[inline]
-    fn parse(buf: &mut &crate::TokenBuf<S::TokenTree>) -> Option<Self> {
+    fn parse(buf: &mut &crate::TokenBuf<S::TokenTree>) -> Result<Self, Error<S>> {
         let mut str = String::new();
         let mut spans = Vec::new();
         buf.parse_prefix(|token| {
@@ -201,6 +204,10 @@ impl<S: SpanExt> crate::Parse<S::TokenTree> for Op<S> {
             str.truncate(strlen);
             spans.truncate(spanslen);
             Op::with_spans(str, spans)
+        })
+        .map_err(|mut e| {
+            e.set_message("expected operator");
+            e
         })
     }
 }
@@ -349,7 +356,7 @@ impl<P: PunctExt, F: MatchOpFn> crate::Parser<P::TokenTree> for OpParser<P, F> {
     fn parse<'p, 'b>(
         &'p self,
         buf: &mut &'b crate::TokenBuf<P::TokenTree>,
-    ) -> Option<Self::Output<'p, 'b>> {
+    ) -> Result<Self::Output<'p, 'b>, Error<P::Span>> {
         let mut string = String::new();
         let mut spans = Vec::new();
         buf.parse_prefix_next(move |token, next| {
@@ -374,6 +381,10 @@ impl<P: PunctExt, F: MatchOpFn> crate::Parser<P::TokenTree> for OpParser<P, F> {
             } else {
                 Match::NoMatch
             }
+        })
+        .map_err(|mut e| {
+            e.set_message("expected operator");
+            e
         })
     }
 }

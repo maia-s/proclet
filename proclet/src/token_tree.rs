@@ -541,10 +541,14 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl crate::Parse<$pm::TokenTree> for $pm::TokenTree {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
-                let result = buf.first()?.clone();
-                *buf = &buf[1..];
-                Some(result)
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Result<Self, crate::Error<$pm::Span>> {
+                if let Some(tt) = buf.first() {
+                    let result = tt.clone();
+                    *buf = &buf[1..];
+                    Ok(result)
+                } else {
+                    Err(crate::Error::new("unexpected end of input"))
+                }
             }
         }
 
@@ -614,14 +618,14 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl crate::Parse<$pm::TokenTree> for $pm::Group {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Result<Self, crate::Error<$pm::Span>> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Group(t) = token {
                         crate::Match::Complete(t.clone())
                     } else {
                         crate::Match::NoMatch
                     }
-                })
+                }).map_err(|mut e|{ e.set_message("expected group"); e })
             }
         }
 
@@ -724,14 +728,14 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl crate::Parse<$pm::TokenTree> for $pm::Ident {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Result<Self, crate::Error<$pm::Span>> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Ident(t) = token {
                         crate::Match::Complete(t.clone())
                     } else {
                         crate::Match::NoMatch
                     }
-                })
+                }).map_err(|mut e|{ e.set_message("expected ident"); e })
             }
         }
 
@@ -785,14 +789,14 @@ macro_rules! impl_token_tree {
         #[cfg(feature = $feature)]
         impl crate::Parse<$pm::TokenTree> for $pm::Punct {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Result<Self, crate::Error<$pm::Span>> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Punct(t) = token {
                         crate::Match::Complete(t.clone())
                     } else {
                         crate::Match::NoMatch
                     }
-                })
+                }).map_err(|mut e|{ e.set_message("expected punct"); e })
             }
         }
 

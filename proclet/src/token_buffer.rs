@@ -20,7 +20,7 @@ pub trait Parse<T: TokenTreeExt>:
     /// Parse a value from a `TokenBuf`.
     ///
     /// The referenced `&buf` will be modified to point past the parsed tokens on success.
-    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self>;
+    fn parse(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>>;
 
     /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
     /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
@@ -35,7 +35,7 @@ pub trait Parse<T: TokenTreeExt>:
 
 impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [T; LENGTH] {
     #[inline]
-    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+    fn parse(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>> {
         // can't use MaybeUninit for array init as rust claims the size is unknown when transmuting it
         if buf.len() >= LENGTH {
             let parsed = buf[..LENGTH]
@@ -45,16 +45,16 @@ impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [T; LENGTH] {
                 .try_into()
                 .unwrap();
             *buf = &buf[LENGTH..];
-            Some(parsed)
+            Ok(parsed)
         } else {
-            None
+            Err(Error::with_span(buf.first_span_or_default(), "no match"))
         }
     }
 }
 
 impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for Box<[T; LENGTH]> {
     #[inline]
-    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+    fn parse(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>> {
         if buf.len() >= LENGTH {
             let parsed = buf[..LENGTH]
                 .into_iter()
@@ -63,32 +63,32 @@ impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for Box<[T; LENGTH]> {
                 .try_into()
                 .unwrap();
             *buf = &buf[LENGTH..];
-            Some(parsed)
+            Ok(parsed)
         } else {
-            None
+            Err(Error::with_span(buf.first_span_or_default(), "no match"))
         }
     }
 }
 
 impl<T: TokenTreeExt, X: Parse<T>> Parse<T> for Option<X> {
     #[inline]
-    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
-        Some(X::parse(buf))
+    fn parse(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>> {
+        Ok(X::parse(buf).ok())
     }
 }
 
 impl<T: TokenTreeExt, X: Parse<T>> Parse<T> for Vec<X> {
     /// Parse a non-empty vector of items. If you want to accept an empty vector, use `Option<Vec<...>>::parse`.
     #[inline]
-    fn parse(buf: &mut &TokenBuf<T>) -> Option<Self> {
+    fn parse(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>> {
         let mut vec = Vec::new();
-        while let Some(item) = X::parse(buf) {
+        while let Ok(item) = X::parse(buf) {
             vec.push(item);
         }
         if vec.is_empty() {
-            None
+            Err(Error::with_span(buf.first_span_or_default(), "no match"))
         } else {
-            Some(vec)
+            Ok(vec)
         }
     }
 }
@@ -103,7 +103,10 @@ pub trait Parser<T: TokenTreeExt> {
     /// Parse a value from a `TokenBuf` using this parser.
     ///
     /// The referenced `&buf` will be modified to point past the parsed tokens on success.
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>>;
+    fn parse<'p, 'b>(
+        &'p self,
+        buf: &mut &'b TokenBuf<T>,
+    ) -> Result<Self::Output<'p, 'b>, Error<T::Span>>;
 
     /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
     /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
@@ -116,17 +119,10 @@ pub trait Parser<T: TokenTreeExt> {
         buf: &mut &'b TokenBuf<T>,
     ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
         match self.parse(buf) {
-            Some(result) if buf.is_empty() => Ok(result),
-            None => Err(Error::with_span(
-                buf.first()
-                    .map(|x| x.span())
-                    .unwrap_or(T::Span::call_site()),
-                "parse failed",
-            )),
+            Ok(result) if buf.is_empty() => Ok(result),
+            Err(e) => Err(e),
             _ => Err(Error::with_span(
-                buf.first()
-                    .map(|x| x.span())
-                    .unwrap_or(T::Span::call_site()),
+                buf.first_span_or_default(),
                 "unexpected tokens after input",
             )),
         }
@@ -146,7 +142,10 @@ impl<T: TokenTreeExt, X: Parser<T>> Parser<T> for [X] {
     type Output<'p, 'b> = Vec<X::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+    fn parse<'p, 'b>(
+        &'p self,
+        buf: &mut &'b TokenBuf<T>,
+    ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
         self.iter().map(|x| x.parse(buf)).collect()
     }
 }
@@ -176,8 +175,11 @@ impl<T: TokenTreeExt, X: Parser<T>> Parser<T> for Optional<X> {
     type Output<'p, 'b> = Option<X::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
-        Some(self.0.parse(buf))
+    fn parse<'p, 'b>(
+        &'p self,
+        buf: &mut &'b TokenBuf<T>,
+    ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
+        Ok(self.0.parse(buf).ok())
     }
 }
 
@@ -203,7 +205,10 @@ impl<T: TokenTreeExt, X: Parse<T>> Parser<T> for DefaultParserImpl<T, X> {
     type Output<'p, 'b> = X where Self: 'p;
 
     #[inline]
-    fn parse<'p, 'b>(&'p self, buf: &mut &'b TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
+    fn parse<'p, 'b>(
+        &'p self,
+        buf: &mut &'b TokenBuf<T>,
+    ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
         X::parse(buf)
     }
 }
@@ -484,11 +489,20 @@ impl<T: TokenTreeExt> TokenBuf<T> {
         }
     }
 
+    /// Get the span of the first token in this buffer, or the default span if the buffer is empty.
+    #[inline]
+    pub fn first_span_or_default(&self) -> T::Span {
+        self.0
+            .first()
+            .map(|t| t.span())
+            .unwrap_or(T::Span::call_site())
+    }
+
     /// Parse a value from this buffer.
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
     #[inline]
-    pub fn parse<P: Parse<T>>(self: &mut &Self) -> Option<P> {
+    pub fn parse<P: Parse<T>>(self: &mut &Self) -> Result<P, Error<T::Span>> {
         P::parse(self)
     }
 
@@ -511,7 +525,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
     pub fn parse_prefix<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&T) -> Match<M>,
-    ) -> Option<M> {
+    ) -> Result<M, Error<T::Span>> {
         self.parse_prefix_buf(|_, token, _| match_fn(token))
     }
 
@@ -526,7 +540,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
     pub fn parse_prefix_next<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&T, Option<&T>) -> Match<M>,
-    ) -> Option<M> {
+    ) -> Result<M, Error<T::Span>> {
         self.parse_prefix_buf(|_, token, next| match_fn(token, next))
     }
 
@@ -542,23 +556,25 @@ impl<T: TokenTreeExt> TokenBuf<T> {
     pub fn parse_prefix_buf<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&'a Self, &T, Option<&T>) -> Match<M>,
-    ) -> Option<M> {
+    ) -> Result<M, Error<T::Span>> {
         let mut result = None;
         for i in 1..=self.len() {
             match match_fn(&self[..i], &self[i - 1], self.get(i)) {
                 Match::Complete(m) => {
                     *self = &self[i..];
-                    return Some(m);
+                    return Ok(m);
                 }
                 Match::Partial(m) => result = Some((m, &self[i..])),
                 Match::NeedMore => (),
                 Match::NoMatch => break,
             }
         }
-        result.map(|(result, rest)| {
-            *self = rest;
-            result
-        })
+        result
+            .ok_or_else(|| Error::with_span(self.first_span_or_default(), "no match"))
+            .map(|(result, rest)| {
+                *self = rest;
+                result
+            })
     }
 
     /// Parse a suffix from this buffer. `match_fn` is called for each token in the buffer
@@ -570,7 +586,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
     pub fn parse_suffix<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&T) -> Match<M>,
-    ) -> Option<M> {
+    ) -> Result<M, Error<T::Span>> {
         self.parse_suffix_buf(|_, token, _| match_fn(token))
     }
 
@@ -585,7 +601,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
     pub fn parse_suffix_next<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&T, Option<&T>) -> Match<M>,
-    ) -> Option<M> {
+    ) -> Result<M, Error<T::Span>> {
         self.parse_suffix_buf(|_, token, next| match_fn(token, next))
     }
 
@@ -601,23 +617,25 @@ impl<T: TokenTreeExt> TokenBuf<T> {
     pub fn parse_suffix_buf<'a, M: 'a>(
         self: &mut &'a Self,
         mut match_fn: impl FnMut(&'a Self, &T, Option<&T>) -> Match<M>,
-    ) -> Option<M> {
+    ) -> Result<M, Error<T::Span>> {
         let mut result = None;
         for i in (0..self.len()).rev() {
             match match_fn(&self[i..], &self[i], (i > 0).then(|| &self[i - 1])) {
                 Match::Complete(m) => {
                     *self = &self[..i];
-                    return Some(m);
+                    return Ok(m);
                 }
                 Match::Partial(m) => result = Some((m, &self[..i])),
                 Match::NeedMore => (),
                 Match::NoMatch => break,
             }
         }
-        result.map(|(result, rest)| {
-            *self = rest;
-            result
-        })
+        result
+            .ok_or_else(|| Error::with_span(self.first_span_or_default(), "no match"))
+            .map(|(result, rest)| {
+                *self = rest;
+                result
+            })
     }
 }
 

@@ -550,7 +550,7 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
 #[cfg(feature = "literal-value")]
 impl<T: crate::TokenTreeExt> Parse<T> for LiteralValue<T::Span> {
     #[inline]
-    fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
+    fn parse(buf: &mut &crate::TokenBuf<T>) -> Result<Self, crate::Error<T::Span>> {
         T::Literal::parse(buf).map(|x| x.into())
     }
 }
@@ -689,13 +689,13 @@ macro_rules! def_literal_tokens {
         #[cfg(feature = "literal-value")]
         impl<T: crate::TokenTreeExt> Parse<T> for $ident<T::Span> {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<T>) -> Result<Self, crate::Error<T::Span>> {
                 let mut buf2 = *buf;
                 if let Ok(token) = LiteralValue::parse(&mut buf2)?.try_into() {
                     *buf = buf2;
-                    return Some(token);
+                    Ok(token)
                 } else {
-                    None
+                    Err(crate::Error::with_span(buf.first_span_or_default(), concat!("expected ", stringify!($ident))))
                 }
             }
         }
@@ -1054,14 +1054,14 @@ macro_rules! impl_literal {
         #[cfg(feature = $feature)]
         impl Parse<$pm::TokenTree> for $pm::Literal {
             #[inline]
-            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Option<Self> {
+            fn parse(buf: &mut &crate::TokenBuf<$pm::TokenTree>) -> Result<Self, crate::Error<$pm::Span>> {
                 buf.parse_prefix(|token| {
                     if let $pm::TokenTree::Literal(t) = token {
                         crate::Match::Complete(t.clone())
                     } else {
                         crate::Match::NoMatch
                     }
-                })
+                }).map_err(|mut e|{ e.set_message("expected literal"); e })
             }
         }
 

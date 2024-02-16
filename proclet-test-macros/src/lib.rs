@@ -51,7 +51,7 @@ pub fn literal_roundtrip_with_parse(input: proc_macro::TokenStream) -> proc_macr
     let mut input = input.as_buf();
     let mut output = TokenBuffer::new();
     while !input.is_empty() {
-        if let Some(lit) = LiteralValue::parse(&mut input) {
+        if let Ok(lit) = LiteralValue::parse(&mut input) {
             let ts: TokenStream = lit.into_token_stream();
             output.extend(ts);
         } else {
@@ -112,7 +112,7 @@ pub fn parse_rust_ops_with_buffer(input: proc_macro::TokenStream) -> proc_macro:
     ops.push('[');
     let mut buf = input.as_buf();
     while !buf.is_empty() {
-        if let Some(op) = parser.parse(&mut buf) {
+        if let Ok(op) = parser.parse(&mut buf) {
             ops.push_str(&format!("{:?}", op.as_str()));
             ops.push(',');
         } else {
