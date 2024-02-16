@@ -19,14 +19,15 @@ pub trait Parse<T: TokenTreeExt>:
 {
     /// Parse a value from a `TokenBuf`.
     ///
-    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
+    /// The referenced `&TokenBuf` will be modified to point past the parsed tokens on success.
     fn parse(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>>;
 
-    /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
-    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
-    /// buffer is returned.
+    /// Parse a value from a `TokenBuf` buffer, but return an error if there's any tokens left
+    /// in the buffer after parsing.
     ///
-    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
+    /// The referenced `&TokenBuf` will be modified to point past the parsed tokens on success.
+    /// If parsing succeeds but there are tokens left in the buffer, the buffer will point
+    /// to the left over tokens.
     #[inline]
     fn parse_all(buf: &mut &TokenBuf<T>) -> Result<Self, Error<T::Span>> {
         Self::parser().parse_all(buf)
@@ -102,17 +103,18 @@ pub trait Parser<T: TokenTreeExt> {
 
     /// Parse a value from a `TokenBuf` using this parser.
     ///
-    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
+    /// The referenced `&TokenBuf` will be modified to point past the parsed tokens on success.
     fn parse<'p, 'b>(
         &'p self,
         buf: &mut &'b TokenBuf<T>,
     ) -> Result<Self::Output<'p, 'b>, Error<T::Span>>;
 
-    /// Parse a value from a `TokenBuf` buffer, but return an error with the remaining tokens if
-    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
-    /// buffer is returned.
+    /// Parse a value from a `TokenBuf` buffer, but return an error if there's any tokens left
+    /// in the buffer after parsing.
     ///
-    /// The referenced `&buf` will be modified to point past the parsed tokens on success.
+    /// The referenced `&TokenBuf` will be modified to point past the parsed tokens on success.
+    /// If parsing succeeds but there are tokens left in the buffer, the buffer will point
+    /// to the left over tokens.
     #[inline]
     fn parse_all<'p, 'b>(
         &'p self,
@@ -281,14 +283,13 @@ impl<T: TokenTreeExt> TokenBuffer<T> {
         self
     }
 
-    /// Parse a value from this buffer, but return an error with the remaining tokens if
-    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
-    /// buffer is returned.
+    /// Parse a value from this buffer, but return an error if there's any tokens left in the
+    /// buffer after parsing.
     ///
     /// Unlike `TokenBuf::parse_all`, this doesn't modify the reference to self.
     #[inline]
     pub fn parse_all<P: Parse<T>>(&self) -> Result<P, Error<T::Span>> {
-        self.as_buf().parse_all()
+        self.as_buf().parse_all() // rust-analyzer incorrectly marks this as an error
     }
 }
 
@@ -507,11 +508,12 @@ impl<T: TokenTreeExt> TokenBuf<T> {
         P::parse(self)
     }
 
-    /// Parse a value from this buffer, but return an error with the remaining tokens if
-    /// there's any left in the buffer after parsing. If parsing fails, an error with an empty
-    /// buffer is returned.
+    /// Parse a value from this buffer, but return an error if there's any tokens left in the
+    /// buffer after parsing.
     ///
     /// The referenced `&self` will be modified to point past the parsed tokens on success.
+    /// If parsing succeeds but there are tokens left in the buffer, the buffer will point
+    /// to the left over tokens.
     #[inline]
     pub fn parse_all<P: Parse<T>>(self: &mut &Self) -> Result<P, Error<T::Span>> {
         P::parse_all(self)

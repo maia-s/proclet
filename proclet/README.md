@@ -1,7 +1,7 @@
-# proclet: simple proc macros made easy
+# proclet: proc macros made easy
 
-`proclet` is still in early development. It's still missing some basic features and may
-get major design changes, and documentation could be better.
+> ⚠️ `proclet` is still in early development. It's missing some basic features and may
+> get major design changes, and documentation is a work in progress.
 
 `proclet` can be used with either proc-macro or proc-macro2, or both. Most of the types
 of the proc-macro crates are abstracted into traits, and `proclet`'s types are generic
