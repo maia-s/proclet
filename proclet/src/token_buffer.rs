@@ -3,7 +3,7 @@ use crate::{
     TokenTreeExt,
 };
 use std::{
-    borrow::{Borrow, BorrowMut},
+    borrow::{Borrow, BorrowMut, Cow},
     marker::PhantomData,
     mem::transmute,
     ops::{
@@ -47,7 +47,7 @@ impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for [T; LENGTH] {
             *buf = &buf[LENGTH..];
             Ok(parsed)
         } else {
-            Err(Error::with_span(buf.first_span_or_default(), "no match"))
+            Err(buf.error("no match"))
         }
     }
 }
@@ -65,7 +65,7 @@ impl<T: TokenTreeExt, const LENGTH: usize> Parse<T> for Box<[T; LENGTH]> {
             *buf = &buf[LENGTH..];
             Ok(parsed)
         } else {
-            Err(Error::with_span(buf.first_span_or_default(), "no match"))
+            Err(buf.error("no match"))
         }
     }
 }
@@ -86,7 +86,7 @@ impl<T: TokenTreeExt, X: Parse<T>> Parse<T> for Vec<X> {
             vec.push(item);
         }
         if vec.is_empty() {
-            Err(Error::with_span(buf.first_span_or_default(), "no match"))
+            Err(buf.error("no match"))
         } else {
             Ok(vec)
         }
@@ -121,10 +121,7 @@ pub trait Parser<T: TokenTreeExt> {
         match self.parse(buf) {
             Ok(result) if buf.is_empty() => Ok(result),
             Err(e) => Err(e),
-            _ => Err(Error::with_span(
-                buf.first_span_or_default(),
-                "unexpected tokens after input",
-            )),
+            _ => Err(buf.error("unexpected tokens after input")),
         }
     }
 
@@ -489,13 +486,17 @@ impl<T: TokenTreeExt> TokenBuf<T> {
         }
     }
 
-    /// Get the span of the first token in this buffer, or the default span if the buffer is empty.
+    /// Create an [`Error`] spanned to the beginning of this buffer, or with the default span
+    /// if the buffer is empty.
     #[inline]
-    pub fn first_span_or_default(&self) -> T::Span {
-        self.0
-            .first()
-            .map(|t| t.span())
-            .unwrap_or(T::Span::call_site())
+    pub fn error(&self, message: impl Into<Cow<'static, str>>) -> Error<T::Span> {
+        Error::with_span(
+            self.0
+                .first()
+                .map(|t| t.span())
+                .unwrap_or_else(T::Span::call_site),
+            message,
+        )
     }
 
     /// Parse a value from this buffer.
@@ -570,7 +571,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
             }
         }
         result
-            .ok_or_else(|| Error::with_span(self.first_span_or_default(), "no match"))
+            .ok_or_else(|| self.error("no match"))
             .map(|(result, rest)| {
                 *self = rest;
                 result
@@ -631,7 +632,7 @@ impl<T: TokenTreeExt> TokenBuf<T> {
             }
         }
         result
-            .ok_or_else(|| Error::with_span(self.first_span_or_default(), "no match"))
+            .ok_or_else(|| self.error("no match"))
             .map(|(result, rest)| {
                 *self = rest;
                 result

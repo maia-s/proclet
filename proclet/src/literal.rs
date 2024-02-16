@@ -695,7 +695,7 @@ macro_rules! def_literal_tokens {
                     *buf = buf2;
                     Ok(token)
                 } else {
-                    Err(crate::Error::with_span(buf.first_span_or_default(), concat!("expected ", stringify!($ident))))
+                    Err(buf.error(concat!("expected ", stringify!($ident))))
                 }
             }
         }
