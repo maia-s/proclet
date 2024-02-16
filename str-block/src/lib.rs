@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use proc_macro::TokenStream;
 use proclet::{op, pm1::StringLiteral, prelude::*, proclet, punctuated, Optional};
 
@@ -36,7 +38,7 @@ pub fn str_block(input: TokenStream) -> TokenStream {
         let mut prefix = &first[..first.len() - first_trimmed.len()];
         if !prefix.is_empty() {
             for line in lines {
-                if !line.is_empty() {
+                if !line.trim().is_empty() {
                     let ci = prefix
                         .chars()
                         .zip(line.chars())
@@ -56,6 +58,9 @@ pub fn str_block(input: TokenStream) -> TokenStream {
         for line in lines2 {
             output.push('\n');
             output.push_str(line.strip_prefix(prefix).unwrap_or(""));
+        }
+        if str.ends_with('\n') {
+            output.push('\n');
         }
         Ok(StringLiteral::new(output))
     })

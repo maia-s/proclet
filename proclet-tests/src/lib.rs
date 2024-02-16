@@ -205,9 +205,13 @@ mod tests {
             line 1
             line 2
             "}, "line 1\nline 2\n");
+            assert_eq!(str_block! {"
+    line 1
+    line 2
+"}, "line 1\nline 2\n");
             assert_eq!(str_block! {" \t
                 test
-            "}, "    test\n");
+            "}, "test\n");
             assert_eq!(str_block! {"
                 line 1
 
