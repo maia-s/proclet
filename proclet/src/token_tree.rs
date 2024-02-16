@@ -139,7 +139,7 @@ pub trait Group: ProcMacro<Group = Self> + Display {
     /// Get the delimiter of this `Group`.
     fn delimiter(&self) -> Self::Delimiter;
 
-    /// Get the delimited `TokenStream`, not including delimiters.
+    /// Get the punctuated `TokenStream`, not including delimiters.
     fn stream(&self) -> Self::TokenStream;
 
     /// Get the span of this `Group`.
@@ -180,7 +180,7 @@ pub trait GroupExt:
         self.delimiter().into()
     }
 
-    /// Get the delimited `TokenStream` as a `TokenBuffer`, not including delimiters.
+    /// Get the punctuated `TokenStream` as a `TokenBuffer`, not including delimiters.
     fn stream_buffer(&self) -> crate::TokenBuffer<Self::TokenTree>;
 
     /// If the group has delimiter `None` and contains a single item, extract that item,

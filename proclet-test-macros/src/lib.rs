@@ -128,12 +128,12 @@ pub fn parse_rust_ops_with_buffer(input: proc_macro::TokenStream) -> proc_macro:
 #[cfg(any(feature = "proc-macro", feature = "proc-macro2"))]
 #[proc_macro]
 #[allow(clippy::useless_conversion)]
-pub fn parse_delimited(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    use proclet::{delimited, op, DelimiterKind, LiteralValue, ProcMacro, TokenBuffer};
+pub fn parse_punctuated(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    use proclet::{op, punctuated, DelimiterKind, LiteralValue, ProcMacro, TokenBuffer};
     let input: TokenStream = input.into();
     let input: TokenBuffer<_> = input.into();
     let mut input = input.as_buf();
-    let args = delimited(LiteralValue::parser(), op(","))
+    let args = punctuated(LiteralValue::parser(), op(","))
         .parse(&mut input)
         .unwrap();
     let mut output = TokenStream::new();

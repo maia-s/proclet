@@ -38,10 +38,10 @@ pub mod prelude {
 }
 
 mod base;
-mod delimited;
 mod error;
 mod literal;
 mod op;
+mod punctuated;
 mod span;
 mod token;
 mod token_buffer;
@@ -53,7 +53,6 @@ pub use base::PM1;
 #[cfg(feature = "proc-macro2")]
 pub use base::PM2;
 pub use base::{PMExt, ProcMacro, ProcMacroExt, PM};
-pub use delimited::{delimited, Delimited, DelimitedParser};
 pub use error::Error;
 #[cfg(feature = "literal-value")]
 pub use literal::{
@@ -64,6 +63,7 @@ pub use literal::{
 };
 pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
+pub use punctuated::{punctuated, Punctuated, PunctuatedParser};
 pub use span::{Span, SpanExt};
 pub use token::{IntoTokens, ToTokenStream, ToTokens};
 pub use token_buffer::{
@@ -108,12 +108,12 @@ macro_rules! pm {
         #[cfg(feature = $feature)]
         #[doc = concat!("Type aliases for use with ", $feature, ".")]
         pub mod $mod {
-            pub use crate::{Delimited, Optional};
+            pub use crate::{Punctuated, Optional};
             use $pm::*;
             pm! {
                 @ $feature;
                 Error = Error<Span>;
-                DelimitedParser<M, D> = DelimitedParser<TokenTree, M, D>;
+                PunctuatedParser<M, D> = PunctuatedParser<TokenTree, M, D>;
                 "literal-value" LiteralValue = LiteralValue<Span>;
                 "literal-value" StringLiteral = StringLiteral<Span>;
                 "literal-value" ByteStringLiteral = ByteStringLiteral<Span>;

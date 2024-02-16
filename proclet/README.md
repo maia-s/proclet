@@ -15,7 +15,7 @@ Here's how you'd make a proc macro that takes a set of comma separated strings a
 #[proc_macro]
 pub fn my_proc_macro(input: TokenStream) -> TokenStream {
     proclet(input, |input| {
-        let args = delimited(StringLiteral::parser(), op(",")).parse_all(input)?;
+        let args = punctuated(StringLiteral::parser(), op(",")).parse_all(input)?;
         // ...
     })
 }
@@ -28,8 +28,8 @@ nice spanned compiler errors instead of panics.
 `parse_all` returns an error if there's tokens left in the buffer after parsing. To leave
 the rest of the buffer for the next parser to parse, use the `parse` method instead.
 
-You can combine parsers to parse more complex objects like `delimited` does in the example
-above, but most types can be parsed directly:
+You can combine parsers to parse more complex objects like `punctuated` does in the example
+above. Types that implement the `Parse` trait can be parsed directly:
 
 ```rust
 let string = StringLiteral::parse(input)?;

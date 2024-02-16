@@ -1,16 +1,16 @@
 use proc_macro::TokenStream;
 use proclet::{
-    delimited, op,
+    op,
     pm1::{Error, StringLiteral},
     prelude::*,
-    proclet,
+    proclet, punctuated,
 };
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 #[proc_macro]
 pub fn _define_ops(input: TokenStream) -> TokenStream {
     proclet(input, |input| {
-        let args = delimited(StringLiteral::parser(), op(",")).parse_all(input)?;
+        let args = punctuated(StringLiteral::parser(), op(",")).parse_all(input)?;
 
         let mut map = HashMap::<String, (bool, HashSet<char>)>::new();
 

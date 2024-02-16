@@ -1,18 +1,18 @@
 use crate::{IntoTokens, Parse, Parser, ToTokenStream, TokenStream, TokenTree, TokenTreeExt};
 use std::{marker::PhantomData, ops::Deref};
 
-/// Parsed delimited values.
+/// Parsed punctuated values.
 #[derive(Clone, Default, Debug)]
-pub struct Delimited<M, D>(Vec<(M, Option<D>)>);
+pub struct Punctuated<M, D>(Vec<(M, Option<D>)>);
 
-impl<M, D> Delimited<M, D> {
-    /// Create a new empty set of delimited values.
+impl<M, D> Punctuated<M, D> {
+    /// Create a new empty set of punctuated values.
     pub const fn new() -> Self {
         Self(Vec::new())
     }
 }
 
-impl<M, D> Deref for Delimited<M, D> {
+impl<M, D> Deref for Punctuated<M, D> {
     type Target = Vec<(M, Option<D>)>;
 
     #[inline]
@@ -21,7 +21,7 @@ impl<M, D> Deref for Delimited<M, D> {
     }
 }
 
-impl<M, D> IntoIterator for Delimited<M, D> {
+impl<M, D> IntoIterator for Punctuated<M, D> {
     type Item = (M, Option<D>);
     type IntoIter = <Vec<(M, Option<D>)> as IntoIterator>::IntoIter;
 
@@ -31,14 +31,14 @@ impl<M, D> IntoIterator for Delimited<M, D> {
     }
 }
 
-impl<T: TokenTreeExt, M: Parse<T>, D: Parse<T>> Parse<T> for Delimited<M, D> {
+impl<T: TokenTreeExt, M: Parse<T>, D: Parse<T>> Parse<T> for Punctuated<M, D> {
     #[inline]
     fn parse(buf: &mut &crate::TokenBuf<T>) -> Option<Self> {
-        delimited(M::parser(), D::parser()).parse(buf)
+        punctuated(M::parser(), D::parser()).parse(buf)
     }
 }
 
-impl<T: TokenTree, M: IntoTokens<T>, D: IntoTokens<T>> IntoTokens<T> for Delimited<M, D> {
+impl<T: TokenTree, M: IntoTokens<T>, D: IntoTokens<T>> IntoTokens<T> for Punctuated<M, D> {
     #[inline]
     fn into_tokens(self) -> impl Iterator<Item = T>
     where
@@ -49,7 +49,7 @@ impl<T: TokenTree, M: IntoTokens<T>, D: IntoTokens<T>> IntoTokens<T> for Delimit
 }
 
 impl<T: TokenStream, M: ToTokenStream<T>, D: ToTokenStream<T>> ToTokenStream<T>
-    for Delimited<M, D>
+    for Punctuated<M, D>
 {
     #[inline]
     fn extend_token_stream(&self, token_stream: &mut T) {
@@ -60,12 +60,12 @@ impl<T: TokenStream, M: ToTokenStream<T>, D: ToTokenStream<T>> ToTokenStream<T>
     }
 }
 
-/// Parser for delimited values.
+/// Parser for punctuated values.
 #[derive(Clone, Debug)]
-pub struct DelimitedParser<T: TokenTree, M, D>(M, D, PhantomData<fn() -> T>);
+pub struct PunctuatedParser<T: TokenTree, M, D>(M, D, PhantomData<fn() -> T>);
 
-impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> DelimitedParser<T, M, D> {
-    /// Create a new `DelimitedParser` using `main` as the parser for the main part and
+impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> PunctuatedParser<T, M, D> {
+    /// Create a new `PunctuatedParser` using `main` as the parser for the main part and
     /// `delim` as the parser for the delimiter.
     #[inline]
     pub const fn new(main: M, delim: D) -> Self {
@@ -73,8 +73,8 @@ impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> DelimitedParser<T, M, D> {
     }
 }
 
-impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> Parser<T> for DelimitedParser<T, M, D> {
-    type Output<'p, 'b> = Delimited<M::Output<'p, 'b>, D::Output<'p, 'b>> where Self: 'p;
+impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> Parser<T> for PunctuatedParser<T, M, D> {
+    type Output<'p, 'b> = Punctuated<M::Output<'p, 'b>, D::Output<'p, 'b>> where Self: 'p;
 
     #[inline]
     fn parse<'p, 'b>(&'p self, buf: &mut &'b crate::TokenBuf<T>) -> Option<Self::Output<'p, 'b>> {
@@ -87,16 +87,16 @@ impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> Parser<T> for DelimitedParser<
                 break;
             }
         }
-        Some(Delimited(vec))
+        Some(Punctuated(vec))
     }
 }
 
-/// Create a new parser for parsing things with `main` delimited by `delim`.
-/// Convenience function for calling [`DelimitedParser::new`].
+/// Create a new parser for parsing things with `main` punctuated by `delim`.
+/// Convenience function for calling [`PunctuatedParser::new`].
 #[inline]
-pub const fn delimited<T: TokenTreeExt, M: Parser<T>, D: Parser<T>>(
+pub const fn punctuated<T: TokenTreeExt, M: Parser<T>, D: Parser<T>>(
     main: M,
     delim: D,
-) -> DelimitedParser<T, M, D> {
-    DelimitedParser::new(main, delim)
+) -> PunctuatedParser<T, M, D> {
+    PunctuatedParser::new(main, delim)
 }

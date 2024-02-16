@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use proclet::{delimited, op, pm1::StringLiteral, prelude::*, proclet, Optional};
+use proclet::{op, pm1::StringLiteral, prelude::*, proclet, punctuated, Optional};
 
 /// Remove the first line if it's empty except for whitespace, and remove the common whitespace prefix from
 /// all lines, if any. Empty lines are treated as if they have the common prefix.
@@ -8,7 +8,7 @@ use proclet::{delimited, op, pm1::StringLiteral, prelude::*, proclet, Optional};
 #[proc_macro]
 pub fn str_block(input: TokenStream) -> TokenStream {
     proclet(input, |input| {
-        let strings = delimited(StringLiteral::parser(), Optional(op(","))).parse_all(input)?;
+        let strings = punctuated(StringLiteral::parser(), Optional(op(","))).parse_all(input)?;
 
         // concat input
         let str: String = strings.into_iter().map(|(s, _)| s.into_value()).collect();

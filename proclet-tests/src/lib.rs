@@ -4,7 +4,7 @@ compile_error!("at least one of `proc-macro` or `proc-macro2` must be enabled");
 #[cfg(all(test, any(feature = "proc-macro", feature = "proc-macro2")))]
 mod tests {
     use proclet_test_macros::{
-        literal_roundtrip, literal_roundtrip_with_parse, parse_delimited, parse_rust_ops,
+        literal_roundtrip, literal_roundtrip_with_parse, parse_punctuated, parse_rust_ops,
         parse_rust_ops_with_buffer,
     };
     use str_block::str_block;
@@ -29,9 +29,9 @@ mod tests {
         };
     }
 
-    macro_rules! test_delimited {
+    macro_rules! test_punctuated {
         ($($tt:tt)*) => {
-            let parsed = parse_delimited!($($tt)*);
+            let parsed = parse_punctuated!($($tt)*);
             assert_eq!(parsed, ($($tt)*));
         };
     }
@@ -193,9 +193,9 @@ mod tests {
         }
 
         #[test]
-        fn test_parse_delimited() {
-            test_delimited!(1, 2, 3);
-            test_delimited!("hello", "world",);
+        fn test_parse_punctuated() {
+            test_punctuated!(1, 2, 3);
+            test_punctuated!("hello", "world",);
         }
 
         #[test]
