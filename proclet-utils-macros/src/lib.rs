@@ -1,3 +1,5 @@
+//! This crate contains proc macros used by the `proclet-utils` crate. Don't use it directly.
+
 use proc_macro::TokenStream;
 use proclet::{
     op,
@@ -7,6 +9,7 @@ use proclet::{
 };
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
+#[doc(hidden)]
 #[proc_macro]
 pub fn _define_ops(input: TokenStream) -> TokenStream {
     proclet(input, |input| {

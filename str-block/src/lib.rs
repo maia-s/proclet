@@ -3,10 +3,11 @@
 use proc_macro::TokenStream;
 use proclet::{op, pm1::StringLiteral, prelude::*, proclet, punctuated, Optional};
 
-/// Remove the first line if it's empty except for whitespace, and remove the common whitespace prefix from
-/// all lines, if any. Empty lines are treated as if they have the common prefix.
+/// Remove the first line if it's empty except for whitespace, and remove common indentation from
+/// all lines, if any. Lines that are empty except for whitespace are treated as if they have the
+/// common indentation.
 ///
-/// Call with `{}` like `str_block!{"string"}` to stop rustfmt from modifying your string.
+/// Call with `{}` like `str_block!{"string"}` to stop rustfmt from moving your string.
 #[proc_macro]
 pub fn str_block(input: TokenStream) -> TokenStream {
     proclet(input, |input| {
