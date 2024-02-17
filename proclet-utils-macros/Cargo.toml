@@ -1,6 +1,6 @@
 [package]
 name = "proclet-utils-macros"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Maia S. R."]
 license = "MIT OR Apache-2.0 OR Zlib"
@@ -11,4 +11,4 @@ repository = "https://github.com/maia-s/proclet"
 proc-macro = true
 
 [dependencies]
-proclet = { path = "../proclet", version = "0.2", default-features = false, features = ["proc-macro", "literal-value"] }
+proclet = { path = "../proclet", version = "0", default-features = false, features = ["proc-macro", "literal-value"] }
