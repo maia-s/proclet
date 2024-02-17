@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 #[doc(hidden)]
 pub use proclet::{Match, MatchOpFn, OpParser, PunctExt};
 #[doc(hidden)]
