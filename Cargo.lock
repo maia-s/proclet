@@ -13,6 +13,12 @@ dependencies = [
 
 [[package]]
 name = "proclet"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8165ba8b3b010e051e10ef7dbd61f9a4c994fa9ad422968c715f206ff48b08af"
+
+[[package]]
+name = "proclet"
 version = "0.2.0"
 dependencies = [
  "proc-macro2",
@@ -23,7 +29,7 @@ name = "proclet-test-macros"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
- "proclet",
+ "proclet 0.2.0",
  "proclet-utils",
 ]
 
@@ -31,15 +37,15 @@ dependencies = [
 name = "proclet-tests"
 version = "0.1.0"
 dependencies = [
- "proclet",
+ "proclet 0.2.0",
  "proclet-test-macros",
 ]
 
 [[package]]
 name = "proclet-utils"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
- "proclet",
+ "proclet 0.1.0",
  "proclet-utils-macros",
 ]
 
@@ -47,14 +53,14 @@ dependencies = [
 name = "proclet-utils-macros"
 version = "0.1.2"
 dependencies = [
- "proclet",
+ "proclet 0.2.0",
 ]
 
 [[package]]
 name = "str-block"
 version = "0.1.1"
 dependencies = [
- "proclet",
+ "proclet 0.2.0",
 ]
 
 [[package]]
