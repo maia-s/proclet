@@ -691,7 +691,10 @@ macro_rules! def_literal_tokens {
             #[inline]
             fn parse(buf: &mut &crate::TokenBuf<T>) -> Result<Self, crate::Error<T::Span>> {
                 let mut buf2 = *buf;
-                if let Ok(token) = LiteralValue::parse(&mut buf2)?.try_into() {
+                if let Ok(token) = LiteralValue::parse(&mut buf2)
+                    .map_err(|mut e| { e.set_message(concat!("expected ", stringify!($ident))); e })?
+                    .try_into()
+                {
                     *buf = buf2;
                     Ok(token)
                 } else {
