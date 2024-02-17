@@ -91,12 +91,18 @@ impl<T: TokenTreeExt, M: Parser<T>, D: Parser<T>> Parser<T> for PunctuatedParser
         buf: &mut &'b crate::TokenBuf<T>,
     ) -> Result<Self::Output<'p, 'b>, Error<T::Span>> {
         let mut vec = Vec::new();
-        while let Ok(main) = self.0.parse(buf) {
-            let delim = self.1.parse(buf).ok();
-            let got_delim = delim.is_some();
-            vec.push((main, delim));
-            if !got_delim {
-                break;
+        let main = self.0.parse(buf)?;
+        let delim = self.1.parse(buf).ok();
+        let got_delim = delim.is_some();
+        vec.push((main, delim));
+        if got_delim {
+            while let Ok(main) = self.0.parse(buf) {
+                let delim = self.1.parse(buf).ok();
+                let got_delim = delim.is_some();
+                vec.push((main, delim));
+                if !got_delim {
+                    break;
+                }
             }
         }
         Ok(Punctuated(vec))
