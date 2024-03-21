@@ -1,5 +1,5 @@
 use crate::{IntoTokens, Parse, ProcMacro, ProcMacroExt, ToTokenStream};
-use std::{fmt::Display, str::FromStr};
+use std::{ffi, fmt::Display, str::FromStr};
 
 #[cfg(feature = "literal-value")]
 /// A literal token. This is like `Literal` from `proc-macro*`, except that the value has
@@ -12,6 +12,9 @@ pub enum LiteralValue<S: crate::Span> {
 
     /// Byte string literal.
     ByteString(ByteStringLiteral<S>),
+
+    /// C string literal.
+    CString(CStringLiteral<S>),
 
     /// Character literal.
     Character(CharacterLiteral<S>),
@@ -69,6 +72,13 @@ pub enum LiteralValue<S: crate::Span> {
 }
 
 #[cfg(feature = "literal-value")]
+enum OptByteOrChar {
+    Byte(u8),
+    Char(char),
+    None,
+}
+
+#[cfg(feature = "literal-value")]
 impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
     type Err = crate::Error<S>;
 
@@ -79,6 +89,7 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
         enum Escapes {
             Char,
             String,
+            CString,
         }
 
         fn bin_digit<S: crate::SpanExt>(b: u8) -> Result<u8, crate::Error<S>> {
@@ -239,24 +250,32 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
         fn parse_char_escape<S: crate::SpanExt>(
             input: &mut &[u8],
             escapes: Escapes,
-        ) -> Result<Option<char>, crate::Error<S>> {
+        ) -> Result<OptByteOrChar, crate::Error<S>> {
             assert_eq!(input[0], b'\\');
             if input.len() >= 2 {
                 let escape = input[1];
                 *input = &input[2..];
                 match escape {
-                    b'\'' => Ok(Some('\'')),
-                    b'\"' => Ok(Some('\"')),
-                    b'\\' => Ok(Some('\\')),
-                    b'0' => Ok(Some('\0')),
-                    b'n' => Ok(Some('\n')),
-                    b'r' => Ok(Some('\r')),
-                    b't' => Ok(Some('\t')),
-                    b'\n' if matches!(escapes, Escapes::String) => Ok(None),
+                    b'\'' => Ok(OptByteOrChar::Char('\'')),
+                    b'\"' => Ok(OptByteOrChar::Char('\"')),
+                    b'\\' => Ok(OptByteOrChar::Char('\\')),
+                    b'0' if !matches!(escapes, Escapes::CString) => Ok(OptByteOrChar::Char('\0')),
+                    b'n' => Ok(OptByteOrChar::Char('\n')),
+                    b'r' => Ok(OptByteOrChar::Char('\r')),
+                    b't' => Ok(OptByteOrChar::Char('\t')),
+                    b'\n' if matches!(escapes, Escapes::String | Escapes::CString) => {
+                        Ok(OptByteOrChar::None)
+                    }
                     b'x' if input.len() >= 2 => {
-                        let value = oct_digit(input[0])? << 4 | hex_digit(input[1])?;
-                        *input = &input[2..];
-                        Ok(Some(char::from(value)))
+                        if matches!(escapes, Escapes::CString) {
+                            let value = hex_digit(input[0])? << 4 | hex_digit(input[1])?;
+                            *input = &input[2..];
+                            Ok(OptByteOrChar::Byte(value))
+                        } else {
+                            let value = oct_digit(input[0])? << 4 | hex_digit(input[1])?;
+                            *input = &input[2..];
+                            Ok(OptByteOrChar::Char(char::from(value)))
+                        }
                     }
                     b'u' if input.len() > 2 && input[0] == b'{' => {
                         *input = &input[1..];
@@ -270,7 +289,7 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
                         }
                         if input[0] == b'}' {
                             *input = &input[1..];
-                            Ok(Some(
+                            Ok(OptByteOrChar::Char(
                                 char::from_u32(value)
                                     .ok_or(crate::Error::new("invalid unicode escape"))?,
                             ))
@@ -288,12 +307,13 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
         fn parse_char<S: crate::SpanExt>(
             input: &mut &[u8],
             escapes: Escapes,
-        ) -> Result<Option<char>, crate::Error<S>> {
+        ) -> Result<OptByteOrChar, crate::Error<S>> {
             if !input.is_empty() && input[0] == b'\\' {
-                if let Some(c) = parse_char_escape(input, escapes)? {
-                    Ok(Some(c))
-                } else if matches!(escapes, Escapes::String) {
-                    Ok(None)
+                let value = parse_char_escape(input, escapes)?;
+                if matches!(value, OptByteOrChar::Byte(_) | OptByteOrChar::Char(_)) {
+                    Ok(value)
+                } else if matches!(escapes, Escapes::String | Escapes::CString) {
+                    Ok(OptByteOrChar::None)
                 } else {
                     Err(crate::Error::new("unrecognized character escape"))
                 }
@@ -302,19 +322,19 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
                 match input[0] {
                     value @ 0x00..=0x7f => {
                         *input = &input[1..];
-                        Ok(Some(char::from(value)))
+                        Ok(OptByteOrChar::Char(char::from(value)))
                     }
                     0xc0..=0xdf => {
                         let value = ((input[0] & 0x1f) as u32) << 6 | (input[1] & 0x3f) as u32;
                         *input = &input[2..];
-                        Ok(Some(char::from_u32(value).unwrap()))
+                        Ok(OptByteOrChar::Char(char::from_u32(value).unwrap()))
                     }
                     0xe0..=0xef => {
                         let value = (((input[0] & 0x0f) as u32) << 6 | (input[1] & 0x3f) as u32)
                             << 6
                             | (input[2] & 0x3f) as u32;
                         *input = &input[3..];
-                        Ok(Some(char::from_u32(value).unwrap()))
+                        Ok(OptByteOrChar::Char(char::from_u32(value).unwrap()))
                     }
                     0xf0..=0xf7 => {
                         let value = ((((input[0] & 0x07) as u32) << 6 | (input[1] & 0x3f) as u32)
@@ -323,7 +343,7 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
                             << 6
                             | (input[3] & 0x3f) as u32;
                         *input = &input[4..];
-                        Ok(Some(char::from_u32(value).unwrap()))
+                        Ok(OptByteOrChar::Char(char::from_u32(value).unwrap()))
                     }
                     _ => unreachable!(),
                 }
@@ -335,9 +355,12 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
         match input[0] {
             b'\'' => {
                 if input[input.len() - 1] == b'\'' {
-                    Ok(LiteralValue::Character(CharacterLiteral::new(
-                        parse_char(&mut &input[1..input.len() - 1], Escapes::Char)?.unwrap(),
-                    )))
+                    let OptByteOrChar::Char(c) =
+                        parse_char(&mut &input[1..input.len() - 1], Escapes::Char)?
+                    else {
+                        unreachable!()
+                    };
+                    Ok(LiteralValue::Character(CharacterLiteral::new(c)))
                 } else {
                     Err(crate::Error::new("unterminated character literal"))
                 }
@@ -348,7 +371,7 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
                     input = &input[1..input.len() - 1];
                     let mut s = String::new();
                     while !input.is_empty() {
-                        if let Some(c) = parse_char(&mut input, Escapes::String)? {
+                        if let OptByteOrChar::Char(c) = parse_char(&mut input, Escapes::String)? {
                             s.push(c);
                         } else {
                             while !input.is_empty() && input[0].is_ascii_whitespace() {
@@ -432,6 +455,74 @@ impl<S: crate::SpanExt> FromStr for LiteralValue<S> {
                     }
                 } else {
                     Err(crate::Error::new("unexpected end of input after `b`"))
+                }
+            }
+
+            b'c' => {
+                input = &input[1..];
+                if !input.is_empty() {
+                    match input[0] {
+                        b'\"' => {
+                            if input.len() > 1 && input[input.len() - 1] == b'\"' {
+                                input = &input[1..input.len() - 1];
+                                let mut sch = String::new();
+                                let mut bytes = Vec::new();
+                                while !input.is_empty() {
+                                    match parse_char(&mut input, Escapes::CString)? {
+                                        OptByteOrChar::Byte(b) => bytes.push(b),
+                                        OptByteOrChar::Char(c) => {
+                                            sch.clear();
+                                            sch.push(c);
+                                            for &byte in sch.as_bytes() {
+                                                bytes.push(byte);
+                                            }
+                                        }
+                                        OptByteOrChar::None => {
+                                            while !input.is_empty()
+                                                && input[0].is_ascii_whitespace()
+                                            {
+                                                input = &input[1..];
+                                            }
+                                        }
+                                    }
+                                }
+                                bytes.push(0);
+                                Ok(LiteralValue::CString(CStringLiteral::new(
+                                    ffi::CString::from_vec_with_nul(bytes).map_err(|_| {
+                                        crate::Error::new("null byte in c string literal")
+                                    })?,
+                                )))
+                            } else {
+                                Err(crate::Error::new("unterminated c string literal"))
+                            }
+                        }
+
+                        b'r' => {
+                            input = &input[1..];
+                            while input.len() > 1
+                                && input[0] == b'#'
+                                && input[input.len() - 1] == b'#'
+                            {
+                                input = &input[1..input.len() - 1];
+                            }
+                            if input.len() > 1 && input[0] == b'"' && input[input.len() - 1] == b'"'
+                            {
+                                let mut bytes = input[1..input.len() - 1].to_owned();
+                                bytes.push(0);
+                                Ok(LiteralValue::CString(CStringLiteral::new(
+                                    ffi::CString::from_vec_with_nul(bytes).map_err(|_| {
+                                        crate::Error::new("null byte in raw c string literal")
+                                    })?,
+                                )))
+                            } else {
+                                Err(crate::Error::new("unterminated raw c string literal"))
+                            }
+                        }
+
+                        _ => Err(crate::Error::new("unrecognized literal prefix")),
+                    }
+                } else {
+                    Err(crate::Error::new("unexpected end of input after `c`"))
                 }
             }
 
@@ -730,6 +821,9 @@ def_literal_tokens! {
     /// A byte string literal. This can be converted to and from `LiteralValue`.
     ByteStringLiteral: ByteString: Vec<u8>,
 
+    /// A C string literal. This can be converted to and from `LiteralValue`.
+    CStringLiteral: CString: ffi::CString,
+
     /// A character literal. This can be converted to and from `LiteralValue`.
     CharacterLiteral: Character: char,
 
@@ -871,6 +965,12 @@ pub trait Literal: ProcMacro<Literal = Self> + Display + FromStr {
     /// Byte string literal.
     fn byte_string(bytes: &[u8]) -> Self;
 
+    /// C string literal.
+    ///
+    /// This method is currently unstable in `proc-macro` and is missing from `proc-macro2`,
+    /// but this crate implements it in a way that works with both on stable.
+    fn c_string(str: &ffi::CStr) -> Self;
+
     /// The span of this literal.
     fn span(&self) -> Self::Span;
 
@@ -969,6 +1069,7 @@ macro_rules! impl_literal {
                 let (mut lit, span) = match value {
                     LiteralValue::String(t) => ($pm::Literal::string(t.value()), t.span()),
                     LiteralValue::ByteString(t) => ($pm::Literal::byte_string(t.value()), t.span()),
+                    LiteralValue::CString(t) => (<$pm::Literal as Literal>::c_string(t.value()), t.span()),
                     LiteralValue::Character(t) => ($pm::Literal::character(*t.value()), t.span()),
                     LiteralValue::ByteCharacter(t) => (<$pm::Literal as Literal>::byte_character(*t.value()), t.span()),
                     LiteralValue::Int(t) => ($pm::Literal::u128_unsuffixed(*t.value()), t.span()),
@@ -1032,6 +1133,16 @@ macro_rules! impl_literal {
             #[inline]
             fn byte_character(b: u8) -> Self {
                 format!("b'\\x{b:02x}'").parse().unwrap()
+            }
+
+            #[inline]
+            fn c_string(str: &ffi::CStr) -> Self {
+                let mut src = String::from("c\"");
+                for b in str.to_bytes() {
+                    src.push_str(&format!("\\x{b:02x}"));
+                }
+                src.push_str("\"");
+                src.parse().unwrap()
             }
 
             #[inline]
@@ -1115,6 +1226,7 @@ macro_rules! impl_literal {
         match $value {
             LiteralValue::String(s) => Self::string(&s),
             LiteralValue::ByteString(bytes) => Self::byte_string(&bytes),
+            LiteralValue::CString(s) => <Self as Literal>::c_string(&s),
             LiteralValue::Character(c) => Self::character(c),
             LiteralValue::ByteCharacter(b) => <Self as Literal>::byte_character(b),
             LiteralValue::Int(value) => Self::u128_unsuffixed(value),

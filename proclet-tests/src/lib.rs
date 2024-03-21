@@ -117,6 +117,25 @@ mod tests {
             test_literal!(br"raw byte string");
             test_literal!(br#""raw byte string\n""#);
 
+            test_literal!(c"a c string");
+            test_literal!(c"a c string with escapes: \' \" \\ \n \r \t \xff");
+            // there's no way to disable the following warnings. even allow(warnings) or disabling the code with cfg won't do it
+            test_literal!(
+                c"a c string with an escaped newline\
+
+
+                "
+            );
+            test_literal!(
+                c"a c string with an escaped newline\
+
+
+                !"
+            );
+            test_literal!(cr"raw c string");
+            test_literal!(cr#""raw c string\n""#);
+            test_literal!(c"✨🧚‍♀️✨");
+
             test_literal!(127_i8);
             test_literal!(32767_i16);
             test_literal!(2147483647_i32);

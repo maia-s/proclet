@@ -56,10 +56,10 @@ pub use base::{PMExt, ProcMacro, ProcMacroExt, PM};
 pub use error::Error;
 #[cfg(feature = "literal-value")]
 pub use literal::{
-    ByteCharacterLiteral, ByteStringLiteral, CharacterLiteral, F32Literal, F64Literal,
-    FloatLiteral, I128Literal, I16Literal, I32Literal, I64Literal, I8Literal, IntLiteral,
-    IsizeLiteral, LiteralValue, StringLiteral, U128Literal, U16Literal, U32Literal, U64Literal,
-    U8Literal, UsizeLiteral,
+    ByteCharacterLiteral, ByteStringLiteral, CStringLiteral, CharacterLiteral, F32Literal,
+    F64Literal, FloatLiteral, I128Literal, I16Literal, I32Literal, I64Literal, I8Literal,
+    IntLiteral, IsizeLiteral, LiteralValue, StringLiteral, U128Literal, U16Literal, U32Literal,
+    U64Literal, U8Literal, UsizeLiteral,
 };
 pub use literal::{Literal, LiteralExt};
 pub use op::{op, MatchOpFn, Op, OpParser, OpParserInstance, Puncts};
@@ -117,6 +117,7 @@ macro_rules! pm {
                 "literal-value" LiteralValue = LiteralValue<Span>;
                 "literal-value" StringLiteral = StringLiteral<Span>;
                 "literal-value" ByteStringLiteral = ByteStringLiteral<Span>;
+                "literal-value" CStringLiteral = CStringLiteral<Span>;
                 "literal-value" CharacterLiteral = CharacterLiteral<Span>;
                 "literal-value" ByteCharacterLiteral = ByteCharacterLiteral<Span>;
                 "literal-value" IntLiteral = IntLiteral<Span>;
