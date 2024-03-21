@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "proclet"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "proc-macro2",
 ]
@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "proclet-utils"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "proclet",
  "proclet-utils-macros",
@@ -52,7 +52,7 @@ dependencies = [
 
 [[package]]
 name = "str-block"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "proclet",
 ]
