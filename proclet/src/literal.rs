@@ -815,67 +815,67 @@ macro_rules! def_literal_tokens {
 }
 
 def_literal_tokens! {
-    /// A string literal. This can be converted to and from `LiteralValue`.
+    /// A string literal. This can be converted to and from [`LiteralValue`].
     StringLiteral: String: String,
 
-    /// A byte string literal. This can be converted to and from `LiteralValue`.
+    /// A byte string literal. This can be converted to and from [`LiteralValue`].
     ByteStringLiteral: ByteString: Vec<u8>,
 
-    /// A C string literal. This can be converted to and from `LiteralValue`.
+    /// A C string literal. This can be converted to and from [`LiteralValue`].
     CStringLiteral: CString: ffi::CString,
 
-    /// A character literal. This can be converted to and from `LiteralValue`.
+    /// A character literal. This can be converted to and from [`LiteralValue`].
     CharacterLiteral: Character: char,
 
-    /// A byte character literal. This can be converted to and from `LiteralValue`.
+    /// A byte character literal. This can be converted to and from [`LiteralValue`].
     ByteCharacterLiteral: ByteCharacter: u8,
 
-    /// Unsuffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// Unsuffixed integer literal. This can be converted to and from [`LiteralValue`].
     IntLiteral: Int: u128,
 
-    /// Unsuffixed floating point literal. This can be converted to and from `LiteralValue`.
+    /// Unsuffixed floating point literal. This can be converted to and from [`LiteralValue`].
     FloatLiteral: Float: f64,
 
-    /// `i8` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `i8` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     I8Literal: I8: i8,
 
-    /// `i16` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `i16` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     I16Literal: I16: i16,
 
-    /// `i32` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `i32` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     I32Literal: I32: i32,
 
-    /// `i64` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `i64` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     I64Literal: I64: i64,
 
-    /// `i128` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `i128` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     I128Literal: I128: i128,
 
-    /// `isize` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `isize` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     IsizeLiteral: Isize: isize,
 
-    /// `u8` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `u8` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     U8Literal: U8: u8,
 
-    /// `u16` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `u16` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     U16Literal: U16: u16,
 
-    /// `u32` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `u32` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     U32Literal: U32: u32,
 
-    /// `u64` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `u64` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     U64Literal: U64: u64,
 
-    /// `u128` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `u128` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     U128Literal: U128: u128,
 
-    /// `usize` suffixed integer literal. This can be converted to and from `LiteralValue`.
+    /// `usize` suffixed integer literal. This can be converted to and from [`LiteralValue`].
     UsizeLiteral: Usize: usize,
 
-    /// `f32` suffixed floating point literal. This can be converted to and from `LiteralValue`.
+    /// `f32` suffixed floating point literal. This can be converted to and from [`LiteralValue`].
     F32Literal: F32: f32,
 
-    /// `f64` suffixed floating point literal. This can be converted to and from `LiteralValue`.
+    /// `f64` suffixed floating point literal. This can be converted to and from [`LiteralValue`].
     F64Literal: F64: f64,
 }
 
