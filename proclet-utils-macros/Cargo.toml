@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Maia S. R."]
 license = "MIT OR Apache-2.0 OR Zlib"
 description = "Proc macros for the proclet-utils crate"
-repository = "https://github.com/maia-s/proclet"
+repository = "https://codeberg.org/maia/proclet-rs"
 
 [lib]
 proc-macro = true

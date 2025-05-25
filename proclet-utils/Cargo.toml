@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Maia S. R."]
 license = "MIT OR Apache-2.0 OR Zlib"
 description = "Utilities for proclet"
-repository = "https://github.com/maia-s/proclet"
+repository = "https://codeberg.org/maia/proclet-rs"
 documentation = "https://docs.rs/proclet-utils"
 categories = ["parsing", "development-tools::procedural-macro-helpers"]
 
